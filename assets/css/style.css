@@ -1,0 +1,244 @@
+/* 
+ * Cable Inventory System - Main Styles
+ * Theme: Cloudflare Inspired (Enterprise Dark)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    /* Shared Constants */
+    --accent-primary: #f6821f;
+    /* Official Cloudflare Orange */
+    --accent-secondary: #00a9e0;
+    /* Blue */
+    --accent-success: #00c768;
+    --accent-warning: #ffd200;
+    --accent-danger: #bd271e;
+
+    --sidebar-width: 260px;
+    --header-height: 64px;
+    --transition-speed: 0.2s ease-in-out;
+}
+
+[data-theme="dark"] {
+    --bg-body: #171b21;
+    --bg-sidebar: #1e242d;
+    --bg-card: #242a35;
+    --bg-card-hover: #2c333f;
+
+    --text-main: #d9d9d9;
+    --text-muted: #9a9a9a;
+    --text-highlight: #ffffff;
+
+    --border-color: #363c48;
+    --border-focus: #4d576a;
+}
+
+[data-theme="light"] {
+    --bg-body: #ffffff;
+    /* Pure white body */
+    --bg-sidebar: #f4f5f8;
+    /* Slight off-white sidebar */
+    --bg-card: #ffffff;
+    --bg-card-hover: #fafafa;
+
+    --text-main: #101010;
+    /* Almost Black for better contrast */
+    --text-muted: #4a4a4a;
+    /* Dark Gray, readable */
+    --text-highlight: #000000;
+
+    --border-color: #d1d5db;
+    /* Darker border for distinct separation */
+    --border-focus: #9ca3af;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    font-size: 14px;
+    /* Enterprise apps usually slightly tighter */
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--text-highlight);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Layout shell */
+#app {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100%;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem;
+    z-index: 10;
+}
+
+.brand {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-highlight);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-left: 0.5rem;
+}
+
+.nav-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.nav-item {
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+    color: var(--text-muted);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.nav-item:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-main);
+}
+
+.nav-item.active {
+    background: rgba(243, 128, 32, 0.15);
+    /* Orange Tint */
+    color: var(--accent-primary);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-body);
+}
+
+/* Header */
+.header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-body);
+}
+
+.view-title {
+    font-size: 1.25rem;
+}
+
+.actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Scrollable Content Area */
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.mt-4 {
+    margin-top: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-body);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
