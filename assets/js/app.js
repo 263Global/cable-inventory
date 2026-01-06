@@ -255,6 +255,21 @@ const App = {
 
                     <div class="grid-2">
                         <div class="form-group">
+                            <label class="form-label">Capacity Sold</label>
+                            <input type="number" class="form-control" name="capacity.value" value="10" min="1" placeholder="e.g., 10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit</label>
+                            <select class="form-control" name="capacity.unit">
+                                <option>Gbps</option>
+                                <option>Wavelength</option>
+                                <option>Fiber Pair</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
                             <label class="form-label">Contract Start</label>
                             <input type="date" class="form-control" name="dates.start" id="sales-start-date" required>
                         </div>
@@ -529,6 +544,10 @@ const App = {
             customerName: getVal('customerName'),
             inventoryLink: getVal('inventoryLink'),
             status: status,
+            capacity: {
+                value: getNum('capacity.value'),
+                unit: getVal('capacity.unit')
+            },
             dates: {
                 start: getVal('dates.start'),
                 end: getVal('dates.end')
@@ -635,6 +654,7 @@ const App = {
                         <tr>
                             <th>Resource ID</th>
                             <th>Status</th>
+                            <th>Acquisition</th>
                             <th>Details</th>
                             <th>Cost Info</th>
                             <th>Location (A / Z)</th>
@@ -642,13 +662,66 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.map(item => `
-                            <tr>
+                        ${data.map(item => {
+            // Get all sales linked to this resource
+            const allSales = window.Store.getSales();
+            const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
+
+            // Calculate total sold capacity
+            let totalSoldCapacity = 0;
+            linkedSales.forEach(sale => {
+                totalSoldCapacity += (sale.capacity?.value || 0);
+            });
+
+            // Resource total capacity
+            const totalCapacity = item.capacity?.value || 0;
+
+            // Calculate usage percentage
+            const usagePercent = totalCapacity > 0 ? Math.min(100, Math.round((totalSoldCapacity / totalCapacity) * 100)) : 0;
+
+            // Auto-calculate status based on dates and usage
+            const today = new Date();
+            const startDate = item.dates?.start ? new Date(item.dates.start) : null;
+            const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+
+            let calculatedStatus = item.status;
+            if (endDate && today > endDate) {
+                calculatedStatus = 'Expired';
+            } else if (startDate && today < startDate) {
+                calculatedStatus = 'Draft';
+            } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
+                calculatedStatus = 'Sold Out';
+            } else {
+                calculatedStatus = 'Available';
+            }
+
+            // Calculate usage percentage for progress bar
+            const usagePercent = calculatedStatus === 'Sold Out' ? 100 : (calculatedStatus === 'Draft' ? 0 : 0);
+            const progressColor = calculatedStatus === 'Sold Out' ? 'var(--accent-danger)' :
+                calculatedStatus === 'Expired' ? 'var(--text-muted)' :
+                    calculatedStatus === 'Draft' ? 'var(--accent-warning)' : 'var(--accent-success)';
+
+            // Status badge color
+            const statusBadgeClass = calculatedStatus === 'Available' ? 'badge-success' :
+                calculatedStatus === 'Sold Out' ? 'badge-danger' :
+                    calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
+
+            return `
+                            <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}">
                                 <td class="font-mono" style="color: var(--accent-secondary)">${item.resourceId}</td>
                                 <td>
-                                    <span class="badge ${item.status === 'Available' ? 'badge-success' : (item.status === 'Sold Out' || item.status === 'In Use' ? 'badge-danger' : 'badge-warning')}">${item.status}</span>
-                                    ${item.usage?.currentUser ? `<div style="font-size:0.75rem; color:var(--accent-secondary); margin-top:0.2rem;">👤 ${item.usage.currentUser}</div>` : ''}
-                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">${item.acquisition?.ownership || ''}</div>
+                                    <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
+                                    <!-- Usage Progress Bar -->
+                                    <div style="margin-top:0.5rem; width:80px;">
+                                        <div style="background:var(--border-color); border-radius:4px; height:6px; overflow:hidden;">
+                                            <div style="width:${usagePercent}%; height:100%; background:${progressColor}; transition:width 0.3s;"></div>
+                                        </div>
+                                        <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:2px;">${usagePercent}% Used</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:500">${item.acquisition?.type || 'Purchased'}</div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted)">${item.acquisition?.ownership || ''}</div>
                                 </td>
                                 <td>
                                     <div style="font-weight:600">${item.cableSystem}</div>
@@ -679,7 +752,8 @@ const App = {
                                     </div>
                                 </td>
                             </tr>
-                        `).join('')}
+                            `;
+        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -692,6 +766,26 @@ const App = {
         const isEdit = !!resourceId;
 
         const formHTML = `
+                ${item.usage?.currentUser ? `
+                <!-- Usage Information -->
+                <div class="mb-4 p-3" style="background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px;">
+                    <h4 style="color: var(--accent-danger); margin-bottom: 0.5rem;">
+                        <ion-icon name="person-circle-outline" style="vertical-align: middle;"></ion-icon> 
+                        Resource In Use
+                    </h4>
+                    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Customer:</span>
+                            <div style="font-weight: 600; font-size: 1.1rem;">${item.usage.currentUser}</div>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Sales Order:</span>
+                            <div class="font-mono" style="color: var(--accent-secondary);">${item.usage.orderLink || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
                 <!-- Core Identity -->
                 <h4 class="mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-top:0;">Identity</h4>
                 <div class="grid-2">
@@ -700,12 +794,12 @@ const App = {
                         <input type="text" class="form-control" name="resourceId" value="${item.resourceId || ''}" ${isEdit ? 'readonly' : ''} placeholder="Auto-generated if empty">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select class="form-control" name="status">
+                        <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
+                        <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
+                            <option ${item.status === 'Draft' ? 'selected' : ''}>Draft</option>
                             <option ${item.status === 'Available' ? 'selected' : ''}>Available</option>
-                            <option ${item.status === 'In Use' ? 'selected' : ''}>In Use</option>
-                            <option ${item.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
-                            <option ${item.status === 'Decommissioned' ? 'selected' : ''}>Decommissioned</option>
+                            <option ${item.status === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
+                            <option ${item.status === 'Expired' ? 'selected' : ''}>Expired</option>
                         </select>
                     </div>
                 </div>
@@ -714,9 +808,15 @@ const App = {
                 <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Acquisition</h4>
                 <div class="grid-3">
                     <div class="form-group">
+                        <label class="form-label">Acquisition Type</label>
+                        <select class="form-control" name="acquisition.type">
+                            <option ${item.acquisition?.type === 'Purchased' ? 'selected' : ''}>Purchased</option>
+                            <option ${item.acquisition?.type === 'Swapped In' ? 'selected' : ''}>Swapped In</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Ownership</label>
                         <select class="form-control" name="acquisition.ownership">
-                            <option ${item.acquisition?.ownership === 'Owned' ? 'selected' : ''}>Owned</option>
                             <option ${item.acquisition?.ownership === 'Leased' ? 'selected' : ''}>Leased</option>
                             <option ${item.acquisition?.ownership === 'IRU' ? 'selected' : ''}>IRU</option>
                         </select>
@@ -871,6 +971,7 @@ const App = {
                 resourceId: form.querySelector('[name="resourceId"]').value,
                 status: form.querySelector('[name="status"]').value,
                 acquisition: {
+                    type: form.querySelector('[name="acquisition.type"]').value,
                     ownership: form.querySelector('[name="acquisition.ownership"]').value,
                     supplier: form.querySelector('[name="acquisition.supplier"]').value,
                     contractRef: form.querySelector('[name="acquisition.contractRef"]').value,
@@ -1020,6 +1121,7 @@ const App = {
                         <tr>
                             <th>Order ID</th>
                             <th>Customer</th>
+                            <th>Capacity</th>
                             <th>Status</th>
                             <th>Inventory Link</th>
                             <th>Revenue (MRR)</th>
@@ -1028,7 +1130,7 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.length === 0 ? '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
+                        ${data.length === 0 ? '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
                         ${data.map(item => {
             const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
             // Calculate Sales Specific Margin (MRR - CableCostMRC - XCs - Backhauls)
@@ -1046,6 +1148,7 @@ const App = {
                             <tr>
                                 <td class="font-mono" style="color: var(--accent-secondary)">${item.salesOrderId}</td>
                                 <td style="font-weight:600">${item.customerName}</td>
+                                <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
                                 <td class="font-mono">${item.inventoryLink || '-'}</td>
                                 <td class="font-mono" style="color: var(--accent-success)">$${mrr.toLocaleString()}</td>

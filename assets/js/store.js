@@ -65,6 +65,10 @@ const defaultData = {
             status: 'Active',
             salesType: 'Lease',
             inventoryLink: 'RES-001',
+            capacity: {
+                value: 100,
+                unit: 'Gbps'
+            },
             dates: {
                 start: '2024-01-01',
                 end: '2026-02-15' // Expiring very soon
