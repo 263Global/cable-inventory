@@ -121,7 +121,29 @@ class Store {
     }
 
     getAvailableResources() {
-        return this.inventory.filter(item => item.status === 'Available');
+        const allSales = this.salesOrders;
+        const today = new Date();
+
+        return this.inventory.filter(item => {
+            // Check if contract is expired
+            const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+            if (endDate && today > endDate) return false; // Expired
+
+            // Check if contract hasn't started yet
+            const startDate = item.dates?.start ? new Date(item.dates.start) : null;
+            if (startDate && today < startDate) return false; // Draft
+
+            // Calculate used capacity
+            const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
+            let totalSoldCapacity = 0;
+            linkedSales.forEach(sale => {
+                totalSoldCapacity += (sale.capacity?.value || 0);
+            });
+
+            // Check if there's remaining capacity
+            const totalCapacity = item.capacity?.value || 0;
+            return totalSoldCapacity < totalCapacity; // Has remaining capacity
+        });
     }
 
     addInventory(item) {

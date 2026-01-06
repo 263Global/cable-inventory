@@ -229,9 +229,17 @@ const App = {
     openAddSalesModal() {
         // Get Available Resources
         const availableResources = window.Store.getAvailableResources();
-        const resourceOptions = availableResources.map(r =>
-            `<option value="${r.resourceId}">${r.resourceId} - ${r.cableSystem} (${r.capacity.value}${r.capacity.unit})</option>`
-        ).join('');
+        const allSales = window.Store.getSales();
+
+        const resourceOptions = availableResources.map(r => {
+            // Calculate available capacity
+            const linkedSales = allSales.filter(s => s.inventoryLink === r.resourceId);
+            let soldCapacity = 0;
+            linkedSales.forEach(s => { soldCapacity += (s.capacity?.value || 0); });
+            const availableCapacity = (r.capacity?.value || 0) - soldCapacity;
+
+            return `<option value="${r.resourceId}">${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
+        }).join('');
 
         const modalContent = `
             <div class="grid-2 gap-2" style="align-items: start;">
@@ -268,32 +276,62 @@ const App = {
                         </div>
                     </div>
 
-                    <div class="grid-2">
+                    <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Contract Start</label>
                             <input type="date" class="form-control" name="dates.start" id="sales-start-date" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Contract End</label>
-                            <input type="date" class="form-control" name="dates.end" id="sales-end-date" required>
+                            <label class="form-label">Term (Months)</label>
+                            <input type="number" class="form-control" name="dates.term" id="sales-term" value="12" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Contract End <small style="color:var(--text-muted)">(Auto)</small></label>
+                            <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                         <label class="form-label">Sales Status</label>
-                         <input type="text" class="form-control" id="sales-status-display" value="Pending" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Sales Status</label>
+                            <input type="text" class="form-control" id="sales-status-display" value="Pending" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Salesperson</label>
+                            <select class="form-control" name="salesperson" required>
+                                <option value="">Select...</option>
+                                <option>Janna Dai</option>
+                                <option>Miki Chen</option>
+                                <option>Wayne Jiang</option>
+                                <option>Kristen Gan</option>
+                                <option>Becky Hai</option>
+                                <option>Wolf Yuan</option>
+                                <option>Yifeng Jiang</option>
+                            </select>
+                        </div>
                     </div>
 
                     <h5 class="mt-4 mb-2">Revenue / Price</h5>
-                    <div class="grid-2">
+                    <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">MRC Sales ($)</label>
                             <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
                         </div>
                         <div class="form-group">
+                            <label class="form-label">Annual Sales ($)</label>
+                            <input type="number" class="form-control calc-trigger" name="financials.annualSales" value="0">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">NRC Sales ($)</label>
                             <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sales Type</label>
+                        <select class="form-control calc-trigger" name="salesType">
+                            <option value="Resale">Resale (使用外部资源)</option>
+                            <option value="Inventory">Inventory (使用自有资源)</option>
+                        </select>
                     </div>
 
                     <!-- Profitability Summary Widget -->
@@ -394,6 +432,16 @@ const App = {
                             <input type="number" class="form-control calc-trigger" name="costs.crossConnect.zEnd.monthly" value="0">
                         </div>
                     </div>
+                    <div class="grid-2">
+                         <div class="form-group">
+                            <label class="form-label">A-End NRC ($)</label>
+                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.aEnd.nrc" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Z-End NRC ($)</label>
+                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.zEnd.nrc" value="0">
+                        </div>
+                    </div>
 
                     <!-- Group 4: Smart Hands -->
                     <h5 class="mb-2 mt-4 text-xs uppercase" style="opacity:0.7">4. Smart Hands</h5>
@@ -424,8 +472,20 @@ const App = {
 
         // Status Auto-calc
         const startDateInput = document.getElementById('sales-start-date');
+        const termInput = document.getElementById('sales-term');
         const endDateInput = document.getElementById('sales-end-date');
         const statusDisplay = document.getElementById('sales-status-display');
+
+        // Auto-calculate End Date from Start + Term
+        const calculateEndDate = () => {
+            if (!startDateInput.value || !termInput.value) return;
+            const start = new Date(startDateInput.value);
+            const months = parseInt(termInput.value) || 0;
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + months);
+            endDateInput.value = end.toISOString().split('T')[0];
+            updateStatus();
+        };
 
         const updateStatus = () => {
             if (!startDateInput.value || !endDateInput.value) return;
@@ -440,9 +500,9 @@ const App = {
             statusDisplay.value = status;
         };
 
-        if (startDateInput && endDateInput) {
-            startDateInput.addEventListener('change', updateStatus);
-            endDateInput.addEventListener('change', updateStatus);
+        if (startDateInput && termInput && endDateInput) {
+            startDateInput.addEventListener('change', calculateEndDate);
+            termInput.addEventListener('input', calculateEndDate);
         }
 
         // Real-time Financial Calculation
@@ -548,8 +608,10 @@ const App = {
                 value: getNum('capacity.value'),
                 unit: getVal('capacity.unit')
             },
+            salesperson: getVal('salesperson'),
             dates: {
                 start: getVal('dates.start'),
+                term: getNum('dates.term'),
                 end: getVal('dates.end')
             },
             financials: {
@@ -595,8 +657,12 @@ const App = {
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
+                        ${onSave ? `
+                            <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
+                        ` : `
+                            <button type="button" class="btn btn-secondary" id="modal-cancel">Close</button>
+                        `}
                     </div>
                 </div>
             </div>
@@ -695,11 +761,11 @@ const App = {
                 calculatedStatus = 'Available';
             }
 
-            // Calculate usage percentage for progress bar
-            const usagePercent = calculatedStatus === 'Sold Out' ? 100 : (calculatedStatus === 'Draft' ? 0 : 0);
-            const progressColor = calculatedStatus === 'Sold Out' ? 'var(--accent-danger)' :
-                calculatedStatus === 'Expired' ? 'var(--text-muted)' :
-                    calculatedStatus === 'Draft' ? 'var(--accent-warning)' : 'var(--accent-success)';
+            // Progress bar color based on usage
+            const progressColor = usagePercent >= 100 ? 'var(--accent-danger)' :
+                usagePercent >= 50 ? 'var(--accent-warning)' :
+                    calculatedStatus === 'Expired' ? 'var(--text-muted)' :
+                        calculatedStatus === 'Draft' ? 'var(--accent-warning)' : 'var(--accent-success)';
 
             // Status badge color
             const statusBadgeClass = calculatedStatus === 'Available' ? 'badge-success' :
@@ -712,11 +778,13 @@ const App = {
                                 <td>
                                     <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
                                     <!-- Usage Progress Bar -->
-                                    <div style="margin-top:0.5rem; width:80px;">
+                                    <div style="margin-top:0.5rem; width:100px;">
                                         <div style="background:var(--border-color); border-radius:4px; height:6px; overflow:hidden;">
                                             <div style="width:${usagePercent}%; height:100%; background:${progressColor}; transition:width 0.3s;"></div>
                                         </div>
-                                        <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:2px;">${usagePercent}% Used</div>
+                                        <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:2px;">
+                                            ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
+                                        </div>
                                     </div>
                                 </td>
                                 <td>
@@ -743,10 +811,13 @@ const App = {
                                 </td>
                                 <td>
                                     <div class="flex gap-4">
-                                        <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.openInventoryModal('${item.resourceId}')">
+                                        <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewInventoryDetails('${item.resourceId}')" title="View">
+                                            <ion-icon name="eye-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-primary" style="padding:0.4rem" onclick="App.openInventoryModal('${item.resourceId}')" title="Edit">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete ${item.resourceId}?')) { window.Store.deleteInventory('${item.resourceId}'); App.renderView('inventory'); }">
+                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete ${item.resourceId}?')) { window.Store.deleteInventory('${item.resourceId}'); App.renderView('inventory'); }" title="Delete">
                                             <ion-icon name="trash-outline"></ion-icon>
                                         </button>
                                     </div>
@@ -759,6 +830,87 @@ const App = {
             </div>
     `;
         this.container.innerHTML = html;
+    },
+
+    viewInventoryDetails(resourceId) {
+        const item = window.Store.getInventory().find(i => i.resourceId === resourceId);
+        if (!item) return;
+
+        // Get linked sales orders
+        const allSales = window.Store.getSales();
+        const linkedSales = allSales.filter(s => s.inventoryLink === resourceId);
+
+        // Calculate usage
+        let totalSoldCapacity = 0;
+        linkedSales.forEach(sale => {
+            totalSoldCapacity += (sale.capacity?.value || 0);
+        });
+        const totalCapacity = item.capacity?.value || 0;
+        const usagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
+
+        const linkedSalesHtml = linkedSales.length === 0
+            ? '<div style="color:var(--text-muted)">No sales orders linked</div>'
+            : linkedSales.map(s => `<div class="font-mono" style="margin-bottom:0.3rem;">${s.salesOrderId} - ${s.customerName} (${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'})</div>`).join('');
+
+        const detailsHtml = `
+            <div class="grid-2" style="gap:2rem;">
+                <div>
+                    <h4 class="mb-4" style="color: var(--accent-primary)">Resource Information</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge">${item.status || 'Available'}</span></td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Protection</td><td>${item.protection || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
+                    </table>
+
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Capacity & Usage</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
+                    </table>
+                </div>
+                <div>
+                    <h4 class="mb-4" style="color: var(--accent-primary)">Acquisition</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
+                    </table>
+
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Location</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End Country</td><td>${item.location?.aEnd?.country || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End City/POP</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End Country</td><td>${item.location?.zEnd?.country || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End City/POP</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
+                    </table>
+
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Financials & Dates</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">OTC (One-time)</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Term</td><td>${item.financials?.term || '-'} months</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">O&M Rate</td><td>${item.financials?.omRate || 0}%</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Annual O&M Cost</td><td class="font-mono">$${(item.financials?.annualOmCost || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">End Date</td><td>${item.dates?.end || '-'}</td></tr>
+                    </table>
+
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Linked Sales Orders</h4>
+                    ${linkedSalesHtml}
+                </div>
+            </div>
+        `;
+
+        this.openModal(`Resource: ${item.resourceId}`, detailsHtml, null, true);
     },
 
     openInventoryModal(resourceId = null) {
@@ -1121,6 +1273,7 @@ const App = {
                         <tr>
                             <th>Order ID</th>
                             <th>Customer</th>
+                            <th>Salesperson</th>
                             <th>Capacity</th>
                             <th>Status</th>
                             <th>Inventory Link</th>
@@ -1130,7 +1283,7 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.length === 0 ? '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
+                        ${data.length === 0 ? '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
                         ${data.map(item => {
             const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
             // Calculate Sales Specific Margin (MRR - CableCostMRC - XCs - Backhauls)
@@ -1148,6 +1301,7 @@ const App = {
                             <tr>
                                 <td class="font-mono" style="color: var(--accent-secondary)">${item.salesOrderId}</td>
                                 <td style="font-weight:600">${item.customerName}</td>
+                                <td>${item.salesperson || '-'}</td>
                                 <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
                                 <td class="font-mono">${item.inventoryLink || '-'}</td>
@@ -1155,10 +1309,13 @@ const App = {
                                 <td class="font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
                                 <td>
                                     <div class="flex gap-4">
-                                        <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')">
+                                        <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')" title="View">
                                             <ion-icon name="eye-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete order ${item.salesOrderId}?')) { window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales'); }">
+                                        <button class="btn btn-primary" style="padding:0.4rem" onclick="App.editSalesOrder('${item.salesOrderId}')" title="Edit">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete order ${item.salesOrderId}?')) { window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales'); }" title="Delete">
                                             <ion-icon name="trash-outline"></ion-icon>
                                         </button>
                                     </div>
@@ -1179,6 +1336,19 @@ const App = {
 
         const mrr = order.financials?.totalMrr || order.financials?.mrcSales || 0;
         const nrc = order.financials?.nrcSales || 0;
+        const statusClass = order.status === 'Active' ? 'badge-success' : (order.status === 'Pending' ? 'badge-warning' : 'badge-danger');
+
+        // Calculate costs and margin
+        const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
+        const backhaulAMrc = order.costs?.backhaulA?.mrc || order.costs?.backhaul?.aEnd?.monthly || 0;
+        const backhaulZMrc = order.costs?.backhaulZ?.mrc || order.costs?.backhaul?.zEnd?.monthly || 0;
+        const xcAMrc = order.costs?.crossConnectA?.mrc || order.costs?.crossConnect?.aEnd?.monthly || 0;
+        const xcZMrc = order.costs?.crossConnectZ?.mrc || order.costs?.crossConnect?.zEnd?.monthly || 0;
+
+        const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc;
+        const grossMargin = mrr - totalCostsMrc;
+        const marginPercent = mrr > 0 ? ((grossMargin / mrr) * 100).toFixed(1) : 0;
+        const marginColor = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
         const detailsHtml = `
             <div class="grid-2" style="gap:2rem;">
@@ -1187,29 +1357,126 @@ const App = {
                     <table style="width:100%;">
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge badge-success">${order.status}</span></td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Term</td><td>${order.dates?.term || '-'} months</td></tr>
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">End Date</td><td>${order.dates?.end || '-'}</td></tr>
                     </table>
                 </div>
                 <div>
-                    <h4 class="mb-4" style="color: var(--accent-success)">Revenue & Costs</h4>
+                    <h4 class="mb-4" style="color: var(--accent-success)">Revenue</h4>
                     <table style="width:100%;">
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
                         <tr><td style="padding:0.5rem 0; color:var(--text-muted)">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
-                        <tr><td colspan="2" style="padding-top:1rem;"><strong>Cost Breakdown</strong></td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable Cost MRC</td><td class="font-mono">$${(order.costs?.cableCost?.mrc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul A-End</td><td class="font-mono">$${(order.costs?.backhaulA?.mrc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul Z-End</td><td class="font-mono">$${(order.costs?.backhaulZ?.mrc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect A</td><td class="font-mono">$${(order.costs?.crossConnectA?.mrc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect Z</td><td class="font-mono">$${(order.costs?.crossConnectZ?.mrc || 0).toLocaleString()}</td></tr>
+                    </table>
+                    
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-danger)">Cost Breakdown (MRC)</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                        <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
+                    </table>
+
+                    <h4 class="mb-4 mt-4" style="color: var(--accent-secondary)">Profitability</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
                     </table>
                 </div>
             </div>
         `;
 
         this.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
+    },
+
+    editSalesOrder(salesOrderId) {
+        const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
+        if (!order) return;
+
+        const salespersonOptions = ['Janna Dai', 'Miki Chen', 'Wayne Jiang', 'Kristen Gan', 'Becky Hai', 'Wolf Yuan', 'Yifeng Jiang']
+            .map(name => `<option ${order.salesperson === name ? 'selected' : ''}>${name}</option>`).join('');
+
+        const editHtml = `
+            <div class="grid-2" style="gap:1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" class="form-control" name="customerName" value="${order.customerName}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Salesperson</label>
+                    <select class="form-control" name="salesperson">
+                        <option value="">Select...</option>
+                        ${salespersonOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="grid-2" style="gap:1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Capacity Value</label>
+                    <input type="number" class="form-control" name="capacity.value" value="${order.capacity?.value || 0}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Capacity Unit</label>
+                    <select class="form-control" name="capacity.unit">
+                        <option ${order.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
+                        <option ${order.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
+                        <option ${order.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-2" style="gap:1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">MRC Sales ($)</label>
+                    <input type="number" class="form-control" name="financials.mrcSales" value="${order.financials?.mrcSales || 0}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">NRC Sales ($)</label>
+                    <input type="number" class="form-control" name="financials.nrcSales" value="${order.financials?.nrcSales || 0}">
+                </div>
+            </div>
+            <div class="grid-2" style="gap:1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="dates.start" value="${order.dates?.start || ''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" name="dates.end" value="${order.dates?.end || ''}">
+                </div>
+            </div>
+        `;
+
+        this.openModal(`Edit: ${order.salesOrderId}`, editHtml, (form) => {
+            // Update order data
+            order.customerName = form.querySelector('[name="customerName"]').value;
+            order.salesperson = form.querySelector('[name="salesperson"]').value;
+            order.capacity = {
+                value: Number(form.querySelector('[name="capacity.value"]').value),
+                unit: form.querySelector('[name="capacity.unit"]').value
+            };
+            order.financials.mrcSales = Number(form.querySelector('[name="financials.mrcSales"]').value);
+            order.financials.nrcSales = Number(form.querySelector('[name="financials.nrcSales"]').value);
+            order.dates.start = form.querySelector('[name="dates.start"]').value;
+            order.dates.end = form.querySelector('[name="dates.end"]').value;
+
+            // Recalculate status
+            const today = new Date();
+            const start = new Date(order.dates.start);
+            const end = new Date(order.dates.end);
+            if (today < start) order.status = 'Pending';
+            else if (today > end) order.status = 'Expired';
+            else order.status = 'Active';
+
+            window.Store.save();
+            this.renderView('sales');
+            return true;
+        }, true);
     }
 };
 
