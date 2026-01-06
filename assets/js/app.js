@@ -311,27 +311,56 @@ const App = {
                         </div>
                     </div>
 
-                    <h5 class="mt-4 mb-2">Revenue / Price</h5>
-                    <div class="grid-3">
+                    <h5 class="mt-4 mb-2">Sales Model & Type</h5>
+                    <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">MRC Sales ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
+                            <label class="form-label">Sales Model</label>
+                            <select class="form-control" name="salesModel" id="sales-model-select">
+                                <option value="Lease">Lease (月租模式)</option>
+                                <option value="IRU">IRU (买断模式)</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Annual Sales ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="financials.annualSales" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">NRC Sales ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
+                            <label class="form-label">Sales Type</label>
+                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
+                                <option value="Resale">Resale (外部资源)</option>
+                                <option value="Hybrid">Hybrid (混合资源)</option>
+                                <option value="Inventory">Inventory (自有资源)</option>
+                                <option value="Swapped Out">Swapped Out (置换出去)</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Sales Type</label>
-                        <select class="form-control calc-trigger" name="salesType">
-                            <option value="Resale">Resale (使用外部资源)</option>
-                            <option value="Inventory">Inventory (使用自有资源)</option>
-                        </select>
+
+                    <h5 class="mt-4 mb-2">Revenue / Price</h5>
+                    <!-- Lease Revenue Fields -->
+                    <div id="lease-revenue-fields">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">MRC Sales ($)</label>
+                                <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">NRC Sales ($)</label>
+                                <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- IRU Revenue Fields -->
+                    <div id="iru-revenue-fields" style="display:none;">
+                        <div class="grid-3" style="align-items: end;">
+                            <div class="form-group">
+                                <label class="form-label">OTC ($)</label>
+                                <input type="number" class="form-control calc-trigger" name="financials.otc" id="sales-otc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">O&M Rate (%)</label>
+                                <input type="number" class="form-control calc-trigger" name="financials.omRate" id="sales-om-rate" value="3" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Annual O&M</label>
+                                <input type="number" class="form-control" name="financials.annualOm" id="sales-annual-om" value="0" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Profitability Summary Widget -->
@@ -361,40 +390,42 @@ const App = {
                     <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
                     <!-- Group 1: Cable Cost -->
-                    <h5 class="mb-2 text-xs uppercase" style="opacity:0.7">1. Cable Cost</h5>
-                    <div class="form-group">
-                        <label class="form-label">Supplier</label>
-                        <input type="text" class="form-control" name="costs.cable.supplier">
-                    </div>
-                    <div class="grid-2">
+                    <div id="cable-cost-section">
+                        <h5 class="mb-2 text-xs uppercase" style="opacity:0.7">1. Cable Cost</h5>
                         <div class="form-group">
-                            <label class="form-label">Cost Model</label>
-                            <select class="form-control calc-trigger" name="costs.cable.model" id="cost-model-select">
-                                <option value="Monthly Lease">Monthly Lease</option>
-                                <option value="IRU">IRU</option>
-                            </select>
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control" name="costs.cable.supplier">
                         </div>
-                        <div class="form-group">
-                             <label class="form-label">Base Amount ($)</label>
-                             <input type="number" class="form-control calc-trigger" name="costs.cable.baseAmount" value="0" placeholder="Monthly Rent or IRU Fee">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Cost Model</label>
+                                <select class="form-control calc-trigger" name="costs.cable.model" id="cost-model-select">
+                                    <option value="Monthly Lease">Monthly Lease</option>
+                                    <option value="IRU">IRU</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                 <label class="form-label">Base Amount ($)</label>
+                                 <input type="number" class="form-control calc-trigger" name="costs.cable.baseAmount" value="0" placeholder="Monthly Rent or IRU Fee">
+                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- IRU Specific Fields -->
-                    <div id="iru-fields" class="grid-2" style="display:none; background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;">
-                        <div class="form-group">
-                            <label class="form-label">Amortization (Months)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.cable.amortizationMonths" value="180">
+                        
+                        <!-- IRU Specific Fields -->
+                        <div id="iru-fields" class="grid-2" style="display:none; background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Amortization (Months)</label>
+                                <input type="number" class="form-control calc-trigger" name="costs.cable.amortizationMonths" value="180">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Annual O&M ($)</label>
+                                <input type="number" class="form-control calc-trigger" name="costs.cable.annualOm" value="0">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Annual O&M ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.cable.annualOm" value="0">
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Cable NRC ($)</label>
-                        <input type="number" class="form-control calc-trigger" name="costs.cable.nrc" value="0">
+                        <div class="form-group">
+                            <label class="form-label">Cable NRC ($)</label>
+                            <input type="number" class="form-control calc-trigger" name="costs.cable.nrc" value="0">
+                        </div>
                     </div>
 
                     <!-- Group 2: Backhaul -->
@@ -505,6 +536,60 @@ const App = {
             termInput.addEventListener('input', calculateEndDate);
         }
 
+        // ===== Sales Model Toggle (Lease vs IRU Revenue Fields) =====
+        const salesModelSelect = document.getElementById('sales-model-select');
+        const leaseRevenueFields = document.getElementById('lease-revenue-fields');
+        const iruRevenueFields = document.getElementById('iru-revenue-fields');
+
+        const updateRevenueFields = () => {
+            const model = salesModelSelect?.value;
+            if (leaseRevenueFields && iruRevenueFields) {
+                leaseRevenueFields.style.display = model === 'Lease' ? 'block' : 'none';
+                iruRevenueFields.style.display = model === 'IRU' ? 'block' : 'none';
+            }
+            this.calculateSalesFinancials();
+        };
+
+        if (salesModelSelect) {
+            salesModelSelect.addEventListener('change', updateRevenueFields);
+        }
+
+        // ===== Sales Type Toggle (Cable Cost Section Show/Hide) =====
+        const salesTypeSelect = document.getElementById('sales-type-select');
+        const cableCostSection = document.getElementById('cable-cost-section');
+
+        const updateCableCostVisibility = () => {
+            const type = salesTypeSelect?.value;
+            if (cableCostSection) {
+                // Inventory 和 Swapped Out 不显示 Cable Cost
+                const hideCableCost = (type === 'Inventory' || type === 'Swapped Out');
+                cableCostSection.style.display = hideCableCost ? 'none' : 'block';
+            }
+            this.calculateSalesFinancials();
+        };
+
+        if (salesTypeSelect) {
+            salesTypeSelect.addEventListener('change', updateCableCostVisibility);
+        }
+
+        // ===== IRU Revenue: Auto-calculate Annual O&M Fee =====
+        const salesOtc = document.getElementById('sales-otc');
+        const salesOmRate = document.getElementById('sales-om-rate');
+        const salesAnnualOm = document.getElementById('sales-annual-om');
+
+        const calculateAnnualOm = () => {
+            if (salesOtc && salesOmRate && salesAnnualOm) {
+                const otc = Number(salesOtc.value) || 0;
+                const rate = Number(salesOmRate.value) || 0;
+                salesAnnualOm.value = (otc * rate / 100).toFixed(2);
+            }
+        };
+
+        if (salesOtc && salesOmRate) {
+            salesOtc.addEventListener('input', calculateAnnualOm);
+            salesOmRate.addEventListener('input', calculateAnnualOm);
+        }
+
         // Real-time Financial Calculation
         const calcTriggers = document.querySelectorAll('.calc-trigger');
         calcTriggers.forEach(input => {
@@ -515,42 +600,69 @@ const App = {
     calculateSalesFinancials() {
         // 1. Get Values
         const getValue = (name) => Number(document.querySelector(`[name="${name}"]`)?.value || 0);
+        const getVal = (name) => document.querySelector(`[name="${name}"]`)?.value || '';
 
-        // Revenue
+        // ===== 步骤 A: 计算月度总收入 =====
         const mrcSales = getValue('financials.mrcSales');
+        const annualSales = getValue('financials.annualSales');
         const nrcSales = getValue('financials.nrcSales');
 
-        // Costs - Cable
-        const costModel = document.querySelector('[name="costs.cable.model"]').value;
+        // Total Monthly Revenue = MRC + (Annual / 12)
+        const totalMonthlyRevenue = mrcSales + (annualSales / 12);
+
+        // ===== 步骤 B: 计算直接月成本 =====
+
+        // B1. 海缆有效月成本 (Real Cable Cost)
+        const costModel = document.querySelector('[name="costs.cable.model"]')?.value || 'Monthly Lease';
         const cableBase = getValue('costs.cable.baseAmount');
         let cableRealCost = 0;
 
         if (costModel === 'Monthly Lease') {
+            // 情况 1: 月租模式 - 直接取票面金额
             cableRealCost = cableBase;
         } else {
-            // IRU Logic: (Base / Months) + (O&M / 12)
+            // 情况 2: IRU 买断摊销模式
+            // Real Cable Cost = (Base / Amortization Months) + (Annual O&M / 12)
             const amortMonths = getValue('costs.cable.amortizationMonths') || 1;
             const annualOm = getValue('costs.cable.annualOm');
             cableRealCost = (cableBase / amortMonths) + (annualOm / 12);
         }
 
-        // Costs - Other Monthly
+        // B2. 汇总所有链路成本
         const bhMonthly = getValue('costs.backhaul.aEnd.monthly') + getValue('costs.backhaul.zEnd.monthly');
         const xcMonthly = getValue('costs.crossConnect.aEnd.monthly') + getValue('costs.crossConnect.zEnd.monthly');
 
-        const totalMonthlyCost = cableRealCost + bhMonthly + xcMonthly;
+        const totalDirectMrc = cableRealCost + bhMonthly + xcMonthly;
 
-        // Costs - NCR
+        // ===== 步骤 C: 计算库存分摊成本 (Allocated Inventory Cost) =====
+        const salesType = getVal('salesType');
+        const inventoryLink = getVal('inventoryLink');
+        const salesCapacity = getValue('capacity.value');
+        let allocatedCost = 0;
+
+        if (salesType === 'Inventory' && inventoryLink) {
+            // 获取关联资源的 Unit Cost
+            const linkedResource = window.Store.getInventory().find(r => r.resourceId === inventoryLink);
+            if (linkedResource) {
+                // Unit Cost = MRC / Total Capacity
+                const resourceMrc = linkedResource.financials?.mrc || 0;
+                const resourceCapacity = linkedResource.capacity?.value || 1;
+                const unitCost = resourceMrc / resourceCapacity;
+                allocatedCost = unitCost * salesCapacity;
+            }
+        }
+
+        // ===== 步骤 D: 最终汇总 =====
+        const totalMonthlyCost = totalDirectMrc + allocatedCost;
+        const grossMargin = totalMonthlyRevenue - totalMonthlyCost;
+        const marginPercent = totalMonthlyRevenue > 0 ? (grossMargin / totalMonthlyRevenue) * 100 : 0;
+
+        // Costs - NRC
         const cableNrc = getValue('costs.cable.nrc');
         const bhNrc = getValue('costs.backhaul.aEnd.nrc') + getValue('costs.backhaul.zEnd.nrc');
         const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
         const smartHands = getValue('costs.smartHands');
-
         const totalNrcCost = cableNrc + bhNrc + xcNrc + smartHands;
-
-        // 2. Margins
-        const grossMargin = mrcSales - totalMonthlyCost;
-        const marginPercent = mrcSales > 0 ? (grossMargin / mrcSales) * 100 : 0;
         const nrcProfit = nrcSales - totalNrcCost;
 
         // 3. Update UI
@@ -609,14 +721,21 @@ const App = {
                 unit: getVal('capacity.unit')
             },
             salesperson: getVal('salesperson'),
+            salesModel: getVal('salesModel'),
+            salesType: getVal('salesType'),
             dates: {
                 start: getVal('dates.start'),
                 term: getNum('dates.term'),
                 end: getVal('dates.end')
             },
             financials: {
-                mrcSales: mrcSales,
+                // Lease fields
+                mrcSales: getNum('financials.mrcSales'),
                 nrcSales: getNum('financials.nrcSales'),
+                // IRU fields
+                otc: getNum('financials.otc'),
+                omRate: getNum('financials.omRate'),
+                annualOm: getNum('financials.annualOm'),
                 marginPercent: marginPercent // Storing for easy display
             },
             costs: {
@@ -852,60 +971,71 @@ const App = {
             ? '<div style="color:var(--text-muted)">No sales orders linked</div>'
             : linkedSales.map(s => `<div class="font-mono" style="margin-bottom:0.3rem;">${s.salesOrderId} - ${s.customerName} (${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'})</div>`).join('');
 
-        const detailsHtml = `
-            <div class="grid-2" style="gap:2rem;">
-                <div>
-                    <h4 class="mb-4" style="color: var(--accent-primary)">Resource Information</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge">${item.status || 'Available'}</span></td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Protection</td><td>${item.protection || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
-                    </table>
+        const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+        const tdStyle = 'padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;';
 
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Capacity & Usage</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
-                    </table>
+        const detailsHtml = `
+            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                <div>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
+                            <tr><td style="${tdStyle}">Status</td><td><span class="badge">${item.status || 'Available'}</span></td></tr>
+                            <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
+                            <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
+                        </table>
+                    </div>
+
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Capacity & Usage</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                            <tr><td style="${tdStyle}">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                            <tr><td style="${tdStyle}">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
+                        </table>
+                    </div>
                 </div>
                 <div>
-                    <h4 class="mb-4" style="color: var(--accent-primary)">Acquisition</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
+                            <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Location</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End Country</td><td>${item.location?.aEnd?.country || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End City/POP</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End Country</td><td>${item.location?.zEnd?.country || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End City/POP</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Financials & Dates</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">OTC (One-time)</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Term</td><td>${item.financials?.term || '-'} months</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">O&M Rate</td><td>${item.financials?.omRate || 0}%</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Annual O&M Cost</td><td class="font-mono">$${(item.financials?.annualOmCost || 0).toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">End Date</td><td>${item.dates?.end || '-'}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>
+                            <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                            <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
+                            <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-primary)">Linked Sales Orders</h4>
-                    ${linkedSalesHtml}
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Linked Sales Orders</h4>
+                        ${linkedSalesHtml}
+                    </div>
                 </div>
             </div>
         `;
@@ -1350,44 +1480,56 @@ const App = {
         const marginPercent = mrr > 0 ? ((grossMargin / mrr) * 100).toFixed(1) : 0;
         const marginColor = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
+        const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+
         const detailsHtml = `
-            <div class="grid-2" style="gap:2rem;">
+            <div class="grid-2" style="gap:1.5rem; align-items: start;">
                 <div>
-                    <h4 class="mb-4" style="color: var(--accent-primary)">Order Information</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Term</td><td>${order.dates?.term || '-'} months</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">End Date</td><td>${order.dates?.end || '-'}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${order.salesModel || 'Lease'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${order.salesType || 'Resale'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td>${order.dates?.term || '-'} months</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                        </table>
+                    </div>
                 </div>
                 <div>
-                    <h4 class="mb-4" style="color: var(--accent-success)">Revenue</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
                     
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-danger)">Cost Breakdown (MRC)</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                        <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Cost Breakdown (MRC)</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
 
-                    <h4 class="mb-4 mt-4" style="color: var(--accent-secondary)">Profitability</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
-                    </table>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
