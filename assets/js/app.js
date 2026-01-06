@@ -135,6 +135,18 @@ const App = {
             return days >= 0 && days <= 90;
         });
 
+        // Salesperson Leaderboard (sorted by total MRR)
+        const salesByPerson = {};
+        sales.forEach(s => {
+            const name = s.salesperson || 'Unassigned';
+            if (!salesByPerson[name]) {
+                salesByPerson[name] = { name, totalMrr: 0, orderCount: 0 };
+            }
+            salesByPerson[name].totalMrr += (s.financials?.mrcSales || s.financials?.totalMrr || 0);
+            salesByPerson[name].orderCount += 1;
+        });
+        const leaderboard = Object.values(salesByPerson).sort((a, b) => b.totalMrr - a.totalMrr);
+
         const html = `
             <!-- Top Stats -->
             <div class="grid-4 mb-4">
@@ -208,12 +220,34 @@ const App = {
             </div>
 
             <!-- Bottom Actions -->
-            <div class="grid-2" style="grid-template-columns: 2fr 1fr; height: 300px;">
+            <div class="grid-3 mb-4">
+                <!-- Sales Leaderboard -->
+                <div class="card" style="border-left: 4px solid var(--accent-primary);">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
+                    </div>
+                    ${leaderboard.length === 0 ? '<p style="color:var(--text-muted)">No sales data available.</p>' : `
+                        <table style="font-size:0.85rem;">
+                            <thead><tr><th>#</th><th>Salesperson</th><th>MRR</th><th>Orders</th></tr></thead>
+                            <tbody>
+                                ${leaderboard.slice(0, 5).map((p, idx) => `
+                                    <tr>
+                                        <td style="font-weight:600; color:${idx === 0 ? 'var(--accent-warning)' : 'var(--text-muted)'}">${idx + 1}</td>
+                                        <td style="font-weight:${idx === 0 ? '600' : '400'}">${p.name}</td>
+                                        <td class="font-mono" style="color:var(--accent-success)">$${p.totalMrr.toLocaleString()}</td>
+                                        <td>${p.orderCount}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `}
+                </div>
+
                 <div class="card">
                     <h3 class="mb-4">Recent Activity</h3>
                     <p style="color: var(--text-muted)">System initialized.</p>
                 </div>
-                <div class="card" style="background: linear-gradient(145deg, rgba(0,240,255,0.05), transparent);">
+                <div class="card" style="background: linear-gradient(145deg, rgba(99,91,255,0.05), transparent);">
                     <h3 class="mb-4">Quick Actions</h3>
                     <button class="btn btn-secondary" onclick="App.renderView('inventory')">View Inventory</button>
                     <br><br>
