@@ -280,3 +280,41 @@ tr:hover td {
     grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
 }
+
+/* Section Card for Forms */
+.section-card {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+/* Utility Classes */
+.p-3 {
+    padding: 1rem;
+}
+
+.gap-2 {
+    gap: 1rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+}
+
+.uppercase {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.text-warning {
+    color: var(--accent-warning);
+}
+
+.text-success {
+    color: var(--accent-success);
+}
+
+.text-danger {
+    color: var(--accent-danger);
+}

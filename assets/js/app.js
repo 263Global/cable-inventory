@@ -65,15 +65,15 @@ const App = {
 
     deleteInventoryItem(id) {
         if (confirm('Are you sure you want to delete this resource?')) {
-            Store.deleteInventoryItem(id);
+            window.Store.deleteInventoryItem(id);
             this.renderInventoryView();
         }
     },
 
     deleteSalesOrder(id) {
         if (confirm('Are you sure you want to delete this sales order?')) {
-            Store.deleteSalesOrder(id);
-            this.renderSalesView();
+            window.Store.deleteSalesOrder(id);
+            this.renderView('sales');
         }
     },
 
@@ -228,7 +228,7 @@ const App = {
 
     openAddSalesModal() {
         // Get Available Resources
-        const availableResources = Store.getAvailableResources();
+        const availableResources = window.Store.getAvailableResources();
         const resourceOptions = availableResources.map(r =>
             `<option value="${r.resourceId}">${r.resourceId} - ${r.cableSystem} (${r.capacity.value}${r.capacity.unit})</option>`
         ).join('');
@@ -483,14 +483,15 @@ const App = {
 
         document.getElementById('disp-total-cost').textContent = fmt(totalMonthlyCost);
         document.getElementById('disp-gross-margin').textContent = fmt(grossMargin);
+        document.getElementById('disp-gross-margin').style.color = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
         const marginEl = document.getElementById('disp-margin-percent');
         marginEl.textContent = marginPercent.toFixed(1) + '%';
-        marginEl.style.color = marginPercent >= 20 ? 'var(--success)' : (marginPercent > 0 ? 'var(--warning)' : 'var(--danger)');
+        marginEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
 
         const nrcEl = document.getElementById('disp-nrc-profit');
         nrcEl.textContent = fmt(nrcProfit);
-        nrcEl.style.color = nrcProfit >= 0 ? 'var(--text-secondary)' : 'var(--danger)';
+        nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
     },
 
     handleSalesSubmit(form) {
@@ -557,8 +558,8 @@ const App = {
                 smartHands: getNum('costs.smartHands')
             }
         };
-        Store.addSalesOrder(newOrder);
-        this.renderSalesView();
+        window.Store.addSalesOrder(newOrder);
+        this.renderView('sales');
     },
 
     openModal(title, content, onSave, isLarge = false) {
@@ -645,7 +646,8 @@ const App = {
                             <tr>
                                 <td class="font-mono" style="color: var(--accent-secondary)">${item.resourceId}</td>
                                 <td>
-                                    <span class="badge ${item.status === 'Available' ? 'badge-success' : 'badge-warning'}">${item.status}</span>
+                                    <span class="badge ${item.status === 'Available' ? 'badge-success' : (item.status === 'Sold Out' || item.status === 'In Use' ? 'badge-danger' : 'badge-warning')}">${item.status}</span>
+                                    ${item.usage?.currentUser ? `<div style="font-size:0.75rem; color:var(--accent-secondary); margin-top:0.2rem;">👤 ${item.usage.currentUser}</div>` : ''}
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">${item.acquisition?.ownership || ''}</div>
                                 </td>
                                 <td>
@@ -858,11 +860,8 @@ const App = {
                 </div>
     `;
 
-        this.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, () => {
-            // Save Logic
-            const form = document.getElementById('inv-form');
-            const formData = new FormData(form);
-
+        this.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, (form) => {
+            // Save Logic - use the form passed from openModal
             // Construct Object manually because of nested naming "location.aEnd.country"
             const handoffTypeValue = form.querySelector('[name="handoffType"]').value;
             const handoffTypeCustomValue = form.querySelector('[name="handoffTypeCustom"]')?.value || '';
@@ -920,6 +919,9 @@ const App = {
             } else {
                 window.Store.addInventory(newItem);
             }
+
+            // Refresh the inventory view to show updated data
+            this.renderView('inventory');
             return true;
         }, true);
 
@@ -1008,7 +1010,7 @@ const App = {
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-primary';
         addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> New Sale';
-        addBtn.onclick = () => alert('Add Modal coming soon...');
+        addBtn.onclick = () => this.openAddSalesModal();
         this.headerActions.appendChild(addBtn);
 
         const html = `
@@ -1026,10 +1028,10 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
+                        ${data.length === 0 ? '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
                         ${data.map(item => {
-            const mrr = item.financials?.totalMrr || 0;
+            const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
             // Calculate Sales Specific Margin (MRR - CableCostMRC - XCs - Backhauls)
-            // Simplified for display
             const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ'];
             let totalDirectCost = 0;
             if (item.costs) {
@@ -1038,17 +1040,25 @@ const App = {
                 });
             }
             const margin = mrr - totalDirectCost;
+            const statusClass = item.status === 'Active' ? 'badge-success' : (item.status === 'Pending' ? 'badge-warning' : 'badge-danger');
 
             return `
                             <tr>
                                 <td class="font-mono" style="color: var(--accent-secondary)">${item.salesOrderId}</td>
                                 <td style="font-weight:600">${item.customerName}</td>
-                                <td><span class="badge badge-success">${item.status}</span></td>
-                                <td class="font-mono">${item.inventoryLink}</td>
+                                <td><span class="badge ${statusClass}">${item.status}</span></td>
+                                <td class="font-mono">${item.inventoryLink || '-'}</td>
                                 <td class="font-mono" style="color: var(--accent-success)">$${mrr.toLocaleString()}</td>
-                                <td class="font-mono">$${margin.toLocaleString()}</td>
+                                <td class="font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
                                 <td>
-                                    <button class="btn btn-secondary" style="padding:0.4rem"><ion-icon name="create-outline"></ion-icon></button>
+                                    <div class="flex gap-4">
+                                        <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')">
+                                            <ion-icon name="eye-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete order ${item.salesOrderId}?')) { window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales'); }">
+                                            <ion-icon name="trash-outline"></ion-icon>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             `;
@@ -1058,6 +1068,45 @@ const App = {
             </div>
         `;
         this.container.innerHTML = html;
+    },
+
+    viewSalesDetails(salesOrderId) {
+        const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
+        if (!order) return;
+
+        const mrr = order.financials?.totalMrr || order.financials?.mrcSales || 0;
+        const nrc = order.financials?.nrcSales || 0;
+
+        const detailsHtml = `
+            <div class="grid-2" style="gap:2rem;">
+                <div>
+                    <h4 class="mb-4" style="color: var(--accent-primary)">Order Information</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Status</td><td><span class="badge badge-success">${order.status}</span></td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                    </table>
+                </div>
+                <div>
+                    <h4 class="mb-4" style="color: var(--accent-success)">Revenue & Costs</h4>
+                    <table style="width:100%;">
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
+                        <tr><td colspan="2" style="padding-top:1rem;"><strong>Cost Breakdown</strong></td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cable Cost MRC</td><td class="font-mono">$${(order.costs?.cableCost?.mrc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul A-End</td><td class="font-mono">$${(order.costs?.backhaulA?.mrc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Backhaul Z-End</td><td class="font-mono">$${(order.costs?.backhaulZ?.mrc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect A</td><td class="font-mono">$${(order.costs?.crossConnectA?.mrc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.5rem 0; color:var(--text-muted)">Cross Connect Z</td><td class="font-mono">$${(order.costs?.crossConnectZ?.mrc || 0).toLocaleString()}</td></tr>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        this.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
     }
 };
 
