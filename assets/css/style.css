@@ -491,6 +491,8 @@ h6 {
     /* Mobile Sidebar - Bottom Navigation */
     .sidebar {
         position: fixed;
+        position: -webkit-sticky;
+        /* Fallback for older Safari */
         bottom: 0;
         left: 0;
         right: 0;
@@ -501,8 +503,14 @@ h6 {
         padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
         border-right: none;
         border-top: 1px solid var(--border-color);
-        z-index: 100;
+        z-index: 1000;
+        background: rgba(var(--bg-sidebar-rgb, 255, 255, 255), 0.95);
         background: var(--bg-sidebar);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        /* Ensure it stays above everything */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
     }
 
     .brand {
@@ -537,10 +545,10 @@ h6 {
         display: none;
     }
 
-    /* Main content adjustments */
+    /* Main content adjustments - IMPORTANT: enough space for bottom nav + safe area */
     .main-content {
-        padding-bottom: 80px;
-        /* Space for bottom nav */
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+        /* Space for bottom nav + safe area */
     }
 
     .header {
