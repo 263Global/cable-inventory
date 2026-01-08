@@ -1400,89 +1400,165 @@ const App = {
     },
 
     calculateSalesFinancials() {
-        // 1. Get Values
+        // ===== Helper Functions =====
         const getValue = (name) => Number(document.querySelector(`[name="${name}"]`)?.value || 0);
         const getVal = (name) => document.querySelector(`[name="${name}"]`)?.value || '';
+        const fmt = (num) => '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        // ===== 步骤 A: 计算月度总收入 =====
-        const mrcSales = getValue('financials.mrcSales');
-        const annualSales = getValue('financials.annualSales');
-        const nrcSales = getValue('financials.nrcSales');
+        // ===== Get Core Parameters =====
+        const salesModel = getVal('salesModel');   // 'Lease' or 'IRU'
+        const salesType = getVal('salesType');     // 'Resale', 'Inventory', 'Hybrid', 'Swapped Out'
+        const salesTerm = getValue('dates.term') || 12;  // Sales contract term in months
+        const salesCapacity = getValue('capacity.value') || 1;
 
-        // Total Monthly Revenue = MRC + (Annual / 12)
-        const totalMonthlyRevenue = mrcSales + (annualSales / 12);
-
-        // ===== 步骤 B: 计算直接月成本 =====
-
-        // B1. 海缆有效月成本 (Real Cable Cost)
-        const costModel = document.querySelector('[name="costs.cable.model"]')?.value || 'Lease';
-        let cableMonthly = 0;
-        let cableNrc = 0;
-
-        if (costModel === 'Lease') {
-            // Lease 模式: MRC 直接作为月成本， NRC 作为一次性成本
-            cableMonthly = getValue('costs.cable.mrc');
-            cableNrc = getValue('costs.cable.nrc');
-        } else {
-            // IRU 模式: 月成本 = Annual O&M / 12 (OTC不做月摊销，放在一次性利润里算)
-            const annualOm = getValue('costs.cable.annualOm');
-            cableMonthly = annualOm / 12;
-            // IRU 的 OTC 会在 NRC Profit 里处理
-        }
-
-        // B2. 汇总所有链路成本
-        const bhMonthly = getValue('costs.backhaul.aEnd.monthly') + getValue('costs.backhaul.zEnd.monthly');
-        const xcMonthly = getValue('costs.crossConnect.aEnd.monthly') + getValue('costs.crossConnect.zEnd.monthly');
-        const otherMonthly = getValue('costs.otherCosts.monthly');
-
-        const totalDirectMrc = cableMonthly + bhMonthly + xcMonthly + otherMonthly;
-
-        // ===== 步骤 C: 计算库存分摊成本 (Allocated Inventory Cost) =====
-        const salesType = getVal('salesType');
+        // ===== Get Linked Inventory (for Inventory/Hybrid types) =====
         const inventoryLink = getVal('inventoryLink');
-        const salesCapacity = getValue('capacity.value');
-        let allocatedCost = 0;
+        const linkedResource = inventoryLink ? window.Store.getInventory().find(r => r.resourceId === inventoryLink) : null;
+        const inventoryCapacity = linkedResource?.capacity?.value || 1;
+        const capacityRatio = salesCapacity / inventoryCapacity; // Capacity allocation ratio
 
-        if (salesType === 'Inventory' && inventoryLink) {
-            // 获取关联资源的 Unit Cost
-            const linkedResource = window.Store.getInventory().find(r => r.resourceId === inventoryLink);
-            if (linkedResource) {
-                // Unit Cost = MRC / Total Capacity
-                const resourceMrc = linkedResource.financials?.mrc || 0;
-                const resourceCapacity = linkedResource.capacity?.value || 1;
-                const unitCost = resourceMrc / resourceCapacity;
-                allocatedCost = unitCost * salesCapacity;
+        // ===== Calculate Inventory Monthly Cost (if applicable) =====
+        let inventoryMonthlyCost = 0;
+        if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid')) {
+            const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
+            if (invOwnership === 'IRU') {
+                // IRU Inventory: (OTC / Term + Annual O&M / 12) × capacity ratio
+                const invOtc = linkedResource.financials?.otc || 0;
+                const invTerm = linkedResource.financials?.term || 1;
+                const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
+                inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
+            } else {
+                // Leased Inventory: MRC × capacity ratio
+                inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
             }
         }
 
-        // ===== 步骤 D: 最终汇总 =====
-        const totalMonthlyCost = totalDirectMrc + allocatedCost;
-        const grossMargin = totalMonthlyRevenue - totalMonthlyCost;
-        const marginPercent = totalMonthlyRevenue > 0 ? (grossMargin / totalMonthlyRevenue) * 100 : 0;
+        // ===== Get Operating Costs (Backhaul, XC, Other) =====
+        const backhaulMRC = getValue('costs.backhaul.aEnd.monthly') + getValue('costs.backhaul.zEnd.monthly');
+        const xcMRC = getValue('costs.crossConnect.aEnd.monthly') + getValue('costs.crossConnect.zEnd.monthly');
+        const otherMonthly = getValue('costs.otherCosts.monthly');
+        const operatingCosts = backhaulMRC + xcMRC + otherMonthly;
 
-        // Costs - NRC (One-time costs)
-        // For IRU: add OTC to NRC costs
-        const cableOtc = costModel === 'IRU' ? getValue('costs.cable.otc') : 0;
-        const bhNrc = getValue('costs.backhaul.aEnd.nrc') + getValue('costs.backhaul.zEnd.nrc');
-        const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
-        const otherOneOff = getValue('costs.otherCosts.oneOff');
-        const totalNrcCost = cableNrc + cableOtc + bhNrc + xcNrc + otherOneOff;
-        const nrcProfit = nrcSales - totalNrcCost;
+        // ===== Calculate based on Sales Model =====
+        let monthlyRevenue = 0;
+        let monthlyProfit = 0;
+        let firstMonthProfit = 0;  // For IRU Resale (OTC profit in first month)
+        let ongoingMonthlyProfit = 0;  // For IRU Resale (subsequent months)
+        let isIruResale = false;
 
-        // 3. Update UI
-        const fmt = (num) => '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (salesModel === 'Lease') {
+            // ========== LEASE MODEL ==========
+            const mrcSales = getValue('financials.mrcSales');
+            const nrcSales = getValue('financials.nrcSales');
+            monthlyRevenue = mrcSales;
 
+            // Get Cable MRC (only for Resale and Hybrid)
+            let cableMRC = 0;
+            if (salesType === 'Resale' || salesType === 'Hybrid') {
+                const cableModel = getVal('costs.cable.model') || 'Lease';
+                if (cableModel === 'Lease') {
+                    cableMRC = getValue('costs.cable.mrc');
+                } else {
+                    // IRU cable: O&M / 12 as monthly cost
+                    cableMRC = getValue('costs.cable.annualOm') / 12;
+                }
+            }
+
+            switch (salesType) {
+                case 'Resale':
+                    monthlyProfit = mrcSales - cableMRC - operatingCosts;
+                    break;
+                case 'Inventory':
+                    monthlyProfit = mrcSales - inventoryMonthlyCost - operatingCosts;
+                    break;
+                case 'Hybrid':
+                    monthlyProfit = mrcSales - inventoryMonthlyCost - cableMRC - operatingCosts;
+                    break;
+                default:
+                    monthlyProfit = mrcSales - operatingCosts;
+            }
+
+        } else if (salesModel === 'IRU') {
+            // ========== IRU MODEL ==========
+            const otcRevenue = getValue('financials.otc');
+            const annualOmRevenue = getValue('financials.annualOm');
+            const monthlyOmRevenue = annualOmRevenue / 12;
+
+            // Get Cable costs (for Resale and Hybrid)
+            const cableOtc = getValue('costs.cable.otc');
+            const cableAnnualOm = getValue('costs.cable.annualOm');
+            const cableTerm = getValue('costs.cable.termMonths') || salesTerm;
+            const cableMonthlyOtc = cableOtc / cableTerm;
+            const cableMonthlyOm = cableAnnualOm / 12;
+
+            switch (salesType) {
+                case 'Resale':
+                    // IRU Resale: OTC profit one-time in first month
+                    isIruResale = true;
+                    const otcProfit = otcRevenue - cableOtc;
+                    const monthlyOmProfit = monthlyOmRevenue - cableMonthlyOm;
+
+                    firstMonthProfit = otcProfit + monthlyOmProfit - operatingCosts;
+                    ongoingMonthlyProfit = monthlyOmProfit - operatingCosts;
+                    monthlyRevenue = monthlyOmRevenue;  // Ongoing revenue
+                    monthlyProfit = ongoingMonthlyProfit;  // Display ongoing profit
+                    break;
+
+                case 'Inventory':
+                    // IRU Inventory: OTC revenue amortized monthly
+                    const monthlyOtcRevenue = otcRevenue / salesTerm;
+                    monthlyRevenue = monthlyOtcRevenue + monthlyOmRevenue;
+                    monthlyProfit = monthlyRevenue - inventoryMonthlyCost - operatingCosts;
+                    break;
+
+                case 'Hybrid':
+                    // IRU Hybrid: OTC revenue amortized monthly, both inventory and cable costs
+                    const monthlyOtcRev = otcRevenue / salesTerm;
+                    monthlyRevenue = monthlyOtcRev + monthlyOmRevenue;
+                    monthlyProfit = monthlyRevenue - inventoryMonthlyCost - cableMonthlyOtc - cableMonthlyOm - operatingCosts;
+                    break;
+
+                case 'Swapped Out':
+                    // Swapped Out: No profit calculation
+                    monthlyRevenue = 0;
+                    monthlyProfit = 0;
+                    break;
+
+                default:
+                    monthlyProfit = 0;
+            }
+        }
+
+        // ===== Calculate Margin =====
+        const marginPercent = monthlyRevenue > 0 ? (monthlyProfit / monthlyRevenue) * 100 : 0;
+        const totalMonthlyCost = monthlyRevenue - monthlyProfit;
+
+        // ===== Update UI =====
         document.getElementById('disp-total-cost').textContent = fmt(totalMonthlyCost);
-        document.getElementById('disp-gross-margin').textContent = fmt(grossMargin);
-        document.getElementById('disp-gross-margin').style.color = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
-        const marginEl = document.getElementById('disp-margin-percent');
-        marginEl.textContent = marginPercent.toFixed(1) + '%';
-        marginEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        const marginEl = document.getElementById('disp-gross-margin');
+        marginEl.textContent = fmt(monthlyProfit);
+        marginEl.style.color = monthlyProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
+        const percentEl = document.getElementById('disp-margin-percent');
+        percentEl.textContent = marginPercent.toFixed(1) + '%';
+        percentEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+
+        // NRC Profit display - for IRU Resale show first month profit, otherwise show regular NRC
         const nrcEl = document.getElementById('disp-nrc-profit');
-        nrcEl.textContent = fmt(nrcProfit);
-        nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        if (isIruResale) {
+            nrcEl.textContent = fmt(firstMonthProfit) + ' (1st Mo)';
+            nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        } else {
+            const nrcSales = getValue('financials.nrcSales');
+            const cableNrc = getValue('costs.cable.nrc');
+            const bhNrc = getValue('costs.backhaul.aEnd.nrc') + getValue('costs.backhaul.zEnd.nrc');
+            const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
+            const otherOneOff = getValue('costs.otherCosts.oneOff');
+            const nrcProfit = nrcSales - cableNrc - bhNrc - xcNrc - otherOneOff;
+            nrcEl.textContent = fmt(nrcProfit);
+            nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        }
     },
 
     handleSalesSubmit(form) {
