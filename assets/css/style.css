@@ -650,6 +650,11 @@ h6 {
     display: block;
 }
 
+/* Mobile-only capacity info - hidden on desktop */
+.mobile-capacity-info {
+    display: none;
+}
+
 /* Mobile devices (<768px) - Hide secondary content */
 @media (max-width: 768px) {
     .mobile-hidden {
@@ -657,6 +662,10 @@ h6 {
     }
 
     .mobile-show {
+        display: block !important;
+    }
+
+    .mobile-capacity-info {
         display: block !important;
     }
 

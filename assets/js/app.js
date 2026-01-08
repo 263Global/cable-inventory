@@ -1883,6 +1883,9 @@ const App = {
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
                                         ${item.segmentType || ''} (${item.protection || ''})
                                     </div>
+                                    <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-warning); margin-top:0.35rem; font-weight:500;">
+                                        📊 已售 ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
+                                    </div>
                                 </td>
                                 <td class="col-cost-info">
                                     ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
@@ -2485,6 +2488,7 @@ const App = {
                                 <td class="font-mono" style="color: var(--accent-secondary); font-size:0.85rem;">${item.salesOrderId}</td>
                                 <td>
                                     <div style="font-weight:600">${item.customerName}</div>
+                                    <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-primary); margin-top:0.25rem; font-weight:500;">📦 ${item.capacity?.value || '-'} ${item.capacity?.unit || 'Gbps'}</div>
                                     ${item.inventoryLink ? `<div style="font-size:0.7rem; color:var(--text-muted)">🔗 ${item.inventoryLink}</div>` : ''}
                                 </td>
                                 <td>
