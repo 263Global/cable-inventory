@@ -1751,8 +1751,8 @@ const App = {
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>
-                                    <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">NRC: $${(item.financials?.otc || 0).toLocaleString()}</div>
+                                    ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
+                                    <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.financials?.otc || 0).toLocaleString()}</div>
                                     <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${item.dates?.end || 'N/A'}</div>
                                 </td>
                                 <td style="font-size:0.85rem">
@@ -1882,7 +1882,7 @@ const App = {
                     <div style="${sectionStyle}">
                         <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
                         <table style="width:100%;">
-                            <tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>
+                            ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
                             <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
                             ${isIRU ? `
                             <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
@@ -2066,13 +2066,13 @@ const App = {
 
                 <!--Financials -->
                 <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Financials & Terms</h4>
-                <div class="grid-3">
-                    <div class="form-group">
+                <div class="grid-3" id="financials-grid">
+                    <div class="form-group" id="mrc-container" style="display: ${item.acquisition?.ownership === 'IRU' ? 'none' : 'block'}">
                         <label class="form-label">MRC Cost ($)</label>
                         <input type="number" class="form-control" name="financials.mrc" value="${item.financials?.mrc || 0}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">NRC/OTC ($)</label>
+                        <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC/OTC ($)'}</label>
                         <input type="number" class="form-control" name="financials.otc" value="${item.financials?.otc || 0}">
                     </div>
                     <div class="form-group">
@@ -2184,13 +2184,23 @@ const App = {
             });
         }
 
-        // Ownership Field Toggle (O&M Rate Section)
+        // Ownership Field Toggle (O&M Rate Section + MRC/OTC label)
         const ownershipSelect = document.querySelector('[name="acquisition.ownership"]');
         const omRateContainer = document.getElementById('om-rate-container');
+        const mrcContainer = document.getElementById('mrc-container');
+        const otcLabel = document.getElementById('otc-label');
         if (ownershipSelect && omRateContainer) {
             ownershipSelect.addEventListener('change', (e) => {
+                const isIRU = e.target.value === 'IRU';
                 const showOm = ['IRU', 'Owned'].includes(e.target.value);
                 omRateContainer.style.display = showOm ? 'block' : 'none';
+                // Toggle MRC visibility and OTC label for IRU
+                if (mrcContainer) {
+                    mrcContainer.style.display = isIRU ? 'none' : 'block';
+                }
+                if (otcLabel) {
+                    otcLabel.textContent = isIRU ? 'OTC ($)' : 'NRC/OTC ($)';
+                }
             });
         }
 

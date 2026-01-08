@@ -150,17 +150,19 @@ class Store {
         // Ensure ID
         if (!item.resourceId) item.resourceId = generateId();
 
-        // Ensure structure
+        // Preserve all item properties, only set defaults for missing fields
         const newItem = {
+            ...item,
             resourceId: item.resourceId,
             status: item.status || 'Available',
             acquisition: item.acquisition || {},
-            technical: item.technical || {},
             location: {
                 aEnd: item.location?.aEnd || {},
                 zEnd: item.location?.zEnd || {}
             },
             financials: item.financials || {},
+            dates: item.dates || {},
+            capacity: item.capacity || {},
             usage: item.usage || { currentUser: null, orderLink: null }
         };
 
