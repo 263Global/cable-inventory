@@ -1801,8 +1801,26 @@ const App = {
 
     /* ================= Inventory Logic ================= */
 
-    renderInventory() {
-        const data = window.Store.getInventory();
+    renderInventory(searchQuery = '', page = 1) {
+        const ITEMS_PER_PAGE = 20;
+        let data = window.Store.getInventory();
+
+        // Apply search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            data = data.filter(item =>
+                item.resourceId.toLowerCase().includes(query) ||
+                (item.cableSystem && item.cableSystem.toLowerCase().includes(query))
+            );
+        }
+
+        // Pagination
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const currentPage = Math.min(Math.max(1, page), totalPages || 1);
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+        const paginatedData = data.slice(startIndex, endIndex);
 
         // Add "Add Item" button
         const addBtn = document.createElement('button');
@@ -1812,12 +1830,25 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
-                                                                                                                            <style>
-                                                                                                                                .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
-                                                                                                                            </style>
-                                                                                                                            <div class="table-container">
-                                                                                                                                <table class="inventory-table">
-                                                                                                                                    <thead>
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="inventory-search" class="form-control" placeholder="Search Resource ID or Cable..." value="${searchQuery}">
+                </div>
+                <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
+                    Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
+                </div>
+            </div>
+            <style>
+                .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
+                .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+                .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
+                .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+                .search-box input { padding-left: 2.25rem; }
+            </style>
+            <div class="table-container">
+                <table class="inventory-table">
+                    <thead>
                                                                                                                                         <tr>
                                                                                                                                             <th>Resource ID</th>
                                                                                                                                             <th>Status</th>
@@ -1827,9 +1858,9 @@ const App = {
                                                                                                                                             <th class="col-location">Location (A / Z)</th>
                                                                                                                                             <th>Actions</th>
                                                                                                                                         </tr>
-                                                                                                                                    </thead>
-                                                                                                                                    <tbody>
-                                                                                                                                        ${data.map(item => {
+                    </thead>
+                    <tbody>
+                        ${paginatedData.map(item => {
             // Get all sales linked to this resource
             const allSales = window.Store.getSales();
             const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
@@ -1931,11 +1962,45 @@ const App = {
                             </tr>
                             `;
         }).join('')}
-                                                                                                                                    </tbody>
-                                                                                                                                </table>
-                                                                                                                            </div>
-                                                                                                                            `;
+                    </tbody>
+                </table>
+            </div>
+            ${totalPages > 1 ? `
+            <div class="pagination-controls" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn btn-secondary pagination-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''} style="padding: 0.4rem 0.8rem;">
+                    <ion-icon name="chevron-back-outline"></ion-icon>
+                </button>
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Page ${currentPage} of ${totalPages}</span>
+                <button class="btn btn-secondary pagination-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''} style="padding: 0.4rem 0.8rem;">
+                    <ion-icon name="chevron-forward-outline"></ion-icon>
+                </button>
+            </div>
+            ` : ''}
+            `;
         this.container.innerHTML = html;
+
+        // Add search event listener
+        const searchInput = document.getElementById('inventory-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.headerActions.innerHTML = '';
+                this.renderInventory(e.target.value, 1); // Reset to page 1 on search
+            });
+            // Focus cursor at the end of search input if there's a value
+            if (searchQuery) {
+                searchInput.focus();
+                searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+            }
+        }
+
+        // Add pagination event listeners
+        document.querySelectorAll('.pagination-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetPage = parseInt(e.currentTarget.dataset.page);
+                this.headerActions.innerHTML = '';
+                this.renderInventory(searchQuery, targetPage);
+            });
+        });
     },
 
     viewInventoryDetails(resourceId) {
@@ -2429,8 +2494,42 @@ const App = {
         }
     },
 
-    renderSales() {
-        const data = window.Store.getSales();
+    renderSales(filters = {}) {
+        let data = window.Store.getSales();
+
+        // Get unique salespersons for dropdown
+        const salespersons = [...new Set(data.map(s => s.salesperson).filter(Boolean))].sort();
+
+        // Apply filters
+        const searchQuery = filters.search || '';
+        const salespersonValue = filters.salesperson || '';
+        const statusValue = filters.status || '';
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            data = data.filter(item =>
+                item.salesOrderId.toLowerCase().includes(query) ||
+                (item.customerName && item.customerName.toLowerCase().includes(query))
+            );
+        }
+
+        if (salespersonValue) {
+            data = data.filter(item => item.salesperson === salespersonValue);
+        }
+
+        if (statusValue) {
+            data = data.filter(item => item.status === statusValue);
+        }
+
+        // Pagination
+        const ITEMS_PER_PAGE = 20;
+        const currentPageNum = filters.page || 1;
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const currentPage = Math.min(Math.max(1, currentPageNum), totalPages || 1);
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+        const paginatedData = data.slice(startIndex, endIndex);
 
         // Add "Add Sale" button
         const addBtn = document.createElement('button');
@@ -2440,37 +2539,64 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
-                                                                                                                            <style>
-                                                                                                                                .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
-                                                                                                                                .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-                                                                                                                                .margin-high {background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
-                                                                                                                                .margin-mid {background: rgba(255, 179, 71, 0.15); color: #ffb347; }
-                                                                                                                                .margin-low {background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
-                                                                                                                                .type-icon {font - size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; }
-                                                                                                                                .type-resale {background: rgba(99, 91, 255, 0.2); color: #635bff; }
-                                                                                                                                .type-inventory {background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
-                                                                                                                                .type-hybrid {background: rgba(255, 179, 71, 0.2); color: #ffb347; }
-                                                                                                                                .type-swap {background: rgba(150, 150, 150, 0.2); color: #999; }
-                                                                                                                            </style>
-                                                                                                                            <div class="table-container">
-                                                                                                                                <table class="sales-table">
-                                                                                                                                    <thead>
-                                                                                                                                        <tr>
-                                                                                                                                            <th>Order ID</th>
-                                                                                                                                            <th>Customer</th>
-                                                                                                                                            <th>Type</th>
-                                                                                                                                            <th>Capacity</th>
-                                                                                                                                            <th>Status</th>
-                                                                                                                                            <th>Revenue</th>
-                                                                                                                                            <th class="col-margin">Margin</th>
-                                                                                                                                            <th class="col-margin-percent">Margin %</th>
-                                                                                                                                            <th class="col-salesperson">Salesperson</th>
-                                                                                                                                            <th>Actions</th>
-                                                                                                                                        </tr>
-                                                                                                                                    </thead>
-                                                                                                                                    <tbody>
-                                                                                                                                        ${data.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
-                                                                                                                                        ${data.map(item => {
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="sales-search" class="form-control" placeholder="Search Order ID or Customer..." value="${searchQuery}">
+                </div>
+                <select id="sales-salesperson-filter" class="form-control" style="max-width: 180px;">
+                    <option value="">All Salespersons</option>
+                    ${salespersons.map(s => `<option value="${s}" ${s === salespersonValue ? 'selected' : ''}>${s}</option>`).join('')}
+                </select>
+                <select id="sales-status-filter" class="form-control" style="max-width: 140px;">
+                    <option value="">All Status</option>
+                    <option value="Active" ${statusValue === 'Active' ? 'selected' : ''}>Active</option>
+                    <option value="Pending" ${statusValue === 'Pending' ? 'selected' : ''}>Pending</option>
+                    <option value="Churned" ${statusValue === 'Churned' ? 'selected' : ''}>Churned</option>
+                </select>
+                <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
+                    Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
+                </div>
+            </div>
+            <style>
+                .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
+                .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+                .margin-high {background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
+                .margin-mid {background: rgba(255, 179, 71, 0.15); color: #ffb347; }
+                .margin-low {background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+                .type-icon {font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; white-space: nowrap; }
+                .type-resale {background: rgba(99, 91, 255, 0.2); color: #635bff; }
+                .type-inventory {background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
+                .type-hybrid {background: rgba(255, 179, 71, 0.2); color: #ffb347; }
+                .type-swap {background: rgba(150, 150, 150, 0.2); color: #999; }
+                .order-id-cell { white-space: nowrap; color: #5a6a85 !important; }
+                .customer-name { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+                .col-revenue, .col-margin, .col-margin-percent { text-align: right; }
+                .inventory-link { font-size: 0.7rem; color: #999 !important; margin-top: 2px; }
+                .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+                .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
+                .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+                .search-box input { padding-left: 2.25rem; }
+            </style>
+            <div class="table-container">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Type</th>
+                            <th>Capacity</th>
+                            <th>Status</th>
+                            <th class="col-revenue" style="text-align:right">Revenue</th>
+                            <th class="col-margin" style="text-align:right">Margin</th>
+                            <th class="col-margin-percent" style="text-align:right">Margin %</th>
+                            <th class="col-salesperson">Salesperson</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>' : ''}
+                        ${paginatedData.map(item => {
             const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
             // Calculate margin based on actual costs
             const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ', 'cable'];
@@ -2504,11 +2630,11 @@ const App = {
 
             return `
                             <tr>
-                                <td class="font-mono" style="color: var(--accent-secondary); font-size:0.85rem;">${item.salesOrderId}</td>
+                                <td class="font-mono order-id-cell">${item.salesOrderId}</td>
                                 <td>
-                                    <div style="font-weight:600">${item.customerName}</div>
+                                    <div class="customer-name" style="font-weight:600" title="${item.customerName}">${item.customerName}</div>
                                     <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-primary); margin-top:0.25rem; font-weight:500;">📦 ${item.capacity?.value || '-'} ${item.capacity?.unit || 'Gbps'}</div>
-                                    ${item.inventoryLink ? `<div style="font-size:0.7rem; color:var(--text-muted)">🔗 ${item.inventoryLink}</div>` : ''}
+                                    ${item.inventoryLink ? `<div class="inventory-link">🔗 ${item.inventoryLink}</div>` : ''}
                                 </td>
                                 <td>
                                     <span class="type-icon ${typeClass}">${typeIcon} ${salesType}</span>
@@ -2516,9 +2642,9 @@ const App = {
                                 </td>
                                 <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
-                                <td class="font-mono" style="color: var(--accent-success)">$${mrr.toLocaleString()}</td>
-                                <td class="col-margin font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
-                                <td class="col-margin-percent"><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
+                                <td class="col-revenue font-mono" style="text-align:right; color: var(--accent-success)">$${mrr.toLocaleString()}</td>
+                                <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
+                                <td class="col-margin-percent" style="text-align:right"><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
                                 <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
                                 <td>
                                     <div class="flex gap-4">
@@ -2536,11 +2662,58 @@ const App = {
                             </tr>
                             `;
         }).join('')}
-                                                                                                                                    </tbody>
-                                                                                                                                </table>
-                                                                                                                            </div>
-                                                                                                                            `;
+                    </tbody>
+                </table>
+            </div>
+            ${totalPages > 1 ? `
+            <div class="pagination-controls" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn btn-secondary sales-pagination-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''} style="padding: 0.4rem 0.8rem;">
+                    <ion-icon name="chevron-back-outline"></ion-icon>
+                </button>
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Page ${currentPage} of ${totalPages}</span>
+                <button class="btn btn-secondary sales-pagination-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''} style="padding: 0.4rem 0.8rem;">
+                    <ion-icon name="chevron-forward-outline"></ion-icon>
+                </button>
+            </div>
+            ` : ''}
+            `;
         this.container.innerHTML = html;
+
+        // Add filter event listeners
+        const applyFilters = (page = 1) => {
+            const search = document.getElementById('sales-search')?.value || '';
+            const salesperson = document.getElementById('sales-salesperson-filter')?.value || '';
+            const status = document.getElementById('sales-status-filter')?.value || '';
+            this.headerActions.innerHTML = '';
+            this.renderSales({ search, salesperson, status, page });
+        };
+
+        const searchInput = document.getElementById('sales-search');
+        const salespersonFilter = document.getElementById('sales-salesperson-filter');
+        const statusFilter = document.getElementById('sales-status-filter');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => applyFilters(1));
+            // Focus cursor at end of search input if there's a value
+            if (filters.search) {
+                searchInput.focus();
+                searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+            }
+        }
+        if (salespersonFilter) {
+            salespersonFilter.addEventListener('change', () => applyFilters(1));
+        }
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => applyFilters(1));
+        }
+
+        // Add pagination event listeners
+        document.querySelectorAll('.sales-pagination-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetPage = parseInt(e.currentTarget.dataset.page);
+                applyFilters(targetPage);
+            });
+        });
     },
 
     viewSalesDetails(salesOrderId) {

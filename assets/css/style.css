@@ -498,6 +498,7 @@ h6 {
         height: auto;
         flex-direction: row;
         padding: 0.5rem;
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
         border-right: none;
         border-top: 1px solid var(--border-color);
         z-index: 100;
@@ -544,7 +545,8 @@ h6 {
 
     .header {
         padding: 0 1rem;
-        height: 50px;
+        padding-top: env(safe-area-inset-top, 0px);
+        height: calc(50px + env(safe-area-inset-top, 0px));
     }
 
     .view-title {
@@ -640,9 +642,19 @@ h6 {
 
 /* ===== RESPONSIVE UTILITY CLASSES ===== */
 
-/* Mobile-only visibility - visible on desktop (inherits display from other classes) */
+/* Responsive navigation labels */
+.nav-label-short {
+    display: none;
+}
+
+.nav-label-full {
+    display: inline;
+}
+
+/* Mobile-only visibility */
 .mobile-hidden {
-    /* Don't set display here - let grid/flex classes take precedence */
+    /* Visible on desktop - display inherited from parent or grid/flex classes */
+    visibility: visible;
 }
 
 .mobile-show {
@@ -659,6 +671,75 @@ h6 {
     display: none;
 }
 
+/* ===== TABLET RESPONSIVE: Progressive column hiding ===== */
+
+/* Large tablets and small laptops (1024px and below) - hide Salesperson */
+@media (max-width: 1024px) {
+    .col-salesperson {
+        display: none !important;
+    }
+
+    /* Compact table cells */
+    .sales-table th,
+    .sales-table td {
+        padding: 0.5rem 0.4rem !important;
+        font-size: 0.8rem;
+    }
+}
+
+/* Medium tablets (900px and below) - hide Margin, Type, Capacity */
+@media (max-width: 900px) {
+
+    .col-margin,
+    .sales-table .col-type,
+    .sales-table th:nth-child(3),
+    .sales-table td:nth-child(3),
+    .sales-table th:nth-child(4),
+    .sales-table td:nth-child(4) {
+        display: none !important;
+    }
+
+    /* Make filter bar wrap better */
+    .filter-bar {
+        flex-wrap: wrap;
+    }
+
+    .filter-bar .search-box {
+        min-width: 150px;
+        max-width: 200px;
+    }
+
+    .filter-bar select {
+        max-width: 120px !important;
+        font-size: 0.75rem;
+        padding: 0.4rem !important;
+    }
+
+    /* Compact customer name */
+    .customer-name {
+        max-width: 120px !important;
+    }
+
+    /* Smaller action buttons */
+    .sales-table .btn {
+        padding: 0.3rem !important;
+    }
+}
+
+/* Small tablets (850px and below) - hide Revenue (keep Margin %) */
+@media (max-width: 850px) {
+    .col-revenue {
+        display: none !important;
+    }
+
+    /* Even more compact */
+    .sales-table th,
+    .sales-table td {
+        padding: 0.4rem 0.3rem !important;
+        font-size: 0.75rem;
+    }
+}
+
 /* Mobile devices (<768px) - Hide secondary content */
 @media (max-width: 768px) {
     .mobile-hidden {
@@ -671,6 +752,15 @@ h6 {
 
     .mobile-capacity-info {
         display: block !important;
+    }
+
+    /* Shorter nav labels on mobile */
+    .nav-label-full {
+        display: none !important;
+    }
+
+    .nav-label-short {
+        display: inline !important;
     }
 
     /* Dashboard optimizations */
