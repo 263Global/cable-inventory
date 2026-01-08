@@ -217,8 +217,8 @@ class Store {
                 // Set status based on remaining capacity
                 if (totalSoldCapacity >= totalCapacity) {
                     this.inventory[resourceIndex].status = 'Sold Out';
-                } else if (totalSoldCapacity > 0) {
-                    this.inventory[resourceIndex].status = 'In Use';
+                } else {
+                    this.inventory[resourceIndex].status = 'Available';
                 }
 
                 // Update usage info with latest customer
@@ -256,20 +256,21 @@ class Store {
                 // Set status based on remaining capacity
                 if (totalSoldCapacity >= totalCapacity) {
                     this.inventory[resourceIndex].status = 'Sold Out';
-                } else if (totalSoldCapacity > 0) {
-                    this.inventory[resourceIndex].status = 'In Use';
-                    // Update usage to show the latest remaining customer
-                    const latestSale = remainingLinkedSales[remainingLinkedSales.length - 1];
-                    this.inventory[resourceIndex].usage = {
-                        currentUser: latestSale.customerName,
-                        orderLink: latestSale.salesOrderId
-                    };
                 } else {
                     this.inventory[resourceIndex].status = 'Available';
-                    this.inventory[resourceIndex].usage = {
-                        currentUser: null,
-                        orderLink: null
-                    };
+                    // Update usage to show the latest remaining customer if any
+                    if (remainingLinkedSales.length > 0) {
+                        const latestSale = remainingLinkedSales[remainingLinkedSales.length - 1];
+                        this.inventory[resourceIndex].usage = {
+                            currentUser: latestSale.customerName,
+                            orderLink: latestSale.salesOrderId
+                        };
+                    } else {
+                        this.inventory[resourceIndex].usage = {
+                            currentUser: null,
+                            orderLink: null
+                        };
+                    }
                 }
             }
         }

@@ -1922,8 +1922,6 @@ const App = {
 
             if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
                 calculatedStatus = 'Sold Out';
-            } else if (totalSoldCapacity > 0) {
-                calculatedStatus = 'In Use';
             } else {
                 calculatedStatus = 'Available';
             }
@@ -1959,7 +1957,6 @@ const App = {
                         <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
                             <option ${calculatedStatus === 'Draft' ? 'selected' : ''}>Draft</option>
                             <option ${calculatedStatus === 'Available' ? 'selected' : ''}>Available</option>
-                            <option ${calculatedStatus === 'In Use' ? 'selected' : ''}>In Use</option>
                             <option ${calculatedStatus === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
                             <option ${calculatedStatus === 'Expired' ? 'selected' : ''}>Expired</option>
                         </select>
