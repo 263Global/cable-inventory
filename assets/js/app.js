@@ -108,6 +108,8 @@ const App = {
 
         // Calculate Stats
         const totalCapacity = inventory.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
+        const totalSoldCapacity = sales.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
+        const capacityUsagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
         const totalMrr = sales.reduce((acc, item) => acc + (item.financials?.totalMrr || 0), 0);
         const activeOrders = sales.filter(s => s.status === 'Active').length;
         const totalOpex = inventory.reduce((acc, item) => acc + (item.financials?.mrc || 0), 0);
@@ -135,10 +137,12 @@ const App = {
             return days >= 0 && days <= 90;
         });
 
-        // Salesperson Leaderboard (sorted by total MRR)
+        // Salesperson Leaderboard (sorted by total MRR) - Exclude Procurement Team
         const salesByPerson = {};
         sales.forEach(s => {
             const name = s.salesperson || 'Unassigned';
+            // Skip Procurement Team from leaderboard
+            if (name === 'Procurement Team') return;
             if (!salesByPerson[name]) {
                 salesByPerson[name] = { name, totalMrr: 0, orderCount: 0 };
             }
@@ -147,12 +151,29 @@ const App = {
         });
         const leaderboard = Object.values(salesByPerson).sort((a, b) => b.totalMrr - a.totalMrr);
 
+        // Sales Type Distribution (for pie chart) - Exclude Swapped Out
+        const salesTypeCount = { Resale: 0, Inventory: 0, Hybrid: 0 };
+        sales.forEach(s => {
+            const type = s.salesType;
+            if (type && salesTypeCount.hasOwnProperty(type)) {
+                salesTypeCount[type]++;
+            }
+        });
+        const totalSalesCount = salesTypeCount.Resale + salesTypeCount.Inventory + salesTypeCount.Hybrid;
+
         const html = `
             <!-- Top Stats -->
             <div class="grid-4 mb-4">
                 <div class="card metric-card">
-                    <span class="metric-label">Total Capacity (Gbps)</span>
-                    <span class="metric-value" style="color: var(--accent-primary)">${totalCapacity.toLocaleString()}</span>
+                    <span class="metric-label">Capacity Usage (Gbps)</span>
+                    <span class="metric-value" style="color: var(--accent-primary)">
+                        <span style="font-size:0.9em">${totalSoldCapacity.toLocaleString()}</span>
+                        <span style="font-size:0.65em; color:var(--text-muted)"> / ${totalCapacity.toLocaleString()}</span>
+                    </span>
+                    <div style="margin-top:0.5rem; width:100%; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden;">
+                        <div style="width:${capacityUsagePercent}%; height:100%; background:${capacityUsagePercent >= 80 ? 'var(--accent-danger)' : capacityUsagePercent >= 50 ? 'var(--accent-warning)' : 'var(--accent-success)'}; transition:width 0.3s;"></div>
+                    </div>
+                    <span style="font-size:0.7rem; color:var(--text-muted)">${capacityUsagePercent}% utilized</span>
                 </div>
                 <div class="card metric-card">
                     <span class="metric-label">Monthly Revenue (MRR)</span>
@@ -244,8 +265,40 @@ const App = {
                 </div>
 
                 <div class="card">
-                    <h3 class="mb-4">Recent Activity</h3>
-                    <p style="color: var(--text-muted)">System initialized.</p>
+                    <h3 class="mb-4"><ion-icon name="pie-chart-outline"></ion-icon> Sales by Type</h3>
+                    ${totalSalesCount === 0 ? '<p style="color:var(--text-muted)">No sales data available.</p>' : `
+                        <div style="display: flex; align-items: center; gap: 2rem;">
+                            <div style="position: relative; width: 150px; height: 150px;">
+                                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                                    ${(() => {
+                    const colors = { Resale: '#635bff', Inventory: '#00d4aa', Hybrid: '#ffb347' };
+                    const types = ['Resale', 'Inventory', 'Hybrid'];
+                    let offset = 0;
+                    return types.map(type => {
+                        const pct = totalSalesCount > 0 ? (salesTypeCount[type] / totalSalesCount) * 100 : 0;
+                        const circle = pct > 0 ? `<circle cx="18" cy="18" r="15.91549430918954" fill="transparent" stroke="${colors[type]}" stroke-width="4" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}" />` : '';
+                        offset += pct;
+                        return circle;
+                    }).join('');
+                })()}
+                                </svg>
+                            </div>
+                            <div style="font-size: 0.85rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="width: 12px; height: 12px; background: #635bff; border-radius: 2px;"></span>
+                                    <span>Resale: ${salesTypeCount.Resale} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Resale / totalSalesCount * 100) : 0}%)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="width: 12px; height: 12px; background: #00d4aa; border-radius: 2px;"></span>
+                                    <span>Inventory: ${salesTypeCount.Inventory} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Inventory / totalSalesCount * 100) : 0}%)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="width: 12px; height: 12px; background: #ffb347; border-radius: 2px;"></span>
+                                    <span>Hybrid: ${salesTypeCount.Hybrid} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Hybrid / totalSalesCount * 100) : 0}%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    `}
                 </div>
                 <div class="card" style="background: linear-gradient(145deg, rgba(99,91,255,0.05), transparent);">
                     <h3 class="mb-4">Quick Actions</h3>
@@ -347,6 +400,7 @@ const App = {
                                 <option>Becky Hai</option>
                                 <option>Wolf Yuan</option>
                                 <option>Yifeng Jiang</option>
+                                <option>Procurement Team</option>
                             </select>
                         </div>
                     </div>
@@ -1740,8 +1794,11 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
+            <style>
+                .inventory-table tbody tr:hover { background: rgba(99, 91, 255, 0.08); }
+            </style>
             <div class="table-container">
-                <table>
+                <table class="inventory-table">
                     <thead>
                         <tr>
                             <th>Resource ID</th>
@@ -1812,6 +1869,7 @@ const App = {
                                             ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
                                         </div>
                                     </div>
+                                    ${linkedSales.length > 0 ? `<div style="font-size:0.65rem; color:var(--accent-primary); margin-top:4px;">📋 ${linkedSales.length} order${linkedSales.length > 1 ? 's' : ''}</div>` : ''}
                                 </td>
                                 <td>
                                     <div style="font-weight:500">${item.acquisition?.type || 'Purchased'}</div>
@@ -2360,27 +2418,40 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
+            <style>
+                .sales-table tbody tr:hover { background: rgba(99, 91, 255, 0.08); }
+                .margin-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+                .margin-high { background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
+                .margin-mid { background: rgba(255, 179, 71, 0.15); color: #ffb347; }
+                .margin-low { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+                .type-icon { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; }
+                .type-resale { background: rgba(99, 91, 255, 0.2); color: #635bff; }
+                .type-inventory { background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
+                .type-hybrid { background: rgba(255, 179, 71, 0.2); color: #ffb347; }
+                .type-swap { background: rgba(150, 150, 150, 0.2); color: #999; }
+            </style>
             <div class="table-container">
-                <table>
+                <table class="sales-table">
                     <thead>
                         <tr>
                             <th>Order ID</th>
                             <th>Customer</th>
-                            <th>Salesperson</th>
+                            <th>Type</th>
                             <th>Capacity</th>
                             <th>Status</th>
-                            <th>Inventory Link</th>
-                            <th>Revenue (MRR)</th>
-                            <th>Direct Margin</th>
+                            <th>Revenue</th>
+                            <th>Margin</th>
+                            <th>Margin %</th>
+                            <th>Salesperson</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.length === 0 ? '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
+                        ${data.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
                         ${data.map(item => {
             const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
-            // Calculate Sales Specific Margin (MRR - CableCostMRC - XCs - Backhauls)
-            const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ'];
+            // Calculate margin based on actual costs
+            const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ', 'cable'];
             let totalDirectCost = 0;
             if (item.costs) {
                 costProps.forEach(k => {
@@ -2388,18 +2459,44 @@ const App = {
                 });
             }
             const margin = mrr - totalDirectCost;
+            const marginPercent = mrr > 0 ? ((margin / mrr) * 100).toFixed(1) : 0;
+
+            // Color coding for margin
+            const marginClass = marginPercent >= 50 ? 'margin-high' : (marginPercent >= 20 ? 'margin-mid' : 'margin-low');
+
+            // Status badge
             const statusClass = item.status === 'Active' ? 'badge-success' : (item.status === 'Pending' ? 'badge-warning' : 'badge-danger');
+
+            // Type icons
+            const salesType = item.salesType || 'Resale';
+            const salesModel = item.salesModel || 'Lease';
+            const typeClass = salesType === 'Resale' ? 'type-resale' :
+                salesType === 'Inventory' ? 'type-inventory' :
+                    salesType === 'Hybrid' ? 'type-hybrid' : 'type-swap';
+            const typeIcon = salesType === 'Resale' ? '🔄' :
+                salesType === 'Inventory' ? '📦' :
+                    salesType === 'Hybrid' ? '🔁' : '🔀';
+
+            // Inventory indicator
+            const hasInventory = item.inventoryLink ? '✓' : '';
 
             return `
                             <tr>
-                                <td class="font-mono" style="color: var(--accent-secondary)">${item.salesOrderId}</td>
-                                <td style="font-weight:600">${item.customerName}</td>
-                                <td>${item.salesperson || '-'}</td>
+                                <td class="font-mono" style="color: var(--accent-secondary); font-size:0.85rem;">${item.salesOrderId}</td>
+                                <td>
+                                    <div style="font-weight:600">${item.customerName}</div>
+                                    ${item.inventoryLink ? `<div style="font-size:0.7rem; color:var(--text-muted)">🔗 ${item.inventoryLink}</div>` : ''}
+                                </td>
+                                <td>
+                                    <span class="type-icon ${typeClass}">${typeIcon} ${salesType}</span>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${salesModel}</div>
+                                </td>
                                 <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
-                                <td class="font-mono">${item.inventoryLink || '-'}</td>
                                 <td class="font-mono" style="color: var(--accent-success)">$${mrr.toLocaleString()}</td>
                                 <td class="font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
+                                <td><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
+                                <td style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
                                 <td>
                                     <div class="flex gap-4">
                                         <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')" title="View">
@@ -2504,7 +2601,7 @@ const App = {
         const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
         if (!order) return;
 
-        const salespersonOptions = ['Janna Dai', 'Miki Chen', 'Wayne Jiang', 'Kristen Gan', 'Becky Hai', 'Wolf Yuan', 'Yifeng Jiang']
+        const salespersonOptions = ['Janna Dai', 'Miki Chen', 'Wayne Jiang', 'Kristen Gan', 'Becky Hai', 'Wolf Yuan', 'Yifeng Jiang', 'Procurement Team']
             .map(name => `<option ${order.salesperson === name ? 'selected' : ''}>${name}</option>`).join('');
 
         const editHtml = `

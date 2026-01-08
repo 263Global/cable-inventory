@@ -33,15 +33,30 @@
     --bg-card-hover: #234b73;
     --bg-input: #1a3a5c;
 
-    --text-main: #e6ebf1;
-    --text-muted: #8898aa;
+    --text-main: #f0f4f8;
+    /* Brighter for better readability */
+    --text-muted: #a0b0c0;
+    /* More contrast than before */
     --text-highlight: #ffffff;
 
-    --border-color: #2d4a6a;
+    --border-color: #3d5a7a;
+    /* Slightly lighter border */
     --border-focus: var(--accent-primary);
 
     --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.25);
     --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+    /* Dark mode accent colors - slightly brighter for visibility */
+    --accent-primary: #7c75ff;
+    /* Brighter purple */
+    --accent-secondary: #00e5ff;
+    /* Brighter cyan */
+    --accent-success: #4ade80;
+    /* Brighter green */
+    --accent-warning: #fbbf24;
+    /* Brighter amber */
+    --accent-danger: #f87171;
+    /* Brighter red */
 }
 
 [data-theme="light"] {
@@ -49,18 +64,33 @@
     /* Stripe light gray */
     --bg-sidebar: #ffffff;
     --bg-card: #ffffff;
-    --bg-card-hover: #f8fafc;
+    --bg-card-hover: #f0f4f8;
     --bg-input: #ffffff;
 
-    --text-main: #425466;
-    --text-muted: #8898aa;
-    --text-highlight: #0a2540;
+    --text-main: #1a1a2e;
+    /* Darker for better contrast */
+    --text-muted: #5e6e82;
+    /* More contrast than before */
+    --text-highlight: #0a0a1a;
+    /* Near black for headings */
 
-    --border-color: #e3e8ee;
+    --border-color: #d8e0e8;
     --border-focus: var(--accent-primary);
 
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    /* Light mode specific accent adjustments for better contrast */
+    --accent-primary: #5046e5;
+    /* Slightly darker purple */
+    --accent-secondary: #0099cc;
+    /* Darker cyan */
+    --accent-success: #059669;
+    /* Darker green */
+    --accent-warning: #d97706;
+    /* Darker amber */
+    --accent-danger: #dc2626;
+    /* Darker red */
 }
 
 * {

@@ -10,81 +10,140 @@ const generateId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 const defaultData = {
     inventory: [
         {
-            resourceId: 'RES-001',
-            status: 'In Use',
-            cableSystem: 'SJC2',
-            fiberPair: 'FP-01',
+            resourceId: 'INV-HKG-TYO-01',
+            status: 'Available',
+            cableSystem: 'APG',
+            segmentType: 'Trunk',
+            protection: 'Protected',
+            acquisition: { type: 'Purchased', ownership: 'Leased', supplier: 'SubCom' },
             capacity: { unit: 'Gbps', value: 100 },
             location: {
-                aEnd: { country: 'Singapore', city: 'Singapore', pop: 'Equinix SG1' },
+                aEnd: { country: 'Hong Kong', city: 'Hong Kong', pop: 'Equinix HK1' },
                 zEnd: { country: 'Japan', city: 'Tokyo', pop: 'Equinix TY2' }
             },
-            financials: {
-                otc: 50000,
-                mrc: 1200,
-                omRate: 2
-            },
-            dates: {
-                start: '2023-01-01',
-                end: '2026-03-01' // Expiring soon (< 90 days from "now")
-            },
-            usage: {
-                currentUser: 'ByteDance',
-                orderLink: 'SO-2024-001'
-            }
+            financials: { mrc: 5000, nrc: 10000, term: 60 },
+            dates: { start: '2024-01-01', end: '2028-12-31' },
+            usage: { currentUser: null, orderLink: null }
         },
         {
-            resourceId: 'RES-002',
+            resourceId: 'INV-TYO-LAX-01',
             status: 'Available',
-            cableSystem: 'APRICOT',
-            fiberPair: 'FP-04',
+            cableSystem: 'SJC2',
+            segmentType: 'Trunk',
+            protection: 'Protected',
+            acquisition: { type: 'Purchased', ownership: 'IRU', supplier: 'NTT Communications' },
+            capacity: { unit: 'Gbps', value: 200 },
+            location: {
+                aEnd: { country: 'Japan', city: 'Tokyo', pop: 'Equinix TY2' },
+                zEnd: { country: 'USA', city: 'Los Angeles', pop: 'CoreSite LA1' }
+            },
+            financials: { otc: 120000, term: 180, omRate: 3, annualOmCost: 3600 },
+            dates: { start: '2024-01-01', end: '2039-12-31' },
+            usage: { currentUser: null, orderLink: null }
+        },
+        {
+            resourceId: 'INV-SGP-HKG-01',
+            status: 'Available',
+            cableSystem: 'SEA-ME-WE 6',
+            segmentType: 'Trunk',
+            protection: 'Unprotected',
+            acquisition: { type: 'Purchased', ownership: 'Leased', supplier: 'Telia' },
             capacity: { unit: 'Gbps', value: 400 },
             location: {
-                aEnd: { country: 'Hong Kong', city: 'Hong Kong', pop: 'Mega-i' },
-                zEnd: { country: 'Philippines', city: 'Manila', pop: 'Globe MK2' }
+                aEnd: { country: 'Singapore', city: 'Singapore', pop: 'Equinix SG3' },
+                zEnd: { country: 'Hong Kong', city: 'Hong Kong', pop: 'MEGA-i' }
             },
-            financials: {
-                otc: 120000,
-                mrc: 2500,
-                omRate: 2
-            },
-            dates: {
-                start: '2024-01-01',
-                end: '2030-01-01'
-            },
-            usage: {
-                currentUser: null,
-                orderLink: null
-            }
+            financials: { mrc: 12000, nrc: 25000, term: 36 },
+            dates: { start: '2024-06-01', end: '2027-05-31' },
+            usage: { currentUser: null, orderLink: null }
         }
     ],
     sales: [
         {
             salesOrderId: 'SO-2024-001',
             customerName: 'ByteDance',
+            salesperson: 'Janna Dai',
             status: 'Active',
-            salesType: 'Lease',
-            inventoryLink: 'RES-001',
-            capacity: {
-                value: 100,
-                unit: 'Gbps'
-            },
-            dates: {
-                start: '2024-01-01',
-                end: '2026-02-15' // Expiring very soon
-            },
-            financials: {
-                nrcSales: 80000,
-                mrcSales: 3500,
-                totalMrr: 3500
-            },
+            salesModel: 'Lease',
+            salesType: 'Resale',
+            inventoryLink: '',
+            capacity: { value: 10, unit: 'Gbps' },
+            dates: { start: '2024-01-01', end: '2025-12-31', term: 24 },
+            financials: { mrcSales: 3000, nrcSales: 5000, totalMrr: 3000 },
             costs: {
-                cableCost: { nrc: 50000, mrc: 1200 },
-                backhaulA: { nrc: 1000, mrc: 200 },
-                backhaulZ: { nrc: 1000, mrc: 200 },
-                crossConnectA: { nrc: 500, mrc: 100 },
-                crossConnectZ: { nrc: 500, mrc: 100 }
+                cable: { model: 'Lease', mrc: 2000, nrc: 3000 },
+                backhaulA: { mrc: 100 },
+                backhaulZ: { mrc: 100 },
+                crossConnectA: { mrc: 50 },
+                crossConnectZ: { mrc: 50 }
             }
+        },
+        {
+            salesOrderId: 'SO-2024-002',
+            customerName: 'Tencent Cloud',
+            salesperson: 'Miki Chen',
+            status: 'Active',
+            salesModel: 'Lease',
+            salesType: 'Inventory',
+            inventoryLink: 'INV-HKG-TYO-01',
+            capacity: { value: 10, unit: 'Gbps' },
+            dates: { start: '2024-03-01', end: '2025-02-28', term: 12 },
+            financials: { mrcSales: 1000, nrcSales: 0, totalMrr: 1000 },
+            costs: {}
+        },
+        {
+            salesOrderId: 'SO-2024-003',
+            customerName: 'Alibaba Cloud',
+            salesperson: 'Wayne Jiang',
+            status: 'Active',
+            salesModel: 'Lease',
+            salesType: 'Inventory',
+            inventoryLink: 'INV-TYO-LAX-01',
+            capacity: { value: 20, unit: 'Gbps' },
+            dates: { start: '2024-04-01', end: '2026-03-31', term: 24 },
+            financials: { mrcSales: 2500, nrcSales: 0, totalMrr: 2500 },
+            costs: {}
+        },
+        {
+            salesOrderId: 'SO-2024-004',
+            customerName: 'Microsoft Azure',
+            salesperson: 'Kristen Gan',
+            status: 'Active',
+            salesModel: 'IRU',
+            salesType: 'Resale',
+            inventoryLink: '',
+            capacity: { value: 10, unit: 'Gbps' },
+            dates: { start: '2024-01-01', end: '2028-12-31', term: 60 },
+            financials: { otc: 50000, annualOm: 1500, totalMrr: 0 },
+            costs: {
+                cable: { model: 'IRU', otc: 30000, annualOm: 900 }
+            }
+        },
+        {
+            salesOrderId: 'SO-2024-005',
+            customerName: 'AWS',
+            salesperson: 'Becky Hai',
+            status: 'Active',
+            salesModel: 'IRU',
+            salesType: 'Inventory',
+            inventoryLink: 'INV-TYO-LAX-01',
+            capacity: { value: 50, unit: 'Gbps' },
+            dates: { start: '2024-02-01', end: '2029-01-31', term: 60 },
+            financials: { otc: 80000, annualOm: 2400, totalMrr: 0 },
+            costs: {}
+        },
+        {
+            salesOrderId: 'SO-2024-006',
+            customerName: 'Swap Partner - PCCW',
+            salesperson: 'Procurement Team',
+            status: 'Active',
+            salesModel: 'IRU',
+            salesType: 'Swapped Out',
+            inventoryLink: 'INV-SGP-HKG-01',
+            capacity: { value: 100, unit: 'Gbps' },
+            dates: { start: '2024-06-01', end: '2027-05-31', term: 36 },
+            financials: { otc: 0, annualOm: 0, totalMrr: 0 },
+            costs: {}
         }
     ]
 };
