@@ -298,6 +298,13 @@ h6 {
     gap: 1rem;
 }
 
+/* Compact 3-column for space-constrained areas */
+.grid-3c {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
 .grid-4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);

@@ -345,6 +345,36 @@ const App = {
                         </div>
                     </div>
 
+                    <h5 class="mt-4 mb-2">Delivery Location</h5>
+                    <div class="grid-2">
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                            <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                            <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <h5 class="mt-4 mb-2">Sales Model & Type</h5>
                     <div class="grid-2">
                         <div class="form-group">
@@ -423,97 +453,65 @@ const App = {
                 <div class="section-card">
                     <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
-                    <!-- Group 1: Cable Cost -->
-                    <div id="cable-cost-section">
-                        <h5 class="mb-2 text-xs uppercase" style="opacity:0.7">1. Cable Cost</h5>
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control" name="costs.cable.supplier">
-                        </div>
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label class="form-label">Cost Model</label>
-                                <select class="form-control calc-trigger" name="costs.cable.model" id="cost-model-select">
-                                    <option value="Monthly Lease">Monthly Lease</option>
-                                    <option value="IRU">IRU</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                 <label class="form-label">Base Amount ($)</label>
-                                 <input type="number" class="form-control calc-trigger" name="costs.cable.baseAmount" value="0" placeholder="Monthly Rent or IRU Fee">
-                            </div>
-                        </div>
-                        
-                        <!-- IRU Specific Fields -->
-                        <div id="iru-fields" class="grid-2" style="display:none; background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;">
-                            <div class="form-group">
-                                <label class="form-label">Amortization (Months)</label>
-                                <input type="number" class="form-control calc-trigger" name="costs.cable.amortizationMonths" value="180">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Annual O&M ($)</label>
-                                <input type="number" class="form-control calc-trigger" name="costs.cable.annualOm" value="0">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Cable NRC ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.cable.nrc" value="0">
-                        </div>
+                    <!-- Add Cost Buttons (Sticky with Wrapper) -->
+                    <div id="cost-buttons" class="mb-4" style="display: flex; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
+                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
+                        </button>
+                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> Backhaul A
+                        </button>
+                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> Backhaul Z
+                        </button>
+                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> XC A
+                        </button>
+                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> XC Z
+                        </button>
+                        <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> Other Costs
+                        </button>
                     </div>
 
-                    <!-- Group 2: Backhaul -->
-                    <h5 class="mb-2 mt-4 text-xs uppercase" style="opacity:0.7">2. Backhaul</h5>
-                    <div class="grid-2">
-                         <div class="form-group">
-                            <label class="form-label">A-End Monthly ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.backhaul.aEnd.monthly" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Z-End Monthly ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.backhaul.zEnd.monthly" value="0">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                         <div class="form-group">
-                            <label class="form-label">A-End NRC ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.backhaul.aEnd.nrc" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Z-End NRC ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.backhaul.zEnd.nrc" value="0">
-                        </div>
+                    <!-- Dynamic Cost Cards Container -->
+                    <div id="cost-cards-container">
+                        <!-- Cost cards will be inserted here dynamically -->
                     </div>
 
-                    <!-- Group 3: Cross Connect -->
-                    <h5 class="mb-2 mt-4 text-xs uppercase" style="opacity:0.7">3. Cross Connect</h5>
-                     <div class="grid-2">
-                         <div class="form-group">
-                            <label class="form-label">A-End Monthly ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.aEnd.monthly" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Z-End Monthly ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.zEnd.monthly" value="0">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                         <div class="form-group">
-                            <label class="form-label">A-End NRC ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.aEnd.nrc" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Z-End NRC ($)</label>
-                            <input type="number" class="form-control calc-trigger" name="costs.crossConnect.zEnd.nrc" value="0">
-                        </div>
-                    </div>
-
-                    <!-- Group 4: Smart Hands -->
-                    <h5 class="mb-2 mt-4 text-xs uppercase" style="opacity:0.7">4. Smart Hands</h5>
-                    <div class="form-group">
-                        <label class="form-label">One-off Fee ($)</label>
-                        <input type="number" class="form-control calc-trigger" name="costs.smartHands" value="0">
-                    </div>
+                    <!-- Hidden inputs for form submission (will be populated by JS) -->
+                    <!-- Cable Cost -->
+                    <input type="hidden" name="costs.cable.supplier" value="">
+                    <input type="hidden" name="costs.cable.orderNo" value="">
+                    <input type="hidden" name="costs.cable.cableSystem" value="">
+                    <input type="hidden" name="costs.cable.capacity" value="0">
+                    <input type="hidden" name="costs.cable.capacityUnit" value="Gbps">
+                    <input type="hidden" name="costs.cable.model" value="Lease">
+                    <input type="hidden" name="costs.cable.protection" value="Unprotected">
+                    <input type="hidden" name="costs.cable.protectionCableSystem" value="">
+                    <input type="hidden" name="costs.cable.mrc" value="0">
+                    <input type="hidden" name="costs.cable.nrc" value="0">
+                    <input type="hidden" name="costs.cable.otc" value="0">
+                    <input type="hidden" name="costs.cable.omRate" value="0">
+                    <input type="hidden" name="costs.cable.annualOm" value="0">
+                    <input type="hidden" name="costs.cable.startDate" value="">
+                    <input type="hidden" name="costs.cable.termMonths" value="12">
+                    <input type="hidden" name="costs.cable.endDate" value="">
+                    <!-- Backhaul -->
+                    <input type="hidden" name="costs.backhaul.aEnd.monthly" value="0">
+                    <input type="hidden" name="costs.backhaul.aEnd.nrc" value="0">
+                    <input type="hidden" name="costs.backhaul.zEnd.monthly" value="0">
+                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="0">
+                    <!-- Cross Connect -->
+                    <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="0">
+                    <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="0">
+                    <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="0">
+                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="0">
+                    <!-- Other Costs -->
+                    <input type="hidden" name="costs.otherCosts.description" value="">
+                    <input type="hidden" name="costs.otherCosts.oneOff" value="0">
+                    <input type="hidden" name="costs.otherCosts.monthly" value="0">
                 </div>
             </div>
         `;
@@ -525,23 +523,805 @@ const App = {
     },
 
     attachSalesFormListeners() {
-        // Toggle IRU Fields
-        const modelSelect = document.getElementById('cost-model-select');
-        const iruFields = document.getElementById('iru-fields');
-        if (modelSelect && iruFields) {
-            modelSelect.addEventListener('change', (e) => {
-                iruFields.style.display = e.target.value === 'IRU' ? 'grid' : 'none';
-                this.calculateSalesFinancials(); // Recalculate
+        // ===== Cost Card Templates =====
+        const costCardTemplates = {
+            cable: `
+                <div class="cost-card" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    
+                    <!-- Basic Info -->
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.cable.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.cable.orderNo">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Cable System</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.cable.cableSystem">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Capacity</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="number" class="form-control cost-input" data-field="costs.cable.capacity" value="0" style="flex: 1;">
+                                <select class="form-control cost-input" data-field="costs.cable.capacityUnit" style="width: 100px;">
+                                    <option value="Gbps">Gbps</option>
+                                    <option value="Wavelength">Wavelength</option>
+                                    <option value="Fiber Pair">Fiber Pair</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Cost Model</label>
+                            <select class="form-control cost-input cable-cost-model-select" data-field="costs.cable.model">
+                                <option value="Lease">Lease</option>
+                                <option value="IRU">IRU</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Protection</label>
+                            <select class="form-control cost-input cable-protection-select" data-field="costs.cable.protection">
+                                <option value="Unprotected">Unprotected</option>
+                                <option value="Protected">Protected</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="cable-protection-system-container form-group" style="display: none;">
+                        <label class="form-label">Protection Cable System</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.cable.protectionCableSystem" placeholder="Protection cable system name">
+                    </div>
+
+                    <!-- Lease Cost Fields -->
+                    <div class="cable-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <h6 style="color: var(--accent-success); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Lease Costs</h6>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">MRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.mrc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">NRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.nrc" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- IRU Cost Fields -->
+                    <div class="cable-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <h6 style="color: var(--accent-warning); margin: 0 0 0.5rem 0; font-size: 0.8rem;">IRU Costs</h6>
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">OTC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger cable-otc-input" data-field="costs.cable.otc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">O&M Rate (%)</label>
+                                <input type="number" class="form-control cost-input calc-trigger cable-om-rate-input" data-field="costs.cable.omRate" value="0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Annual O&M ($)</label>
+                                <input type="number" class="form-control cost-input cable-annual-om-display" data-field="costs.cable.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Dates -->
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <h6 style="color: var(--text-muted); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Contract Period</h6>
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input cable-start-date" data-field="costs.cable.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input cable-term-months" data-field="costs.cable.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input cable-end-date" data-field="costs.cable.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Notes -->
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.cable.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `,
+            backhaulA: `
+                <div class="cost-card" data-cost-type="backhaulA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul A-End</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.backhaulA.orderNo">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cost Model</label>
+                        <select class="form-control cost-input bh-a-cost-model-select" data-field="costs.backhaulA.model">
+                            <option value="Lease">Lease</option>
+                            <option value="IRU">IRU</option>
+                        </select>
+                    </div>
+                    <div class="bh-a-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">MRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.mrc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">NRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.nrc" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bh-a-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">OTC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger bh-a-otc" data-field="costs.backhaulA.otc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">O&M Rate (%)</label>
+                                <input type="number" class="form-control cost-input calc-trigger bh-a-om-rate" data-field="costs.backhaulA.omRate" value="0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Annual O&M ($)</label>
+                                <input type="number" class="form-control cost-input bh-a-annual-om" data-field="costs.backhaulA.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input bh-a-start-date" data-field="costs.backhaulA.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input bh-a-term" data-field="costs.backhaulA.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input bh-a-end-date" data-field="costs.backhaulA.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `,
+            backhaulZ: `
+                <div class="cost-card" data-cost-type="backhaulZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul Z-End</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.orderNo">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cost Model</label>
+                        <select class="form-control cost-input bh-z-cost-model-select" data-field="costs.backhaulZ.model">
+                            <option value="Lease">Lease</option>
+                            <option value="IRU">IRU</option>
+                        </select>
+                    </div>
+                    <div class="bh-z-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">MRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.mrc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">NRC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.nrc" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bh-z-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">OTC ($)</label>
+                                <input type="number" class="form-control cost-input calc-trigger bh-z-otc" data-field="costs.backhaulZ.otc" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">O&M Rate (%)</label>
+                                <input type="number" class="form-control cost-input calc-trigger bh-z-om-rate" data-field="costs.backhaulZ.omRate" value="0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Annual O&M ($)</label>
+                                <input type="number" class="form-control cost-input bh-z-annual-om" data-field="costs.backhaulZ.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input bh-z-start-date" data-field="costs.backhaulZ.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input bh-z-term" data-field="costs.backhaulZ.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input bh-z-end-date" data-field="costs.backhaulZ.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `,
+            xcA: `
+                <div class="cost-card" data-cost-type="xcA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect A-End</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.xcA.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.xcA.orderNo">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Monthly Fee ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.monthly" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">NRC ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.nrc" value="0">
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input xc-a-start-date" data-field="costs.xcA.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input xc-a-term" data-field="costs.xcA.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input xc-a-end-date" data-field="costs.xcA.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.xcA.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `,
+            xcZ: `
+                <div class="cost-card" data-cost-type="xcZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect Z-End</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.xcZ.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field="costs.xcZ.orderNo">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Monthly Fee ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.monthly" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">NRC ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.nrc" value="0">
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input xc-z-start-date" data-field="costs.xcZ.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input xc-z-term" data-field="costs.xcZ.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input xc-z-end-date" data-field="costs.xcZ.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `,
+            other: `
+                <div class="cost-card cost-card-multi" data-cost-type="other" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h5 style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Other Costs</h5>
+                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control cost-input" data-field-base="costs.other.description" placeholder="e.g., Smart Hands, Testing, etc.">
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Supplier</label>
+                            <input type="text" class="form-control cost-input" data-field-base="costs.other.supplier">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Order No.</label>
+                            <input type="text" class="form-control cost-input" data-field-base="costs.other.orderNo">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">One-off Fee ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.oneOff" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Monthly Fee ($)</label>
+                            <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.monthly" value="0">
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                        <div class="grid-3c">
+                            <div class="form-group">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control cost-input other-start-date" data-field-base="costs.other.startDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control cost-input other-term" data-field-base="costs.other.termMonths" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control cost-input other-end-date" data-field-base="costs.other.endDate" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control cost-input" data-field-base="costs.other.notes" placeholder="Additional notes...">
+                    </div>
+                </div>
+            `
+        };
+
+        const cardsContainer = document.getElementById('cost-cards-container');
+        const addedCostTypes = new Set();
+
+        // ===== Add Cost Card Function =====
+        let otherCostCounter = 0; // Counter for unique Other Costs cards
+
+        const addCostCard = (type, isMulti = false) => {
+            // For non-multi types, prevent duplicates
+            if (!isMulti && addedCostTypes.has(type)) return;
+
+            const template = costCardTemplates[type];
+            if (!template) return;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = template.trim();
+            const card = tempDiv.firstChild;
+
+            // For multi-add cards, assign unique ID
+            if (isMulti) {
+                const uniqueId = `${type}_${++otherCostCounter}`;
+                card.dataset.uniqueId = uniqueId;
+            } else {
+                addedCostTypes.add(type);
+            }
+
+            cardsContainer.appendChild(card);
+
+            // Update button state (only for non-multi types)
+            if (!isMulti) {
+                const btn = document.querySelector(`.cost-add-btn[data-cost-type="${type}"]`);
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                }
+            }
+
+            // Attach remove handler
+            card.querySelector('.cost-remove-btn').addEventListener('click', () => {
+                removeCostCard(type, card);
             });
+
+            // Attach input sync handlers
+            card.querySelectorAll('.cost-input').forEach(input => {
+                input.addEventListener('input', () => {
+                    syncCostInputs();
+                    this.calculateSalesFinancials();
+                });
+                input.addEventListener('change', () => {
+                    syncCostInputs();
+                    this.calculateSalesFinancials();
+                });
+            });
+
+            // Attach special handlers for cable card
+            if (type === 'cable') {
+                const modelSelect = card.querySelector('.cable-cost-model-select');
+                const leaseFields = card.querySelector('.cable-lease-fields');
+                const iruFields = card.querySelector('.cable-iru-fields');
+                const protectionSelect = card.querySelector('.cable-protection-select');
+                const protectionSystemContainer = card.querySelector('.cable-protection-system-container');
+                const otcInput = card.querySelector('.cable-otc-input');
+                const omRateInput = card.querySelector('.cable-om-rate-input');
+                const annualOmDisplay = card.querySelector('.cable-annual-om-display');
+                const startDateInput = card.querySelector('.cable-start-date');
+                const termMonthsInput = card.querySelector('.cable-term-months');
+                const endDateInput = card.querySelector('.cable-end-date');
+
+                // Cost Model Toggle (Lease vs IRU)
+                if (modelSelect && leaseFields && iruFields) {
+                    modelSelect.addEventListener('change', (e) => {
+                        const isIRU = e.target.value === 'IRU';
+                        leaseFields.style.display = isIRU ? 'none' : 'block';
+                        iruFields.style.display = isIRU ? 'block' : 'none';
+                        syncCostInputs();
+                        this.calculateSalesFinancials();
+                    });
+                }
+
+                // Protection Toggle
+                if (protectionSelect && protectionSystemContainer) {
+                    protectionSelect.addEventListener('change', (e) => {
+                        protectionSystemContainer.style.display = e.target.value === 'Protected' ? 'block' : 'none';
+                        syncCostInputs();
+                    });
+                }
+
+                // Annual O&M Auto-calculation
+                const calculateAnnualOm = () => {
+                    if (otcInput && omRateInput && annualOmDisplay) {
+                        const otc = Number(otcInput.value) || 0;
+                        const rate = Number(omRateInput.value) || 0;
+                        annualOmDisplay.value = (otc * rate / 100).toFixed(2);
+                        syncCostInputs();
+                    }
+                };
+                if (otcInput) otcInput.addEventListener('input', calculateAnnualOm);
+                if (omRateInput) omRateInput.addEventListener('input', calculateAnnualOm);
+
+                // Contract End Date Auto-calculation
+                const calculateEndDate = () => {
+                    if (startDateInput && termMonthsInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        const months = parseInt(termMonthsInput.value) || 0;
+                        const end = new Date(start);
+                        end.setMonth(end.getMonth() + months);
+                        endDateInput.value = end.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calculateEndDate);
+                if (termMonthsInput) termMonthsInput.addEventListener('input', calculateEndDate);
+            }
+            // Attach special handlers for Backhaul A card
+            if (type === 'backhaulA') {
+                const modelSelect = card.querySelector('.bh-a-cost-model-select');
+                const leaseFields = card.querySelector('.bh-a-lease-fields');
+                const iruFields = card.querySelector('.bh-a-iru-fields');
+                const otcInput = card.querySelector('.bh-a-otc');
+                const omRateInput = card.querySelector('.bh-a-om-rate');
+                const annualOmDisplay = card.querySelector('.bh-a-annual-om');
+                const startDateInput = card.querySelector('.bh-a-start-date');
+                const termInput = card.querySelector('.bh-a-term');
+                const endDateInput = card.querySelector('.bh-a-end-date');
+
+                if (modelSelect && leaseFields && iruFields) {
+                    modelSelect.addEventListener('change', (e) => {
+                        const isIRU = e.target.value === 'IRU';
+                        leaseFields.style.display = isIRU ? 'none' : 'block';
+                        iruFields.style.display = isIRU ? 'block' : 'none';
+                        syncCostInputs();
+                        this.calculateSalesFinancials();
+                    });
+                }
+                const calcAnnualOm = () => {
+                    if (otcInput && omRateInput && annualOmDisplay) {
+                        annualOmDisplay.value = ((Number(otcInput.value) || 0) * (Number(omRateInput.value) || 0) / 100).toFixed(2);
+                        syncCostInputs();
+                    }
+                };
+                if (otcInput) otcInput.addEventListener('input', calcAnnualOm);
+                if (omRateInput) omRateInput.addEventListener('input', calcAnnualOm);
+                const calcEndDate = () => {
+                    if (startDateInput && termInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        start.setMonth(start.getMonth() + (parseInt(termInput.value) || 0));
+                        endDateInput.value = start.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calcEndDate);
+                if (termInput) termInput.addEventListener('input', calcEndDate);
+            }
+
+            // Attach special handlers for Backhaul Z card
+            if (type === 'backhaulZ') {
+                const modelSelect = card.querySelector('.bh-z-cost-model-select');
+                const leaseFields = card.querySelector('.bh-z-lease-fields');
+                const iruFields = card.querySelector('.bh-z-iru-fields');
+                const otcInput = card.querySelector('.bh-z-otc');
+                const omRateInput = card.querySelector('.bh-z-om-rate');
+                const annualOmDisplay = card.querySelector('.bh-z-annual-om');
+                const startDateInput = card.querySelector('.bh-z-start-date');
+                const termInput = card.querySelector('.bh-z-term');
+                const endDateInput = card.querySelector('.bh-z-end-date');
+
+                if (modelSelect && leaseFields && iruFields) {
+                    modelSelect.addEventListener('change', (e) => {
+                        const isIRU = e.target.value === 'IRU';
+                        leaseFields.style.display = isIRU ? 'none' : 'block';
+                        iruFields.style.display = isIRU ? 'block' : 'none';
+                        syncCostInputs();
+                        this.calculateSalesFinancials();
+                    });
+                }
+                const calcAnnualOm = () => {
+                    if (otcInput && omRateInput && annualOmDisplay) {
+                        annualOmDisplay.value = ((Number(otcInput.value) || 0) * (Number(omRateInput.value) || 0) / 100).toFixed(2);
+                        syncCostInputs();
+                    }
+                };
+                if (otcInput) otcInput.addEventListener('input', calcAnnualOm);
+                if (omRateInput) omRateInput.addEventListener('input', calcAnnualOm);
+                const calcEndDate = () => {
+                    if (startDateInput && termInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        start.setMonth(start.getMonth() + (parseInt(termInput.value) || 0));
+                        endDateInput.value = start.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calcEndDate);
+                if (termInput) termInput.addEventListener('input', calcEndDate);
+            }
+
+            // Attach end date calculation for Cross Connect A
+            if (type === 'xcA') {
+                const startDateInput = card.querySelector('.xc-a-start-date');
+                const termInput = card.querySelector('.xc-a-term');
+                const endDateInput = card.querySelector('.xc-a-end-date');
+                const calcEndDate = () => {
+                    if (startDateInput && termInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        start.setMonth(start.getMonth() + (parseInt(termInput.value) || 0));
+                        endDateInput.value = start.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calcEndDate);
+                if (termInput) termInput.addEventListener('input', calcEndDate);
+            }
+
+            // Attach end date calculation for Cross Connect Z
+            if (type === 'xcZ') {
+                const startDateInput = card.querySelector('.xc-z-start-date');
+                const termInput = card.querySelector('.xc-z-term');
+                const endDateInput = card.querySelector('.xc-z-end-date');
+                const calcEndDate = () => {
+                    if (startDateInput && termInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        start.setMonth(start.getMonth() + (parseInt(termInput.value) || 0));
+                        endDateInput.value = start.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calcEndDate);
+                if (termInput) termInput.addEventListener('input', calcEndDate);
+            }
+
+            // Attach end date calculation for Other Costs
+            if (type === 'other') {
+                const startDateInput = card.querySelector('.other-start-date');
+                const termInput = card.querySelector('.other-term');
+                const endDateInput = card.querySelector('.other-end-date');
+                const calcEndDate = () => {
+                    if (startDateInput && termInput && endDateInput && startDateInput.value) {
+                        const start = new Date(startDateInput.value);
+                        start.setMonth(start.getMonth() + (parseInt(termInput.value) || 0));
+                        endDateInput.value = start.toISOString().split('T')[0];
+                        syncCostInputs();
+                    }
+                };
+                if (startDateInput) startDateInput.addEventListener('change', calcEndDate);
+                if (termInput) termInput.addEventListener('input', calcEndDate);
+            }
+
+            syncCostInputs();
+            this.calculateSalesFinancials();
+        };
+
+        // ===== Remove Cost Card Function =====
+        const removeCostCard = (type, card) => {
+            const isMulti = card.classList.contains('cost-card-multi');
+            card.remove();
+
+            if (!isMulti) {
+                addedCostTypes.delete(type);
+
+                // Re-enable button (only for non-multi types)
+                const btn = document.querySelector(`.cost-add-btn[data-cost-type="${type}"]`);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.title = '';
+                }
+
+                // Reset hidden inputs for this type
+                resetCostInputs(type);
+            }
+
+            this.calculateSalesFinancials();
+        };
+
+        // ===== Sync visible inputs to hidden form inputs =====
+        const syncCostInputs = () => {
+            cardsContainer.querySelectorAll('.cost-input').forEach(input => {
+                const field = input.dataset.field;
+                const hiddenInput = document.querySelector(`[name="${field}"]`);
+                if (hiddenInput) {
+                    hiddenInput.value = input.value;
+                }
+            });
+        };
+
+        // ===== Reset hidden inputs when card is removed =====
+        const resetCostInputs = (type) => {
+            const fieldMappings = {
+                cable: [
+                    'costs.cable.supplier', 'costs.cable.orderNo', 'costs.cable.cableSystem',
+                    'costs.cable.capacity', 'costs.cable.capacityUnit', 'costs.cable.model',
+                    'costs.cable.protection', 'costs.cable.protectionCableSystem',
+                    'costs.cable.mrc', 'costs.cable.nrc', 'costs.cable.otc',
+                    'costs.cable.omRate', 'costs.cable.annualOm',
+                    'costs.cable.startDate', 'costs.cable.termMonths', 'costs.cable.endDate'
+                ],
+                backhaul: ['costs.backhaul.aEnd.monthly', 'costs.backhaul.aEnd.nrc', 'costs.backhaul.zEnd.monthly', 'costs.backhaul.zEnd.nrc'],
+                crossConnect: ['costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc', 'costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc'],
+                other: ['costs.otherCosts.description', 'costs.otherCosts.oneOff', 'costs.otherCosts.monthly']
+            };
+
+            const fields = fieldMappings[type] || [];
+            fields.forEach(field => {
+                const input = document.querySelector(`[name="${field}"]`);
+                if (input) {
+                    // Set appropriate default values
+                    if (field.includes('model')) input.value = 'Lease';
+                    else if (field.includes('protection') && !field.includes('System')) input.value = 'Unprotected';
+                    else if (field.includes('capacityUnit')) input.value = 'Gbps';
+                    else if (field.includes('termMonths')) input.value = '12';
+                    else if (field.includes('description') || field.includes('supplier') || field.includes('orderNo') ||
+                        field.includes('cableSystem') || field.includes('protectionCableSystem') ||
+                        field.includes('Date')) input.value = '';
+                    else input.value = '0';
+                }
+            });
+        };
+
+        // ===== Attach button click handlers =====
+        document.querySelectorAll('.cost-add-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.costType;
+                const isMulti = btn.classList.contains('cost-add-multi');
+                addCostCard(type, isMulti);
+            });
+        });
+
+        // ===== Sales Type Smart Hints =====
+        const salesTypeSelect = document.getElementById('sales-type-select');
+        const addCableBtn = document.getElementById('add-cable-btn');
+
+        const updateSmartHints = () => {
+            const type = salesTypeSelect?.value;
+            const isInventoryOrSwap = (type === 'Inventory' || type === 'Swapped Out');
+
+            if (addCableBtn) {
+                if (isInventoryOrSwap) {
+                    // Hide 3rd Party Cable button for Inventory/Swapped Out
+                    addCableBtn.style.display = 'none';
+
+                    // Remove cable card if exists
+                    const cableCard = cardsContainer.querySelector('.cost-card[data-cost-type="cable"]');
+                    if (cableCard) {
+                        removeCostCard('cable', cableCard);
+                    }
+                } else {
+                    // Show button
+                    addCableBtn.style.display = '';
+
+                    // Enable button (unless already added)
+                    if (!addedCostTypes.has('cable')) {
+                        addCableBtn.disabled = false;
+                        addCableBtn.style.opacity = '1';
+                        addCableBtn.title = '';
+                    }
+
+                    // Auto-add cable card for Resale/Hybrid
+                    if ((type === 'Resale' || type === 'Hybrid') && !addedCostTypes.has('cable')) {
+                        addCostCard('cable');
+                    }
+                }
+            }
+        };
+
+        if (salesTypeSelect) {
+            salesTypeSelect.addEventListener('change', updateSmartHints);
+            // Initial check
+            updateSmartHints();
         }
 
-        // Status Auto-calc
+        // ===== Status Auto-calc =====
         const startDateInput = document.getElementById('sales-start-date');
         const termInput = document.getElementById('sales-term');
         const endDateInput = document.getElementById('sales-end-date');
         const statusDisplay = document.getElementById('sales-status-display');
 
-        // Auto-calculate End Date from Start + Term
         const calculateEndDate = () => {
             if (!startDateInput.value || !termInput.value) return;
             const start = new Date(startDateInput.value);
@@ -588,24 +1368,6 @@ const App = {
             salesModelSelect.addEventListener('change', updateRevenueFields);
         }
 
-        // ===== Sales Type Toggle (Cable Cost Section Show/Hide) =====
-        const salesTypeSelect = document.getElementById('sales-type-select');
-        const cableCostSection = document.getElementById('cable-cost-section');
-
-        const updateCableCostVisibility = () => {
-            const type = salesTypeSelect?.value;
-            if (cableCostSection) {
-                // Inventory 和 Swapped Out 不显示 Cable Cost
-                const hideCableCost = (type === 'Inventory' || type === 'Swapped Out');
-                cableCostSection.style.display = hideCableCost ? 'none' : 'block';
-            }
-            this.calculateSalesFinancials();
-        };
-
-        if (salesTypeSelect) {
-            salesTypeSelect.addEventListener('change', updateCableCostVisibility);
-        }
-
         // ===== IRU Revenue: Auto-calculate Annual O&M Fee =====
         const salesOtc = document.getElementById('sales-otc');
         const salesOmRate = document.getElementById('sales-om-rate');
@@ -624,7 +1386,7 @@ const App = {
             salesOmRate.addEventListener('input', calculateAnnualOm);
         }
 
-        // Real-time Financial Calculation
+        // Real-time Financial Calculation (for non-dynamic inputs)
         const calcTriggers = document.querySelectorAll('.calc-trigger');
         calcTriggers.forEach(input => {
             input.addEventListener('input', () => this.calculateSalesFinancials());
@@ -647,26 +1409,27 @@ const App = {
         // ===== 步骤 B: 计算直接月成本 =====
 
         // B1. 海缆有效月成本 (Real Cable Cost)
-        const costModel = document.querySelector('[name="costs.cable.model"]')?.value || 'Monthly Lease';
-        const cableBase = getValue('costs.cable.baseAmount');
-        let cableRealCost = 0;
+        const costModel = document.querySelector('[name="costs.cable.model"]')?.value || 'Lease';
+        let cableMonthly = 0;
+        let cableNrc = 0;
 
-        if (costModel === 'Monthly Lease') {
-            // 情况 1: 月租模式 - 直接取票面金额
-            cableRealCost = cableBase;
+        if (costModel === 'Lease') {
+            // Lease 模式: MRC 直接作为月成本， NRC 作为一次性成本
+            cableMonthly = getValue('costs.cable.mrc');
+            cableNrc = getValue('costs.cable.nrc');
         } else {
-            // 情况 2: IRU 买断摊销模式
-            // Real Cable Cost = (Base / Amortization Months) + (Annual O&M / 12)
-            const amortMonths = getValue('costs.cable.amortizationMonths') || 1;
+            // IRU 模式: 月成本 = Annual O&M / 12 (OTC不做月摊销，放在一次性利润里算)
             const annualOm = getValue('costs.cable.annualOm');
-            cableRealCost = (cableBase / amortMonths) + (annualOm / 12);
+            cableMonthly = annualOm / 12;
+            // IRU 的 OTC 会在 NRC Profit 里处理
         }
 
         // B2. 汇总所有链路成本
         const bhMonthly = getValue('costs.backhaul.aEnd.monthly') + getValue('costs.backhaul.zEnd.monthly');
         const xcMonthly = getValue('costs.crossConnect.aEnd.monthly') + getValue('costs.crossConnect.zEnd.monthly');
+        const otherMonthly = getValue('costs.otherCosts.monthly');
 
-        const totalDirectMrc = cableRealCost + bhMonthly + xcMonthly;
+        const totalDirectMrc = cableMonthly + bhMonthly + xcMonthly + otherMonthly;
 
         // ===== 步骤 C: 计算库存分摊成本 (Allocated Inventory Cost) =====
         const salesType = getVal('salesType');
@@ -691,12 +1454,13 @@ const App = {
         const grossMargin = totalMonthlyRevenue - totalMonthlyCost;
         const marginPercent = totalMonthlyRevenue > 0 ? (grossMargin / totalMonthlyRevenue) * 100 : 0;
 
-        // Costs - NRC
-        const cableNrc = getValue('costs.cable.nrc');
+        // Costs - NRC (One-time costs)
+        // For IRU: add OTC to NRC costs
+        const cableOtc = costModel === 'IRU' ? getValue('costs.cable.otc') : 0;
         const bhNrc = getValue('costs.backhaul.aEnd.nrc') + getValue('costs.backhaul.zEnd.nrc');
         const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
-        const smartHands = getValue('costs.smartHands');
-        const totalNrcCost = cableNrc + bhNrc + xcNrc + smartHands;
+        const otherOneOff = getValue('costs.otherCosts.oneOff');
+        const totalNrcCost = cableNrc + cableOtc + bhNrc + xcNrc + otherOneOff;
         const nrcProfit = nrcSales - totalNrcCost;
 
         // 3. Update UI
@@ -757,6 +1521,16 @@ const App = {
             salesperson: getVal('salesperson'),
             salesModel: getVal('salesModel'),
             salesType: getVal('salesType'),
+            location: {
+                aEnd: {
+                    city: getVal('location.aEnd.city'),
+                    pop: getVal('location.aEnd.pop')
+                },
+                zEnd: {
+                    city: getVal('location.zEnd.city'),
+                    pop: getVal('location.zEnd.pop')
+                }
+            },
             dates: {
                 start: getVal('dates.start'),
                 term: getNum('dates.term'),
@@ -775,11 +1549,24 @@ const App = {
             costs: {
                 cable: {
                     supplier: getVal('costs.cable.supplier'),
+                    orderNo: getVal('costs.cable.orderNo'),
+                    cableSystem: getVal('costs.cable.cableSystem'),
+                    capacity: getNum('costs.cable.capacity'),
+                    capacityUnit: getVal('costs.cable.capacityUnit'),
                     model: getVal('costs.cable.model'),
-                    baseAmount: getNum('costs.cable.baseAmount'),
-                    amortizationMonths: getNum('costs.cable.amortizationMonths'),
+                    protection: getVal('costs.cable.protection'),
+                    protectionCableSystem: getVal('costs.cable.protectionCableSystem'),
+                    // Lease fields
+                    mrc: getNum('costs.cable.mrc'),
+                    nrc: getNum('costs.cable.nrc'),
+                    // IRU fields
+                    otc: getNum('costs.cable.otc'),
+                    omRate: getNum('costs.cable.omRate'),
                     annualOm: getNum('costs.cable.annualOm'),
-                    nrc: getNum('costs.cable.nrc')
+                    // Contract dates
+                    startDate: getVal('costs.cable.startDate'),
+                    termMonths: getNum('costs.cable.termMonths'),
+                    endDate: getVal('costs.cable.endDate')
                 },
                 backhaul: {
                     aEnd: { monthly: getNum('costs.backhaul.aEnd.monthly'), nrc: getNum('costs.backhaul.aEnd.nrc') },
@@ -789,7 +1576,11 @@ const App = {
                     aEnd: { monthly: getNum('costs.crossConnect.aEnd.monthly'), nrc: getNum('costs.crossConnect.aEnd.nrc') },
                     zEnd: { monthly: getNum('costs.crossConnect.zEnd.monthly'), nrc: getNum('costs.crossConnect.zEnd.nrc') }
                 },
-                smartHands: getNum('costs.smartHands')
+                otherCosts: {
+                    description: getVal('costs.otherCosts.description'),
+                    oneOff: getNum('costs.otherCosts.oneOff'),
+                    monthly: getNum('costs.otherCosts.monthly')
+                }
             }
         };
         window.Store.addSalesOrder(newOrder);
@@ -1001,12 +1792,39 @@ const App = {
         const totalCapacity = item.capacity?.value || 0;
         const usagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
 
+        // Dynamic status calculation (same logic as renderInventory)
+        const today = new Date();
+        const startDate = item.dates?.start ? new Date(item.dates.start) : null;
+        const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+
+        let calculatedStatus = item.status;
+        if (endDate && today > endDate) {
+            calculatedStatus = 'Expired';
+        } else if (startDate && today < startDate) {
+            calculatedStatus = 'Draft';
+        } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
+            calculatedStatus = 'Sold Out';
+        } else {
+            calculatedStatus = 'Available';
+        }
+
+        // Status badge color
+        const statusBadgeClass = calculatedStatus === 'Available' ? 'badge-success' :
+            calculatedStatus === 'Sold Out' ? 'badge-danger' :
+                calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
+
         const linkedSalesHtml = linkedSales.length === 0
             ? '<div style="color:var(--text-muted)">No sales orders linked</div>'
             : linkedSales.map(s => `<div class="font-mono" style="margin-bottom:0.3rem;">${s.salesOrderId} - ${s.customerName} (${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'})</div>`).join('');
 
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
         const tdStyle = 'padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;';
+
+        // Check if ownership is IRU to show O&M fields
+        const isIRU = item.acquisition?.ownership === 'IRU';
+        const omRate = item.financials?.omRate || 0;
+        const otc = item.financials?.otc || 0;
+        const annualOmCost = (otc * omRate / 100);
 
         const detailsHtml = `
             <div class="grid-2" style="gap:1.5rem; align-items: start;">
@@ -1015,7 +1833,7 @@ const App = {
                         <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
                         <table style="width:100%;">
                             <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
-                            <tr><td style="${tdStyle}">Status</td><td><span class="badge">${item.status || 'Available'}</span></td></tr>
+                            <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
                             <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
                             <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
                             <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
@@ -1060,6 +1878,10 @@ const App = {
                         <table style="width:100%;">
                             <tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>
                             <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                            ${isIRU ? `
+                            <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
+                            <tr><td style="${tdStyle}">Annual O&M Cost</td><td class="font-mono" style="color:var(--accent-warning)">$${annualOmCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+                            ` : ''}
                             <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
                             <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
                             <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
