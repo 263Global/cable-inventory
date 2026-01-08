@@ -482,10 +482,16 @@ h6 {
 @media (max-width: 768px) {
     body {
         flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        /* Enable body scroll for Safari address bar collapse */
     }
 
     #app {
         flex-direction: column;
+        min-height: 100vh;
     }
 
     /* Mobile Sidebar - Bottom Navigation */
@@ -549,6 +555,8 @@ h6 {
     .main-content {
         padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
         /* Space for bottom nav + safe area */
+        overflow: visible;
+        /* Let body scroll instead */
     }
 
     .header {
