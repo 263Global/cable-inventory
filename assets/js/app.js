@@ -1878,7 +1878,7 @@ const App = {
                                 <td>
                                     <div style="font-weight:600">${item.cableSystem}</div>
                                     <div style="font-size:0.8em; color:var(--text-muted)">
-                                        ${item.fiberPair || '-'} | ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
+                                        ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
                                     </div>
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
                                         ${item.segmentType || ''} (${item.protection || ''})

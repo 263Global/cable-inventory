@@ -478,6 +478,34 @@ select.form-control {
     .form-group {
         margin-bottom: 1.25rem;
     }
+
+    /* Detail modal - grid-2 becomes single column */
+    .modal-body .grid-2 {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* Detail modal tables - compact and no overflow */
+    .modal-body table {
+        min-width: unset !important;
+        width: 100% !important;
+        font-size: 0.8rem;
+    }
+
+    .modal-body table td {
+        padding: 0.4rem 0.25rem;
+        word-break: break-word;
+    }
+
+    .modal-body table td:first-child {
+        width: 40%;
+        font-size: 0.75rem;
+    }
+
+    .modal-body .font-mono {
+        font-size: 0.75rem;
+        word-break: break-all;
+    }
 }
 
 /* Cards - Mobile adjustments */
