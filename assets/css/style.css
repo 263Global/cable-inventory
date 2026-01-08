@@ -633,3 +633,330 @@ h6 {
         font-size: 0.6rem;
     }
 }
+
+/* ===== RESPONSIVE UTILITY CLASSES ===== */
+
+/* Mobile-only visibility */
+.mobile-hidden {
+    display: block;
+}
+
+.mobile-show {
+    display: none !important;
+}
+
+/* Tablet visibility */
+.tablet-hidden {
+    display: block;
+}
+
+/* Mobile devices (<768px) - Hide secondary content */
+@media (max-width: 768px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    .mobile-show {
+        display: block !important;
+    }
+
+    /* Dashboard optimizations */
+    .dashboard-grid-metrics {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem;
+    }
+
+    .dashboard-secondary {
+        display: none !important;
+    }
+
+    /* Compact metric cards for mobile */
+    .metric-card-compact .metric-label {
+        font-size: 0.65rem;
+    }
+
+    .metric-card-compact .metric-value {
+        font-size: 1.25rem;
+    }
+
+    /* Alert cards - show summary only */
+    .alert-card-details {
+        display: none;
+    }
+
+    .alert-card-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Dashboard alert card tables - compact for mobile */
+    .grid-2>.card table {
+        min-width: unset !important;
+        width: 100%;
+        font-size: 0.7rem;
+    }
+
+    .grid-2>.card th,
+    .grid-2>.card td {
+        padding: 0.35rem 0.2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100px;
+    }
+
+    .grid-2>.card .font-mono {
+        font-size: 0.65rem;
+    }
+
+    /* Table column hiding - controlled via classes */
+    .col-acquisition,
+    .col-location,
+    .col-cost-info,
+    .col-margin,
+    .col-margin-percent,
+    .col-salesperson,
+    .col-expires {
+        display: none !important;
+    }
+
+    /* ===== Inventory & Sales Table - Beautiful Card Layout for Mobile ===== */
+    .inventory-table,
+    .sales-table {
+        min-width: unset !important;
+    }
+
+    .inventory-table thead,
+    .sales-table thead {
+        display: none;
+    }
+
+    .inventory-table tbody,
+    .sales-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .inventory-table tbody tr,
+    .sales-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto auto;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        gap: 0.5rem 1rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .inventory-table tbody td,
+    .sales-table tbody td {
+        border-bottom: none;
+        padding: 0;
+    }
+
+    /* Row 1: ID (left) + Status (right) */
+    .inventory-table tbody td:first-child,
+    .sales-table tbody td:first-child {
+        grid-column: 1;
+        grid-row: 1;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--accent-secondary);
+    }
+
+    /* Status badge - only show badge on mobile, hide progress bar */
+    .inventory-table tbody td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    /* Hide progress bar and order count on mobile */
+    .inventory-table tbody td:nth-child(2)>div:not(:first-child) {
+        display: none !important;
+    }
+
+    .sales-table tbody td:nth-child(5) {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    /* Row 2: Main info - Details for Inventory */
+    .inventory-table tbody td:nth-child(4) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        font-size: 0.85rem;
+        padding: 0.75rem 0;
+    }
+
+    .inventory-table tbody td:nth-child(4)>div:first-child {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-highlight);
+        margin-bottom: 0.35rem;
+    }
+
+    .inventory-table tbody td:nth-child(4)>div:nth-child(2) {
+        font-size: 0.85rem;
+        color: var(--accent-primary);
+        font-weight: 500;
+    }
+
+    .inventory-table tbody td:nth-child(4)>div:nth-child(3) {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Customer for Sales */
+    .sales-table tbody td:nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding: 0.5rem 0;
+    }
+
+    .sales-table tbody td:nth-child(2)>div:first-child {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-highlight);
+    }
+
+    /* Revenue for Sales - prominent display */
+    .sales-table tbody td:nth-child(6) {
+        grid-column: 1;
+        grid-row: 3;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent-success);
+        padding-top: 0.5rem;
+    }
+
+    /* Row 3: Actions */
+    .inventory-table tbody td:last-child {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .inventory-table tbody td:last-child .flex {
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .inventory-table tbody td:last-child .btn {
+        flex: 1;
+        max-width: 80px;
+    }
+
+    .sales-table tbody td:last-child {
+        grid-column: 2;
+        grid-row: 3;
+        justify-self: end;
+        align-self: center;
+        padding-top: 0.5rem;
+    }
+
+    .sales-table tbody td:last-child .flex {
+        gap: 0.5rem;
+    }
+
+    .inventory-table tbody td:last-child .btn,
+    .sales-table tbody td:last-child .btn {
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Hide non-essential columns completely */
+    .inventory-table tbody .col-acquisition,
+    .inventory-table tbody .col-cost-info,
+    .inventory-table tbody .col-location,
+    .sales-table tbody td:nth-child(3),
+    .sales-table tbody td:nth-child(4) {
+        display: none !important;
+    }
+
+    /* Table mobile card view (generic fallback) */
+    .table-mobile-cards tbody tr {
+        display: block;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
+
+    .table-mobile-cards tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.35rem 0;
+        border-bottom: none;
+    }
+
+    .table-mobile-cards tbody td::before {
+        content: attr(data-label);
+        font-weight: 500;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+
+    .table-mobile-cards thead {
+        display: none;
+    }
+}
+
+/* Tablet devices (768px - 1024px) */
+@media (max-width: 1024px) {
+    .tablet-hidden {
+        display: none !important;
+    }
+
+    /* Dashboard 3-column for tablets */
+    .dashboard-grid-bottom {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Large screens (1600px+) - Enhanced spacing */
+@media (min-width: 1600px) {
+    .dashboard-grid-metrics {
+        gap: 1.5rem;
+    }
+
+    .card {
+        padding: 1.5rem;
+    }
+
+    .metric-value {
+        font-size: 2.25rem;
+    }
+}
+
+/* Extra Large Screens (2560px+) */
+@media (min-width: 2560px) {
+    .dashboard-grid-metrics {
+        gap: 2rem;
+    }
+
+    .card {
+        padding: 1.75rem;
+    }
+
+    .metric-card .metric-label {
+        font-size: 0.85rem;
+    }
+
+    table {
+        font-size: 0.95rem;
+    }
+
+    th,
+    td {
+        padding: 1rem 1.25rem;
+    }
+}

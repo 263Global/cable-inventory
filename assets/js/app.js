@@ -163,7 +163,7 @@ const App = {
 
         const html = `
             <!-- Top Stats -->
-            <div class="grid-4 mb-4">
+            <div class="grid-4 mb-4 dashboard-grid-metrics">
                 <div class="card metric-card">
                     <span class="metric-label">Capacity Usage (Gbps)</span>
                     <span class="metric-value" style="color: var(--accent-primary)">
@@ -201,14 +201,14 @@ const App = {
                     </div>
                     ${expiringSales.length === 0 ? '<p style="color:var(--text-muted)">No sales contracts expiring soon.</p>' : `
                         <table style="font-size:0.85rem">
-                            <thead><tr><th>Order</th><th>Customer</th><th>Expires In</th></tr></thead>
+                            <thead><tr><th>Order</th><th>Customer</th><th class="col-expires">Expires In</th></tr></thead>
                             <tbody>
                                 ${expiringSales.map(s => {
             const days = getDaysDiff(s.dates?.end);
             return `<tr>
                                         <td class="font-mono">${s.salesOrderId}</td>
                                         <td>${s.customerName}</td>
-                                        <td style="color:var(--accent-warning)">${days} Days</td>
+                                        <td class="col-expires" style="color:var(--accent-warning)">${days} Days</td>
                                     </tr>`;
         }).join('')}
                             </tbody>
@@ -224,14 +224,14 @@ const App = {
                     </div>
                     ${expiringInventory.length === 0 ? '<p style="color:var(--text-muted)">No inventory agreements expiring soon.</p>' : `
                          <table style="font-size:0.85rem">
-                            <thead><tr><th>Resource</th><th>System</th><th>Expires In</th></tr></thead>
+                            <thead><tr><th>Resource</th><th>System</th><th class="col-expires">Expires In</th></tr></thead>
                             <tbody>
                                 ${expiringInventory.map(i => {
             const days = getDaysDiff(i.dates?.end);
             return `<tr>
                                         <td class="font-mono">${i.resourceId}</td>
                                         <td>${i.cableSystem}</td>
-                                        <td style="color:var(--accent-danger)">${days} Days</td>
+                                        <td class="col-expires" style="color:var(--accent-danger)">${days} Days</td>
                                     </tr>`;
         }).join('')}
                             </tbody>
@@ -241,7 +241,7 @@ const App = {
             </div>
 
             <!-- Bottom Actions -->
-            <div class="grid-3 mb-4">
+            <div class="grid-3 mb-4 dashboard-grid-bottom dashboard-secondary mobile-hidden">
                 <!-- Sales Leaderboard -->
                 <div class="card" style="border-left: 4px solid var(--accent-primary);">
                     <div class="flex justify-between items-center mb-4">
@@ -1803,10 +1803,10 @@ const App = {
                         <tr>
                             <th>Resource ID</th>
                             <th>Status</th>
-                            <th>Acquisition</th>
+                            <th class="col-acquisition">Acquisition</th>
                             <th>Details</th>
-                            <th>Cost Info</th>
-                            <th>Location (A / Z)</th>
+                            <th class="col-cost-info">Cost Info</th>
+                            <th class="col-location">Location (A / Z)</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1871,7 +1871,7 @@ const App = {
                                     </div>
                                     ${linkedSales.length > 0 ? `<div style="font-size:0.65rem; color:var(--accent-primary); margin-top:4px;">📋 ${linkedSales.length} order${linkedSales.length > 1 ? 's' : ''}</div>` : ''}
                                 </td>
-                                <td>
+                                <td class="col-acquisition">
                                     <div style="font-weight:500">${item.acquisition?.type || 'Purchased'}</div>
                                     <div style="font-size:0.75rem; color:var(--text-muted)">${item.acquisition?.ownership || ''}</div>
                                 </td>
@@ -1884,12 +1884,12 @@ const App = {
                                         ${item.segmentType || ''} (${item.protection || ''})
                                     </div>
                                 </td>
-                                <td>
+                                <td class="col-cost-info">
                                     ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
                                     <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.financials?.otc || 0).toLocaleString()}</div>
                                     <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${item.dates?.end || 'N/A'}</div>
                                 </td>
-                                <td style="font-size:0.85rem">
+                                <td class="col-location" style="font-size:0.85rem">
                                     <div><strong style="color:var(--accent-primary)">A:</strong> ${item.location?.aEnd?.pop || '-'} (${item.location?.aEnd?.city || ''})</div>
                                     <div><strong style="color:var(--accent-secondary)">Z:</strong> ${item.location?.zEnd?.pop || '-'} (${item.location?.zEnd?.city || ''})</div>
                                 </td>
@@ -2440,9 +2440,9 @@ const App = {
                             <th>Capacity</th>
                             <th>Status</th>
                             <th>Revenue</th>
-                            <th>Margin</th>
-                            <th>Margin %</th>
-                            <th>Salesperson</th>
+                            <th class="col-margin">Margin</th>
+                            <th class="col-margin-percent">Margin %</th>
+                            <th class="col-salesperson">Salesperson</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -2494,9 +2494,9 @@ const App = {
                                 <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
                                 <td class="font-mono" style="color: var(--accent-success)">$${mrr.toLocaleString()}</td>
-                                <td class="font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
-                                <td><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
-                                <td style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
+                                <td class="col-margin font-mono" style="color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
+                                <td class="col-margin-percent"><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
+                                <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
                                 <td>
                                     <div class="flex gap-4">
                                         <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')" title="View">
