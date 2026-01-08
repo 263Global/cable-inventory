@@ -65,7 +65,7 @@ const App = {
 
     deleteInventoryItem(id) {
         if (confirm('Are you sure you want to delete this resource?')) {
-            window.Store.deleteInventoryItem(id);
+            window.Store.deleteInventory(id);
             this.renderInventoryView();
         }
     },
@@ -1767,7 +1767,7 @@ const App = {
                                         <button class="btn btn-primary" style="padding:0.4rem" onclick="App.openInventoryModal('${item.resourceId}')" title="Edit">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete ${item.resourceId}?')) { window.Store.deleteInventory('${item.resourceId}'); App.renderView('inventory'); }" title="Delete">
+                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="window.Store.deleteInventory('${item.resourceId}'); App.renderView('inventory');" title="Delete">
                                             <ion-icon name="trash-outline"></ion-icon>
                                         </button>
                                     </div>
@@ -1909,14 +1909,31 @@ const App = {
         const item = resourceId ? window.Store.getInventory().find(i => i.resourceId === resourceId) : {};
         const isEdit = !!resourceId;
 
+        // Calculate correct status based on capacity usage
+        let calculatedStatus = item.status || 'Available';
+        if (isEdit && item.resourceId) {
+            const allSales = window.Store.getSales(); // Assuming getSales() returns all sales orders
+            const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
+            let totalSoldCapacity = 0;
+            linkedSales.forEach(s => {
+                totalSoldCapacity += (s.capacity?.value || 0);
+            });
+            const totalCapacity = item.capacity?.value || 0;
+
+            if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
+                calculatedStatus = 'Sold Out';
+            } else if (totalSoldCapacity > 0) {
+                calculatedStatus = 'In Use';
+            } else {
+                calculatedStatus = 'Available';
+            }
+        }
+
         const formHTML = `
                 ${item.usage?.currentUser ? `
                 <!-- Usage Information -->
                 <div class="mb-4 p-3" style="background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px;">
-                    <h4 style="color: var(--accent-danger); margin-bottom: 0.5rem;">
-                        <ion-icon name="person-circle-outline" style="vertical-align: middle;"></ion-icon> 
-                        Resource In Use
-                    </h4>
+                    <h4 class="mb-2" style="color: var(--accent-danger); font-size: 0.9rem;"><ion-icon name="link-outline"></ion-icon> Linked Sales</h4>
                     <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
                         <div>
                             <span style="color: var(--text-muted); font-size: 0.85rem;">Customer:</span>
@@ -1940,10 +1957,11 @@ const App = {
                     <div class="form-group">
                         <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
                         <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
-                            <option ${item.status === 'Draft' ? 'selected' : ''}>Draft</option>
-                            <option ${item.status === 'Available' ? 'selected' : ''}>Available</option>
-                            <option ${item.status === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
-                            <option ${item.status === 'Expired' ? 'selected' : ''}>Expired</option>
+                            <option ${calculatedStatus === 'Draft' ? 'selected' : ''}>Draft</option>
+                            <option ${calculatedStatus === 'Available' ? 'selected' : ''}>Available</option>
+                            <option ${calculatedStatus === 'In Use' ? 'selected' : ''}>In Use</option>
+                            <option ${calculatedStatus === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
+                            <option ${calculatedStatus === 'Expired' ? 'selected' : ''}>Expired</option>
                         </select>
                     </div>
                 </div>
@@ -2072,7 +2090,7 @@ const App = {
                         <input type="number" class="form-control" name="financials.mrc" value="${item.financials?.mrc || 0}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC/OTC ($)'}</label>
+                        <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC ($)'}</label>
                         <input type="number" class="form-control" name="financials.otc" value="${item.financials?.otc || 0}">
                     </div>
                     <div class="form-group">
@@ -2199,7 +2217,7 @@ const App = {
                     mrcContainer.style.display = isIRU ? 'none' : 'block';
                 }
                 if (otcLabel) {
-                    otcLabel.textContent = isIRU ? 'OTC ($)' : 'NRC/OTC ($)';
+                    otcLabel.textContent = isIRU ? 'OTC ($)' : 'NRC ($)';
                 }
             });
         }
@@ -2317,7 +2335,7 @@ const App = {
                                         <button class="btn btn-primary" style="padding:0.4rem" onclick="App.editSalesOrder('${item.salesOrderId}')" title="Edit">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="if(confirm('Delete order ${item.salesOrderId}?')) { window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales'); }" title="Delete">
+                                        <button class="btn btn-danger" style="padding:0.4rem" onclick="window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales');" title="Delete">
                                             <ion-icon name="trash-outline"></ion-icon>
                                         </button>
                                     </div>
