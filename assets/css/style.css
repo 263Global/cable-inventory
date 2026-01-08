@@ -294,6 +294,10 @@ h6 {
     margin-bottom: 1rem;
 }
 
+.mb-6 {
+    margin-bottom: 1.5rem;
+}
+
 .p-3 {
     padding: 0.75rem;
 }
@@ -319,13 +323,13 @@ h6 {
 .grid-2 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 /* Compact 3-column for space-constrained areas */
@@ -338,7 +342,7 @@ h6 {
 .grid-4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 /* Scrollbar - Subtle */
@@ -636,9 +640,9 @@ h6 {
 
 /* ===== RESPONSIVE UTILITY CLASSES ===== */
 
-/* Mobile-only visibility */
+/* Mobile-only visibility - visible on desktop (inherits display from other classes) */
 .mobile-hidden {
-    display: block;
+    /* Don't set display here - let grid/flex classes take precedence */
 }
 
 .mobile-show {
@@ -928,7 +932,13 @@ h6 {
     /* Dashboard 3-column for tablets */
     .dashboard-grid-bottom {
         grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
     }
+}
+
+/* Dashboard bottom section - desktop */
+.dashboard-grid-bottom {
+    gap: 1rem;
 }
 
 /* Large screens (1600px+) - Enhanced spacing */
@@ -968,4 +978,232 @@ h6 {
     td {
         padding: 1rem 1.25rem;
     }
+}
+
+/* ===== Dashboard Alert Cards ===== */
+.alert-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.alert-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.alert-title-short {
+    display: none;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+
+.alert-item-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-main);
+}
+
+.alert-item-name {
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.alert-item-days {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.alert-more {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ===== Simple Metric Cards ===== */
+.simple-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ===== Mobile Dashboard Optimizations ===== */
+@media (max-width: 768px) {
+
+    /* Simple metric cards - horizontal layout on mobile */
+    .simple-metric {
+        flex-direction: row !important;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .simple-metric .metric-label {
+        font-size: 0.65rem;
+    }
+
+    .simple-metric .metric-value {
+        font-size: 1.1rem;
+    }
+
+    /* Alert grid - stack on mobile */
+    .alert-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+
+    /* Alert cards - compact */
+    .alert-card {
+        padding: 0.875rem !important;
+    }
+
+    .alert-header {
+        margin-bottom: 0.75rem;
+    }
+
+    .alert-header h3 {
+        font-size: 0.85rem;
+    }
+
+    .alert-title-full {
+        display: none;
+    }
+
+    .alert-title-short {
+        display: inline;
+    }
+
+    .alert-item {
+        padding: 0.35rem 0;
+        font-size: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .alert-item-id {
+        font-size: 0.7rem;
+    }
+
+    .alert-item-name {
+        max-width: 120px;
+    }
+
+    .alert-item-days {
+        font-size: 0.7rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .alert-item-name {
+        max-width: 80px;
+    }
+
+    .simple-metric .metric-value {
+        font-size: 1rem;
+    }
+}
+
+/* ===== Metric Card Icons ===== */
+.metric-icon {
+    margin-right: 0.25rem;
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .metric-icon {
+        display: none;
+    }
+}
+
+/* ===== Leaderboard Styles ===== */
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.leaderboard-item:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-rank {
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.leaderboard-info {
+    min-width: 0;
+}
+
+.leaderboard-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leaderboard-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.leaderboard-item.top-1 .leaderboard-name {
+    font-weight: 600;
+    color: var(--accent-warning);
+}
+
+.leaderboard-item.top-2 .leaderboard-name {
+    font-weight: 600;
+    color: #c0c0c0;
+}
+
+.leaderboard-item.top-3 .leaderboard-name {
+    font-weight: 600;
+    color: #cd7f32;
 }

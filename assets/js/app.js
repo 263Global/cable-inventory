@@ -163,28 +163,33 @@ const App = {
 
         const html = `
             <!-- Top Stats -->
-            <div class="grid-4 mb-4 dashboard-grid-metrics">
-                <div class="card metric-card">
-                    <span class="metric-label">Capacity Usage (Gbps)</span>
-                    <span class="metric-value" style="color: var(--accent-primary)">
-                        <span style="font-size:0.9em">${totalSoldCapacity.toLocaleString()}</span>
-                        <span style="font-size:0.65em; color:var(--text-muted)"> / ${totalCapacity.toLocaleString()}</span>
-                    </span>
-                    <div style="margin-top:0.5rem; width:100%; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden;">
-                        <div style="width:${capacityUsagePercent}%; height:100%; background:${capacityUsagePercent >= 80 ? 'var(--accent-danger)' : capacityUsagePercent >= 50 ? 'var(--accent-warning)' : 'var(--accent-success)'}; transition:width 0.3s;"></div>
+            <div class="grid-4 mb-6 dashboard-grid-metrics">
+                <div class="card metric-card capacity-card">
+                    <div class="capacity-left">
+                        <span class="metric-label"><ion-icon name="cube-outline" class="metric-icon"></ion-icon> Capacity</span>
+                        <span class="metric-value" style="color: var(--accent-primary)">
+                            <span class="capacity-sold">${totalSoldCapacity.toLocaleString()}</span><span class="capacity-total" style="font-size:0.65em; color:var(--text-muted)">/${totalCapacity.toLocaleString()}</span>
+                        </span>
                     </div>
-                    <span style="font-size:0.7rem; color:var(--text-muted)">${capacityUsagePercent}% utilized</span>
+                    <div class="capacity-right">
+                        <div class="capacity-bar-wrapper">
+                            <div style="width:100%; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden;">
+                                <div style="width:${capacityUsagePercent}%; height:100%; background:${capacityUsagePercent >= 80 ? 'var(--accent-danger)' : capacityUsagePercent >= 50 ? 'var(--accent-warning)' : 'var(--accent-success)'}; transition:width 0.3s;"></div>
+                            </div>
+                            <span style="font-size:0.7rem; color:var(--text-muted)">${capacityUsagePercent}%</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="card metric-card">
-                    <span class="metric-label">Monthly Revenue (MRR)</span>
+                <div class="card metric-card simple-metric">
+                    <span class="metric-label"><ion-icon name="cash-outline" class="metric-icon"></ion-icon> MRR</span>
                     <span class="metric-value" style="color: var(--accent-success)">$${totalMrr.toLocaleString()}</span>
                 </div>
-                <div class="card metric-card">
-                    <span class="metric-label">Active Orders</span>
+                <div class="card metric-card simple-metric">
+                    <span class="metric-label"><ion-icon name="receipt-outline" class="metric-icon"></ion-icon> Orders</span>
                     <span class="metric-value">${activeOrders}</span>
                 </div>
-                <div class="card metric-card">
-                    <span class="metric-label">Est. Monthly Profit</span>
+                <div class="card metric-card simple-metric">
+                    <span class="metric-label"><ion-icon name="trending-up-outline" class="metric-icon"></ion-icon> Profit</span>
                     <span class="metric-value" style="color: ${profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">
                         $${profit.toLocaleString()}
                     </span>
@@ -192,75 +197,88 @@ const App = {
             </div>
 
             <!-- Alerts Row -->
-            <div class="grid-2 mb-4">
+            <div class="grid-2 mb-6 alert-grid">
                 <!-- Sales Alerts -->
-                <div class="card" style="border-left: 4px solid var(--accent-warning);">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 style="color: var(--accent-warning)"><ion-icon name="alert-circle-outline"></ion-icon> Expiring Sales (90 Days)</h3>
-                        <span class="badge badge-warning">${expiringSales.length} Pending</span>
+                <div class="card alert-card" style="border-left: 4px solid var(--accent-warning);">
+                    <div class="alert-header">
+                        <h3 style="color: var(--accent-warning)"><ion-icon name="alert-circle-outline"></ion-icon> <span class="alert-title-full">Expiring Sales (90 Days)</span><span class="alert-title-short">Sales Expiry</span></h3>
+                        <span class="badge badge-warning">${expiringSales.length}</span>
                     </div>
-                    ${expiringSales.length === 0 ? '<p style="color:var(--text-muted)">No sales contracts expiring soon.</p>' : `
-                        <table style="font-size:0.85rem">
-                            <thead><tr><th>Order</th><th>Customer</th><th class="col-expires">Expires In</th></tr></thead>
-                            <tbody>
-                                ${expiringSales.map(s => {
+                    <div class="alert-content">
+                    ${expiringSales.length === 0 ? '<p style="color:var(--text-muted)">No contracts expiring soon.</p>' : `
+                        <div class="alert-list">
+                            ${expiringSales.slice(0, 5).map(s => {
             const days = getDaysDiff(s.dates?.end);
-            return `<tr>
-                                        <td class="font-mono">${s.salesOrderId}</td>
-                                        <td>${s.customerName}</td>
-                                        <td class="col-expires" style="color:var(--accent-warning)">${days} Days</td>
-                                    </tr>`;
+            return `<div class="alert-item">
+                                <span class="alert-item-id">${s.salesOrderId}</span>
+                                <span class="alert-item-name">${s.customerName}</span>
+                                <span class="alert-item-days" style="color:var(--accent-warning)">${days}d</span>
+                            </div>`;
         }).join('')}
-                            </tbody>
-                        </table>
+                        </div>
+                        ${expiringSales.length > 5 ? `<div class="alert-more">+${expiringSales.length - 5} more</div>` : ''}
                     `}
+                    </div>
                 </div>
 
                 <!-- Inventory Alerts -->
-                <div class="card" style="border-left: 4px solid var(--accent-danger);">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 style="color: var(--accent-danger)"><ion-icon name="timer-outline"></ion-icon> Expiring Resources (90 Days)</h3>
-                        <span class="badge badge-danger">${expiringInventory.length} Pending</span>
+                <div class="card alert-card" style="border-left: 4px solid var(--accent-danger);">
+                    <div class="alert-header">
+                        <h3 style="color: var(--accent-danger)"><ion-icon name="timer-outline"></ion-icon> <span class="alert-title-full">Expiring Resources (90 Days)</span><span class="alert-title-short">Resource Expiry</span></h3>
+                        <span class="badge badge-danger">${expiringInventory.length}</span>
                     </div>
-                    ${expiringInventory.length === 0 ? '<p style="color:var(--text-muted)">No inventory agreements expiring soon.</p>' : `
-                         <table style="font-size:0.85rem">
-                            <thead><tr><th>Resource</th><th>System</th><th class="col-expires">Expires In</th></tr></thead>
-                            <tbody>
-                                ${expiringInventory.map(i => {
+                    <div class="alert-content">
+                    ${expiringInventory.length === 0 ? '<p style="color:var(--text-muted)">No resources expiring soon.</p>' : `
+                        <div class="alert-list">
+                            ${expiringInventory.slice(0, 5).map(i => {
             const days = getDaysDiff(i.dates?.end);
-            return `<tr>
-                                        <td class="font-mono">${i.resourceId}</td>
-                                        <td>${i.cableSystem}</td>
-                                        <td class="col-expires" style="color:var(--accent-danger)">${days} Days</td>
-                                    </tr>`;
+            return `<div class="alert-item">
+                                <span class="alert-item-id">${i.resourceId}</span>
+                                <span class="alert-item-name">${i.cableSystem}</span>
+                                <span class="alert-item-days" style="color:var(--accent-danger)">${days}d</span>
+                            </div>`;
         }).join('')}
-                            </tbody>
-                        </table>
+                        </div>
+                        ${expiringInventory.length > 5 ? `<div class="alert-more">+${expiringInventory.length - 5} more</div>` : ''}
                     `}
+                    </div>
                 </div>
             </div>
 
             <!-- Bottom Actions -->
             <div class="grid-3 mb-4 dashboard-grid-bottom dashboard-secondary mobile-hidden">
                 <!-- Sales Leaderboard -->
-                <div class="card" style="border-left: 4px solid var(--accent-primary);">
+                <div class="card leaderboard-card" style="border-left: 4px solid var(--accent-primary);">
                     <div class="flex justify-between items-center mb-4">
                         <h3 style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
                     </div>
                     ${leaderboard.length === 0 ? '<p style="color:var(--text-muted)">No sales data available.</p>' : `
-                        <table style="font-size:0.85rem;">
-                            <thead><tr><th>#</th><th>Salesperson</th><th>MRR</th><th>Orders</th></tr></thead>
-                            <tbody>
-                                ${leaderboard.slice(0, 5).map((p, idx) => `
-                                    <tr>
-                                        <td style="font-weight:600; color:${idx === 0 ? 'var(--accent-warning)' : 'var(--text-muted)'}">${idx + 1}</td>
-                                        <td style="font-weight:${idx === 0 ? '600' : '400'}">${p.name}</td>
-                                        <td class="font-mono" style="color:var(--accent-success)">$${p.totalMrr.toLocaleString()}</td>
-                                        <td>${p.orderCount}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                        <div class="leaderboard-list">
+                            ${(() => {
+                    const maxMrr = leaderboard.length > 0 ? leaderboard[0].totalMrr : 1;
+                    return leaderboard.slice(0, 5).map((p, idx) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const medal = idx < 3 ? medals[idx] : `<span style="color:var(--text-muted); width:20px; display:inline-block; text-align:center;">${idx + 1}</span>`;
+                        const barWidth = maxMrr > 0 ? Math.round((p.totalMrr / maxMrr) * 100) : 0;
+                        const isTop3 = idx < 3;
+                        return `
+                                        <div class="leaderboard-item ${isTop3 ? 'top-' + (idx + 1) : ''}">
+                                            <div class="leaderboard-rank">${medal}</div>
+                                            <div class="leaderboard-info">
+                                                <div class="leaderboard-name">${p.name}</div>
+                                                <div class="leaderboard-bar" style="background: var(--border-color); height: 4px; border-radius: 2px; margin-top: 4px;">
+                                                    <div style="width: ${barWidth}%; height: 100%; background: ${idx === 0 ? 'var(--accent-warning)' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--accent-primary)'}; border-radius: 2px; transition: width 0.3s;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="leaderboard-stats">
+                                                <span class="font-mono" style="color:var(--accent-success); font-weight: 600;">$${p.totalMrr.toLocaleString()}</span>
+                                                <span style="font-size: 0.7rem; color: var(--text-muted);">${p.orderCount} orders</span>
+                                            </div>
+                                        </div>
+                                    `;
+                    }).join('');
+                })()}
+                        </div>
                     `}
                 </div>
 
@@ -304,10 +322,10 @@ const App = {
                     <h3 class="mb-4">Quick Actions</h3>
                     <button class="btn btn-secondary" onclick="App.renderView('inventory')">View Inventory</button>
                     <br><br>
-                    <button class="btn btn-secondary" onclick="App.renderView('sales')">View Sales</button>
+                        <button class="btn btn-secondary" onclick="App.renderView('sales')">View Sales</button>
+                    </div>
                 </div>
-            </div>
-        `;
+                `;
         this.container.innerHTML = html;
     },
 
@@ -329,252 +347,252 @@ const App = {
         }).join('');
 
         const modalContent = `
-            <div class="grid-2 gap-2" style="align-items: start;">
-                <!-- LEFT COLUMN: Sales Info -->
-                <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
-                    
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Order ID <small style="color:var(--text-muted)">(Auto if blank)</small></label>
-                            <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Customer Name</label>
-                            <input type="text" class="form-control" name="customerName" required>
-                        </div>
-                    </div>
+                <div class="grid-2 gap-2" style="align-items: start;">
+                    <!-- LEFT COLUMN: Sales Info -->
+                    <div class="section-card">
+                        <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
-                    <div class="form-group">
-                        <label class="form-label">Linked Resource (Available)</label>
-                        <select class="form-control" name="inventoryLink" required>
-                            <option value="">Select Resource...</option>
-                            ${resourceOptions}
-                        </select>
-                        ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
-                    </div>
-
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Capacity Sold</label>
-                            <input type="number" class="form-control" name="capacity.value" value="10" min="1" placeholder="e.g., 10">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Unit</label>
-                            <select class="form-control" name="capacity.unit">
-                                <option>Gbps</option>
-                                <option>Wavelength</option>
-                                <option>Fiber Pair</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid-3">
-                        <div class="form-group">
-                            <label class="form-label">Contract Start</label>
-                            <input type="date" class="form-control" name="dates.start" id="sales-start-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Term (Months)</label>
-                            <input type="number" class="form-control" name="dates.term" id="sales-term" value="12" min="1" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Contract End <small style="color:var(--text-muted)">(Auto)</small></label>
-                            <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);">
-                        </div>
-                    </div>
-
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Sales Status</label>
-                            <input type="text" class="form-control" id="sales-status-display" value="Pending" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Salesperson</label>
-                            <select class="form-control" name="salesperson" required>
-                                <option value="">Select...</option>
-                                <option>Janna Dai</option>
-                                <option>Miki Chen</option>
-                                <option>Wayne Jiang</option>
-                                <option>Kristen Gan</option>
-                                <option>Becky Hai</option>
-                                <option>Wolf Yuan</option>
-                                <option>Yifeng Jiang</option>
-                                <option>Procurement Team</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h5 class="mt-4 mb-2">Delivery Location</h5>
-                    <div class="grid-2">
-                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                            <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label class="form-label">City</label>
-                                    <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">PoP</label>
-                                    <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                            <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label class="form-label">City</label>
-                                    <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">PoP</label>
-                                    <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h5 class="mt-4 mb-2">Sales Model & Type</h5>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Sales Model</label>
-                            <select class="form-control" name="salesModel" id="sales-model-select">
-                                <option value="Lease">Lease (月租模式)</option>
-                                <option value="IRU">IRU (买断模式)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Sales Type</label>
-                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                <option value="Resale">Resale (外部资源)</option>
-                                <option value="Hybrid">Hybrid (混合资源)</option>
-                                <option value="Inventory">Inventory (自有资源)</option>
-                                <option value="Swapped Out">Swapped Out (置换出去)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h5 class="mt-4 mb-2">Revenue / Price</h5>
-                    <!-- Lease Revenue Fields -->
-                    <div id="lease-revenue-fields">
                         <div class="grid-2">
                             <div class="form-group">
-                                <label class="form-label">MRC Sales ($)</label>
-                                <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
+                                <label class="form-label">Order ID <small style="color:var(--text-muted)">(Auto if blank)</small></label>
+                                <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">NRC Sales ($)</label>
-                                <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
+                                <label class="form-label">Customer Name</label>
+                                <input type="text" class="form-control" name="customerName" required>
                             </div>
                         </div>
-                    </div>
-                    <!-- IRU Revenue Fields -->
-                    <div id="iru-revenue-fields" style="display:none;">
-                        <div class="grid-3" style="align-items: end;">
+
+                        <div class="form-group">
+                            <label class="form-label">Linked Resource (Available)</label>
+                            <select class="form-control" name="inventoryLink" required>
+                                <option value="">Select Resource...</option>
+                                ${resourceOptions}
+                            </select>
+                            ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
+                        </div>
+
+                        <div class="grid-2">
                             <div class="form-group">
-                                <label class="form-label">OTC ($)</label>
-                                <input type="number" class="form-control calc-trigger" name="financials.otc" id="sales-otc" value="0">
+                                <label class="form-label">Capacity Sold</label>
+                                <input type="number" class="form-control" name="capacity.value" value="10" min="1" placeholder="e.g., 10">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">O&M Rate (%)</label>
-                                <input type="number" class="form-control calc-trigger" name="financials.omRate" id="sales-om-rate" value="3" step="0.1">
+                                <label class="form-label">Unit</label>
+                                <select class="form-control" name="capacity.unit">
+                                    <option>Gbps</option>
+                                    <option>Wavelength</option>
+                                    <option>Fiber Pair</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label class="form-label">Contract Start</label>
+                                <input type="date" class="form-control" name="dates.start" id="sales-start-date" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Annual O&M</label>
-                                <input type="number" class="form-control" name="financials.annualOm" id="sales-annual-om" value="0" readonly style="background: var(--bg-card-hover);">
+                                <label class="form-label">Term (Months)</label>
+                                <input type="number" class="form-control" name="dates.term" id="sales-term" value="12" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Contract End <small style="color:var(--text-muted)">(Auto)</small></label>
+                                <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);">
+                            </div>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Sales Status</label>
+                                <input type="text" class="form-control" id="sales-status-display" value="Pending" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Salesperson</label>
+                                <select class="form-control" name="salesperson" required>
+                                    <option value="">Select...</option>
+                                    <option>Janna Dai</option>
+                                    <option>Miki Chen</option>
+                                    <option>Wayne Jiang</option>
+                                    <option>Kristen Gan</option>
+                                    <option>Becky Hai</option>
+                                    <option>Wolf Yuan</option>
+                                    <option>Yifeng Jiang</option>
+                                    <option>Procurement Team</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-2">Delivery Location</h5>
+                        <div class="grid-2">
+                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                                <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">PoP</label>
+                                        <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                                <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">PoP</label>
+                                        <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-2">Sales Model & Type</h5>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Sales Model</label>
+                                <select class="form-control" name="salesModel" id="sales-model-select">
+                                    <option value="Lease">Lease (月租模式)</option>
+                                    <option value="IRU">IRU (买断模式)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Sales Type</label>
+                                <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
+                                    <option value="Resale">Resale (外部资源)</option>
+                                    <option value="Hybrid">Hybrid (混合资源)</option>
+                                    <option value="Inventory">Inventory (自有资源)</option>
+                                    <option value="Swapped Out">Swapped Out (置换出去)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-2">Revenue / Price</h5>
+                        <!-- Lease Revenue Fields -->
+                        <div id="lease-revenue-fields">
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">MRC Sales ($)</label>
+                                    <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">NRC Sales ($)</label>
+                                    <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- IRU Revenue Fields -->
+                        <div id="iru-revenue-fields" style="display:none;">
+                            <div class="grid-3" style="align-items: end;">
+                                <div class="form-group">
+                                    <label class="form-label">OTC ($)</label>
+                                    <input type="number" class="form-control calc-trigger" name="financials.otc" id="sales-otc" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">O&M Rate (%)</label>
+                                    <input type="number" class="form-control calc-trigger" name="financials.omRate" id="sales-om-rate" value="3" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Annual O&M</label>
+                                    <input type="number" class="form-control" name="financials.annualOm" id="sales-annual-om" value="0" readonly style="background: var(--bg-card-hover);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profitability Summary Widget -->
+                        <div class="mt-4 p-3" style="background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h5 class="mb-3">Profitability Analysis</h5>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                <span>Total Monthly Cost:</span>
+                                <span class="font-mono text-warning" id="disp-total-cost">$0.00</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                <span>Gross Margin ($):</span>
+                                <span class="font-mono text-success" id="disp-gross-margin">$0.00</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
+                                <span>Margin (%):</span>
+                                <span class="font-mono" id="disp-margin-percent">0.0%</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.9em; opacity:0.8;">
+                                <span>NRC Profit:</span>
+                                <span class="font-mono" id="disp-nrc-profit">$0.00</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Profitability Summary Widget -->
-                    <div class="mt-4 p-3" style="background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color);">
-                        <h5 class="mb-3">Profitability Analysis</h5>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                            <span>Total Monthly Cost:</span>
-                            <span class="font-mono text-warning" id="disp-total-cost">$0.00</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                            <span>Gross Margin ($):</span>
-                            <span class="font-mono text-success" id="disp-gross-margin">$0.00</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
-                            <span>Margin (%):</span>
-                            <span class="font-mono" id="disp-margin-percent">0.0%</span>
-                        </div>
-                         <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.9em; opacity:0.8;">
-                            <span>NRC Profit:</span>
-                            <span class="font-mono" id="disp-nrc-profit">$0.00</span>
-                        </div>
-                    </div>
-                </div>
+                    <!-- RIGHT COLUMN: Cost Structure -->
+                    <div class="section-card">
+                        <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
-                <!-- RIGHT COLUMN: Cost Structure -->
-                <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
+                        <!-- Add Cost Buttons (Sticky with Wrapper) -->
+                        <div id="cost-buttons" class="mb-4" style="display: flex; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
+                            <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
+                            </button>
+                            <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> Backhaul A
+                            </button>
+                            <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> Backhaul Z
+                            </button>
+                            <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> XC A
+                            </button>
+                            <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> XC Z
+                            </button>
+                            <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn" style="font-size: 0.8rem;">
+                                <ion-icon name="add-outline"></ion-icon> Other Costs
+                            </button>
+                        </div>
 
-                    <!-- Add Cost Buttons (Sticky with Wrapper) -->
-                    <div id="cost-buttons" class="mb-4" style="display: flex; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Backhaul A
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Backhaul Z
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> XC A
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> XC Z
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Other Costs
-                        </button>
-                    </div>
+                        <!-- Dynamic Cost Cards Container -->
+                        <div id="cost-cards-container">
+                            <!-- Cost cards will be inserted here dynamically -->
+                        </div>
 
-                    <!-- Dynamic Cost Cards Container -->
-                    <div id="cost-cards-container">
-                        <!-- Cost cards will be inserted here dynamically -->
-                    </div>
-
-                    <!-- Hidden inputs for form submission (will be populated by JS) -->
-                    <!-- Cable Cost -->
-                    <input type="hidden" name="costs.cable.supplier" value="">
-                    <input type="hidden" name="costs.cable.orderNo" value="">
-                    <input type="hidden" name="costs.cable.cableSystem" value="">
-                    <input type="hidden" name="costs.cable.capacity" value="0">
-                    <input type="hidden" name="costs.cable.capacityUnit" value="Gbps">
-                    <input type="hidden" name="costs.cable.model" value="Lease">
-                    <input type="hidden" name="costs.cable.protection" value="Unprotected">
-                    <input type="hidden" name="costs.cable.protectionCableSystem" value="">
-                    <input type="hidden" name="costs.cable.mrc" value="0">
-                    <input type="hidden" name="costs.cable.nrc" value="0">
-                    <input type="hidden" name="costs.cable.otc" value="0">
-                    <input type="hidden" name="costs.cable.omRate" value="0">
-                    <input type="hidden" name="costs.cable.annualOm" value="0">
-                    <input type="hidden" name="costs.cable.startDate" value="">
-                    <input type="hidden" name="costs.cable.termMonths" value="12">
-                    <input type="hidden" name="costs.cable.endDate" value="">
-                    <!-- Backhaul -->
-                    <input type="hidden" name="costs.backhaul.aEnd.monthly" value="0">
-                    <input type="hidden" name="costs.backhaul.aEnd.nrc" value="0">
-                    <input type="hidden" name="costs.backhaul.zEnd.monthly" value="0">
-                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="0">
-                    <!-- Cross Connect -->
-                    <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="0">
-                    <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="0">
-                    <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="0">
-                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="0">
-                    <!-- Other Costs -->
-                    <input type="hidden" name="costs.otherCosts.description" value="">
-                    <input type="hidden" name="costs.otherCosts.oneOff" value="0">
-                    <input type="hidden" name="costs.otherCosts.monthly" value="0">
-                </div>
-            </div>
-        `;
+                        <!-- Hidden inputs for form submission (will be populated by JS) -->
+                        <!-- Cable Cost -->
+                        <input type="hidden" name="costs.cable.supplier" value="">
+                            <input type="hidden" name="costs.cable.orderNo" value="">
+                                <input type="hidden" name="costs.cable.cableSystem" value="">
+                                    <input type="hidden" name="costs.cable.capacity" value="0">
+                                        <input type="hidden" name="costs.cable.capacityUnit" value="Gbps">
+                                            <input type="hidden" name="costs.cable.model" value="Lease">
+                                                <input type="hidden" name="costs.cable.protection" value="Unprotected">
+                                                    <input type="hidden" name="costs.cable.protectionCableSystem" value="">
+                                                        <input type="hidden" name="costs.cable.mrc" value="0">
+                                                            <input type="hidden" name="costs.cable.nrc" value="0">
+                                                                <input type="hidden" name="costs.cable.otc" value="0">
+                                                                    <input type="hidden" name="costs.cable.omRate" value="0">
+                                                                        <input type="hidden" name="costs.cable.annualOm" value="0">
+                                                                            <input type="hidden" name="costs.cable.startDate" value="">
+                                                                                <input type="hidden" name="costs.cable.termMonths" value="12">
+                                                                                    <input type="hidden" name="costs.cable.endDate" value="">
+                                                                                        <!-- Backhaul -->
+                                                                                        <input type="hidden" name="costs.backhaul.aEnd.monthly" value="0">
+                                                                                            <input type="hidden" name="costs.backhaul.aEnd.nrc" value="0">
+                                                                                                <input type="hidden" name="costs.backhaul.zEnd.monthly" value="0">
+                                                                                                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="0">
+                                                                                                        <!-- Cross Connect -->
+                                                                                                        <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="0">
+                                                                                                            <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="0">
+                                                                                                                <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="0">
+                                                                                                                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="0">
+                                                                                                                        <!-- Other Costs -->
+                                                                                                                        <input type="hidden" name="costs.otherCosts.description" value="">
+                                                                                                                            <input type="hidden" name="costs.otherCosts.oneOff" value="0">
+                                                                                                                                <input type="hidden" name="costs.otherCosts.monthly" value="0">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `;
 
         this.openModal('New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
 
@@ -586,426 +604,426 @@ const App = {
         // ===== Cost Card Templates =====
         const costCardTemplates = {
             cable: `
-                <div class="cost-card" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    
-                    <!-- Basic Info -->
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.cable.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.cable.orderNo">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Cable System</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.cable.cableSystem">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Capacity</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="number" class="form-control cost-input" data-field="costs.cable.capacity" value="0" style="flex: 1;">
-                                <select class="form-control cost-input" data-field="costs.cable.capacityUnit" style="width: 100px;">
-                                    <option value="Gbps">Gbps</option>
-                                    <option value="Wavelength">Wavelength</option>
-                                    <option value="Fiber Pair">Fiber Pair</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Cost Model</label>
-                            <select class="form-control cost-input cable-cost-model-select" data-field="costs.cable.model">
-                                <option value="Lease">Lease</option>
-                                <option value="IRU">IRU</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Protection</label>
-                            <select class="form-control cost-input cable-protection-select" data-field="costs.cable.protection">
-                                <option value="Unprotected">Unprotected</option>
-                                <option value="Protected">Protected</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="cable-protection-system-container form-group" style="display: none;">
-                        <label class="form-label">Protection Cable System</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.cable.protectionCableSystem" placeholder="Protection cable system name">
-                    </div>
+                                                                                                                            <div class="cost-card" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
 
-                    <!-- Lease Cost Fields -->
-                    <div class="cable-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <h6 style="color: var(--accent-success); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Lease Costs</h6>
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label class="form-label">MRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.mrc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">NRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.nrc" value="0">
-                            </div>
-                        </div>
-                    </div>
+                                                                                                                                <!-- Basic Info -->
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.cable.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.cable.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Cable System</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.cable.cableSystem">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Capacity</label>
+                                                                                                                                        <div style="display: flex; gap: 0.5rem;">
+                                                                                                                                            <input type="number" class="form-control cost-input" data-field="costs.cable.capacity" value="0" style="flex: 1;">
+                                                                                                                                                <select class="form-control cost-input" data-field="costs.cable.capacityUnit" style="width: 100px;">
+                                                                                                                                                    <option value="Gbps">Gbps</option>
+                                                                                                                                                    <option value="Wavelength">Wavelength</option>
+                                                                                                                                                    <option value="Fiber Pair">Fiber Pair</option>
+                                                                                                                                                </select>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Cost Model</label>
+                                                                                                                                        <select class="form-control cost-input cable-cost-model-select" data-field="costs.cable.model">
+                                                                                                                                            <option value="Lease">Lease</option>
+                                                                                                                                            <option value="IRU">IRU</option>
+                                                                                                                                        </select>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Protection</label>
+                                                                                                                                        <select class="form-control cost-input cable-protection-select" data-field="costs.cable.protection">
+                                                                                                                                            <option value="Unprotected">Unprotected</option>
+                                                                                                                                            <option value="Protected">Protected</option>
+                                                                                                                                        </select>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="cable-protection-system-container form-group" style="display: none;">
+                                                                                                                                    <label class="form-label">Protection Cable System</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.cable.protectionCableSystem" placeholder="Protection cable system name">
+                                                                                                                                </div>
 
-                    <!-- IRU Cost Fields -->
-                    <div class="cable-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <h6 style="color: var(--accent-warning); margin: 0 0 0.5rem 0; font-size: 0.8rem;">IRU Costs</h6>
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">OTC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger cable-otc-input" data-field="costs.cable.otc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">O&M Rate (%)</label>
-                                <input type="number" class="form-control cost-input calc-trigger cable-om-rate-input" data-field="costs.cable.omRate" value="0" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Annual O&M ($)</label>
-                                <input type="number" class="form-control cost-input cable-annual-om-display" data-field="costs.cable.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
+                                                                                                                                <!-- Lease Cost Fields -->
+                                                                                                                                <div class="cable-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <h6 style="color: var(--accent-success); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Lease Costs</h6>
+                                                                                                                                    <div class="grid-2">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">MRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.mrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">NRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.cable.nrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
 
-                    <!-- Contract Dates -->
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <h6 style="color: var(--text-muted); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Contract Period</h6>
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input cable-start-date" data-field="costs.cable.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input cable-term-months" data-field="costs.cable.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input cable-end-date" data-field="costs.cable.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Notes -->
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.cable.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `,
+                                                                                                                                <!-- IRU Cost Fields -->
+                                                                                                                                <div class="cable-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <h6 style="color: var(--accent-warning); margin: 0 0 0.5rem 0; font-size: 0.8rem;">IRU Costs</h6>
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">OTC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger cable-otc-input" data-field="costs.cable.otc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">O&M Rate (%)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger cable-om-rate-input" data-field="costs.cable.omRate" value="0" step="0.1">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Annual O&M ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input cable-annual-om-display" data-field="costs.cable.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+
+                                                                                                                                <!-- Contract Dates -->
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <h6 style="color: var(--text-muted); margin: 0 0 0.5rem 0; font-size: 0.8rem;">Contract Period</h6>
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input cable-start-date" data-field="costs.cable.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input cable-term-months" data-field="costs.cable.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input cable-end-date" data-field="costs.cable.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <!-- Notes -->
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.cable.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `,
             backhaulA: `
-                <div class="cost-card" data-cost-type="backhaulA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul A-End</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.backhaulA.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.backhaulA.orderNo">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Cost Model</label>
-                        <select class="form-control cost-input bh-a-cost-model-select" data-field="costs.backhaulA.model">
-                            <option value="Lease">Lease</option>
-                            <option value="IRU">IRU</option>
-                        </select>
-                    </div>
-                    <div class="bh-a-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label class="form-label">MRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.mrc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">NRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.nrc" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bh-a-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">OTC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger bh-a-otc" data-field="costs.backhaulA.otc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">O&M Rate (%)</label>
-                                <input type="number" class="form-control cost-input calc-trigger bh-a-om-rate" data-field="costs.backhaulA.omRate" value="0" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Annual O&M ($)</label>
-                                <input type="number" class="form-control cost-input bh-a-annual-om" data-field="costs.backhaulA.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input bh-a-start-date" data-field="costs.backhaulA.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input bh-a-term" data-field="costs.backhaulA.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input bh-a-end-date" data-field="costs.backhaulA.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `,
+                                                                                                                            <div class="cost-card" data-cost-type="backhaulA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul A-End</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Cost Model</label>
+                                                                                                                                    <select class="form-control cost-input bh-a-cost-model-select" data-field="costs.backhaulA.model">
+                                                                                                                                        <option value="Lease">Lease</option>
+                                                                                                                                        <option value="IRU">IRU</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="bh-a-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-2">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">MRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.mrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">NRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.nrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="bh-a-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">OTC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger bh-a-otc" data-field="costs.backhaulA.otc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">O&M Rate (%)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger bh-a-om-rate" data-field="costs.backhaulA.omRate" value="0" step="0.1">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Annual O&M ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input bh-a-annual-om" data-field="costs.backhaulA.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input bh-a-start-date" data-field="costs.backhaulA.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input bh-a-term" data-field="costs.backhaulA.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input bh-a-end-date" data-field="costs.backhaulA.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.backhaulA.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `,
             backhaulZ: `
-                <div class="cost-card" data-cost-type="backhaulZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul Z-End</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.orderNo">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Cost Model</label>
-                        <select class="form-control cost-input bh-z-cost-model-select" data-field="costs.backhaulZ.model">
-                            <option value="Lease">Lease</option>
-                            <option value="IRU">IRU</option>
-                        </select>
-                    </div>
-                    <div class="bh-z-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label class="form-label">MRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.mrc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">NRC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.nrc" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bh-z-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">OTC ($)</label>
-                                <input type="number" class="form-control cost-input calc-trigger bh-z-otc" data-field="costs.backhaulZ.otc" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">O&M Rate (%)</label>
-                                <input type="number" class="form-control cost-input calc-trigger bh-z-om-rate" data-field="costs.backhaulZ.omRate" value="0" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Annual O&M ($)</label>
-                                <input type="number" class="form-control cost-input bh-z-annual-om" data-field="costs.backhaulZ.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input bh-z-start-date" data-field="costs.backhaulZ.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input bh-z-term" data-field="costs.backhaulZ.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input bh-z-end-date" data-field="costs.backhaulZ.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `,
+                                                                                                                            <div class="cost-card" data-cost-type="backhaulZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul Z-End</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Cost Model</label>
+                                                                                                                                    <select class="form-control cost-input bh-z-cost-model-select" data-field="costs.backhaulZ.model">
+                                                                                                                                        <option value="Lease">Lease</option>
+                                                                                                                                        <option value="IRU">IRU</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="bh-z-lease-fields" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-2">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">MRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.mrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">NRC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.nrc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="bh-z-iru-fields" style="display: none; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">OTC ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger bh-z-otc" data-field="costs.backhaulZ.otc" value="0">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">O&M Rate (%)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input calc-trigger bh-z-om-rate" data-field="costs.backhaulZ.omRate" value="0" step="0.1">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Annual O&M ($)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input bh-z-annual-om" data-field="costs.backhaulZ.annualOm" value="0" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input bh-z-start-date" data-field="costs.backhaulZ.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input bh-z-term" data-field="costs.backhaulZ.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input bh-z-end-date" data-field="costs.backhaulZ.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `,
             xcA: `
-                <div class="cost-card" data-cost-type="xcA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect A-End</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.xcA.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.xcA.orderNo">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Monthly Fee ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.monthly" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">NRC ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.nrc" value="0">
-                        </div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input xc-a-start-date" data-field="costs.xcA.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input xc-a-term" data-field="costs.xcA.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input xc-a-end-date" data-field="costs.xcA.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.xcA.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `,
+                                                                                                                            <div class="cost-card" data-cost-type="xcA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect A-End</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcA.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcA.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Monthly Fee ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.monthly" value="0">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">NRC ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.nrc" value="0">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input xc-a-start-date" data-field="costs.xcA.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input xc-a-term" data-field="costs.xcA.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input xc-a-end-date" data-field="costs.xcA.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.xcA.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `,
             xcZ: `
-                <div class="cost-card" data-cost-type="xcZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect Z-End</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.xcZ.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field="costs.xcZ.orderNo">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Monthly Fee ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.monthly" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">NRC ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.nrc" value="0">
-                        </div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input xc-z-start-date" data-field="costs.xcZ.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input xc-z-term" data-field="costs.xcZ.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input xc-z-end-date" data-field="costs.xcZ.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `,
+                                                                                                                            <div class="cost-card" data-cost-type="xcZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect Z-End</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Monthly Fee ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.monthly" value="0">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">NRC ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.nrc" value="0">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input xc-z-start-date" data-field="costs.xcZ.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input xc-z-term" data-field="costs.xcZ.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input xc-z-end-date" data-field="costs.xcZ.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field="costs.xcZ.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `,
             other: `
-                <div class="cost-card cost-card-multi" data-cost-type="other" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h5 style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Other Costs</h5>
-                        <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
-                            <ion-icon name="close-outline"></ion-icon>
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <input type="text" class="form-control cost-input" data-field-base="costs.other.description" placeholder="e.g., Smart Hands, Testing, etc.">
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control cost-input" data-field-base="costs.other.supplier">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Order No.</label>
-                            <input type="text" class="form-control cost-input" data-field-base="costs.other.orderNo">
-                        </div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">One-off Fee ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.oneOff" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Monthly Fee ($)</label>
-                            <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.monthly" value="0">
-                        </div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
-                        <div class="grid-3c">
-                            <div class="form-group">
-                                <label class="form-label">Start Date</label>
-                                <input type="date" class="form-control cost-input other-start-date" data-field-base="costs.other.startDate">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control cost-input other-term" data-field-base="costs.other.termMonths" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date</label>
-                                <input type="date" class="form-control cost-input other-end-date" data-field-base="costs.other.endDate" readonly style="background: var(--bg-card-hover);">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label class="form-label">Notes</label>
-                        <input type="text" class="form-control cost-input" data-field-base="costs.other.notes" placeholder="Additional notes...">
-                    </div>
-                </div>
-            `
+                                                                                                                            <div class="cost-card cost-card-multi" data-cost-type="other" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                                                                                                    <h5 style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Other Costs</h5>
+                                                                                                                                    <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
+                                                                                                                                        <ion-icon name="close-outline"></ion-icon>
+                                                                                                                                    </button>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Description</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field-base="costs.other.description" placeholder="e.g., Smart Hands, Testing, etc.">
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Supplier</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field-base="costs.other.supplier">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Order No.</label>
+                                                                                                                                        <input type="text" class="form-control cost-input" data-field-base="costs.other.orderNo">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">One-off Fee ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.oneOff" value="0">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Monthly Fee ($)</label>
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.monthly" value="0">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                                                                                                                    <div class="grid-3c">
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Start Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input other-start-date" data-field-base="costs.other.startDate">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">Term (Months)</label>
+                                                                                                                                            <input type="number" class="form-control cost-input other-term" data-field-base="costs.other.termMonths" value="12">
+                                                                                                                                        </div>
+                                                                                                                                        <div class="form-group">
+                                                                                                                                            <label class="form-label">End Date</label>
+                                                                                                                                            <input type="date" class="form-control cost-input other-end-date" data-field-base="costs.other.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" style="margin-top: 0.5rem;">
+                                                                                                                                    <label class="form-label">Notes</label>
+                                                                                                                                    <input type="text" class="form-control cost-input" data-field-base="costs.other.notes" placeholder="Additional notes...">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `
         };
 
         const cardsContainer = document.getElementById('cost-cards-container');
@@ -1794,24 +1812,24 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
-            <style>
-                .inventory-table tbody tr:hover { background: rgba(99, 91, 255, 0.08); }
-            </style>
-            <div class="table-container">
-                <table class="inventory-table">
-                    <thead>
-                        <tr>
-                            <th>Resource ID</th>
-                            <th>Status</th>
-                            <th class="col-acquisition">Acquisition</th>
-                            <th>Details</th>
-                            <th class="col-cost-info">Cost Info</th>
-                            <th class="col-location">Location (A / Z)</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.map(item => {
+                                                                                                                            <style>
+                                                                                                                                .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
+                                                                                                                            </style>
+                                                                                                                            <div class="table-container">
+                                                                                                                                <table class="inventory-table">
+                                                                                                                                    <thead>
+                                                                                                                                        <tr>
+                                                                                                                                            <th>Resource ID</th>
+                                                                                                                                            <th>Status</th>
+                                                                                                                                            <th class="col-acquisition">Acquisition</th>
+                                                                                                                                            <th>Details</th>
+                                                                                                                                            <th class="col-cost-info">Cost Info</th>
+                                                                                                                                            <th class="col-location">Location (A / Z)</th>
+                                                                                                                                            <th>Actions</th>
+                                                                                                                                        </tr>
+                                                                                                                                    </thead>
+                                                                                                                                    <tbody>
+                                                                                                                                        ${data.map(item => {
             // Get all sales linked to this resource
             const allSales = window.Store.getSales();
             const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
@@ -1877,6 +1895,7 @@ const App = {
                                 </td>
                                 <td>
                                     <div style="font-weight:600">${item.cableSystem}</div>
+                                    ${item.protection === 'Protected' && item.protectionCableSystem ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;">${item.protectionCableSystem}</div>` : ''}
                                     <div style="font-size:0.8em; color:var(--text-muted)">
                                         ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
                                     </div>
@@ -1912,10 +1931,10 @@ const App = {
                             </tr>
                             `;
         }).join('')}
-                    </tbody>
-                </table>
-            </div>
-    `;
+                                                                                                                                    </tbody>
+                                                                                                                                </table>
+                                                                                                                            </div>
+                                                                                                                            `;
         this.container.innerHTML = html;
     },
 
@@ -1970,74 +1989,74 @@ const App = {
         const annualOmCost = (otc * omRate / 100);
 
         const detailsHtml = `
-            <div class="grid-2" style="gap:1.5rem; align-items: start;">
-                <div>
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
-                        <table style="width:100%;">
-                            <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
-                            <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
-                            <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
-                            <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
-                        </table>
-                    </div>
+                                                                                                                            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                                                                                                                                <div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
 
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Capacity & Usage</h4>
-                        <table style="width:100%;">
-                            <tr><td style="${tdStyle}">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                            <tr><td style="${tdStyle}">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                            <tr><td style="${tdStyle}">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
-                        </table>
-                    </div>
-                </div>
-                <div>
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
-                        <table style="width:100%;">
-                            <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
-                            <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
-                        </table>
-                    </div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Capacity & Usage</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="${tdStyle}">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
 
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
-                        <table style="width:100%;">
-                            <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
-                        </table>
-                    </div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
 
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
-                        <table style="width:100%;">
-                            ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
-                            <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
-                            ${isIRU ? `
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
+                                                                                                                                            <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                                                                                                                                            ${isIRU ? `
                             <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
                             <tr><td style="${tdStyle}">Annual O&M Cost</td><td class="font-mono" style="color:var(--accent-warning)">$${annualOmCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
                             ` : ''}
-                            <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
-                            <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
-                            <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
-                        </table>
-                    </div>
+                                                                                                                                            <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
+                                                                                                                                            <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
 
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Linked Sales Orders</h4>
-                        ${linkedSalesHtml}
-                    </div>
-                </div>
-            </div>
-        `;
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Linked Sales Orders</h4>
+                                                                                                                                        ${linkedSalesHtml}
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `;
 
         this.openModal(`Resource: ${item.resourceId}`, detailsHtml, null, true);
     },
@@ -2065,7 +2084,7 @@ const App = {
         }
 
         const formHTML = `
-                ${item.usage?.currentUser ? `
+                                                                                                                            ${item.usage?.currentUser ? `
                 <!-- Usage Information -->
                 <div class="mb-4 p-3" style="background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px;">
                     <h4 class="mb-2" style="color: var(--accent-danger); font-size: 0.9rem;"><ion-icon name="link-outline"></ion-icon> Linked Sales</h4>
@@ -2081,180 +2100,180 @@ const App = {
                     </div>
                 </div>
                 ` : ''}
-                
-                <!-- Core Identity -->
-                <h4 class="mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-top:0;">Identity</h4>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Resource ID</label>
-                        <input type="text" class="form-control" name="resourceId" value="${item.resourceId || ''}" ${isEdit ? 'readonly' : ''} placeholder="Auto-generated if empty">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
-                        <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
-                            <option ${calculatedStatus === 'Draft' ? 'selected' : ''}>Draft</option>
-                            <option ${calculatedStatus === 'Available' ? 'selected' : ''}>Available</option>
-                            <option ${calculatedStatus === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
-                            <option ${calculatedStatus === 'Expired' ? 'selected' : ''}>Expired</option>
-                        </select>
-                    </div>
-                </div>
 
-                <!--Acquisition -->
-                <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Acquisition</h4>
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label class="form-label">Acquisition Type</label>
-                        <select class="form-control" name="acquisition.type">
-                            <option ${item.acquisition?.type === 'Purchased' ? 'selected' : ''}>Purchased</option>
-                            <option ${item.acquisition?.type === 'Swapped In' ? 'selected' : ''}>Swapped In</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Ownership</label>
-                        <select class="form-control" name="acquisition.ownership">
-                            <option ${item.acquisition?.ownership === 'Leased' ? 'selected' : ''}>Leased</option>
-                            <option ${item.acquisition?.ownership === 'IRU' ? 'selected' : ''}>IRU</option>
-                        </select>
-                    </div>
-                     <div class="form-group">
-                        <label class="form-label">Supplier</label>
-                        <input type="text" class="form-control" name="acquisition.supplier" value="${item.acquisition?.supplier || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Contract Ref</label>
-                        <input type="text" class="form-control" name="acquisition.contractRef" value="${item.acquisition?.contractRef || ''}">
-                    </div>
-                </div>
+                                                                                                                            <!-- Core Identity -->
+                                                                                                                            <h4 class="mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-top:0;">Identity</h4>
+                                                                                                                            <div class="grid-2">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Resource ID</label>
+                                                                                                                                    <input type="text" class="form-control" name="resourceId" value="${item.resourceId || ''}" ${isEdit ? 'readonly' : ''} placeholder="Auto-generated if empty">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
+                                                                                                                                    <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
+                                                                                                                                        <option ${calculatedStatus === 'Draft' ? 'selected' : ''}>Draft</option>
+                                                                                                                                        <option ${calculatedStatus === 'Available' ? 'selected' : ''}>Available</option>
+                                                                                                                                        <option ${calculatedStatus === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
+                                                                                                                                        <option ${calculatedStatus === 'Expired' ? 'selected' : ''}>Expired</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                            </div>
 
-                <!-- Technical Specs -->
-                <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Technical Specs</h4>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Cable System</label>
-                        <input type="text" class="form-control" name="cableSystem" value="${item.cableSystem || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Segment Type</label>
-                        <select class="form-control" name="segmentType">
-                            <option ${item.segmentType === 'Capacity' ? 'selected' : ''}>Capacity</option>
-                            <option ${item.segmentType === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                            <option ${item.segmentType === 'Spectrum' ? 'selected' : ''}>Spectrum</option>
-                            <option ${item.segmentType === 'Backhaul' ? 'selected' : ''}>Backhaul</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Handoff Type</label>
-                        <select class="form-control" name="handoffType" id="handoff-type-select">
-                            <option ${item.handoffType === 'OTU-4' ? 'selected' : ''}>OTU-4</option>
-                            <option ${item.handoffType === '100GE' ? 'selected' : ''}>100GE</option>
-                            <option ${item.handoffType === '400GE' ? 'selected' : ''}>400GE</option>
-                            <option ${item.handoffType === 'Other' || (item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType)) ? 'selected' : ''}>Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="handoff-type-custom-container" style="display: ${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? 'block' : 'none'}">
-                        <label class="form-label">Custom Handoff Type</label>
-                        <input type="text" class="form-control" name="handoffTypeCustom" id="handoff-type-custom" value="${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? item.handoffType : ''}" placeholder="Enter custom handoff type">
-                    </div>
-                </div>
-                <div class="grid-1">
-                    <div class="form-group">
-                        <label class="form-label">Route Description</label>
-                        <textarea class="form-control" name="routeDescription" rows="3" placeholder="Describe the cable routing path...">${item.routeDescription || ''}</textarea>
-                    </div>
-                </div>
-                <div class="grid-3">
-                     <div class="form-group">
-                        <label class="form-label">Capacity Value</label>
-                        <input type="number" class="form-control" name="capacity.value" value="${item.capacity?.value || 0}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Unit</label>
-                        <select class="form-control" name="capacity.unit">
-                            <option ${item.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
-                            <option ${item.capacity?.unit === 'Tbps' ? 'selected' : ''}>Tbps</option>
-                            <option ${item.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                            <option ${item.capacity?.unit === 'Half Fiber Pair' ? 'selected' : ''}>Half Fiber Pair</option>
-                            <option ${item.capacity?.unit === 'GHz' ? 'selected' : ''}>GHz</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Protection</label>
-                        <select class="form-control" name="protection" id="protection-select">
-                            <option ${item.protection === 'Unprotected' || !item.protection ? 'selected' : ''}>Unprotected</option>
-                            <option ${item.protection === 'Protected' ? 'selected' : ''}>Protected</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid-1" id="protection-cable-container" style="display: ${item.protection === 'Protected' ? 'block' : 'none'}">
-                    <div class="form-group">
-                        <label class="form-label">Protection Cable System</label>
-                        <input type="text" class="form-control" name="protectionCableSystem" value="${item.protectionCableSystem || ''}" placeholder="Specify the cable system used for protection">
-                    </div>
-                </div>
+                                                                                                                            <!--Acquisition -->
+                                                                                                                            <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Acquisition</h4>
+                                                                                                                            <div class="grid-3">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Acquisition Type</label>
+                                                                                                                                    <select class="form-control" name="acquisition.type">
+                                                                                                                                        <option ${item.acquisition?.type === 'Purchased' ? 'selected' : ''}>Purchased</option>
+                                                                                                                                        <option ${item.acquisition?.type === 'Swapped In' ? 'selected' : ''}>Swapped In</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Ownership</label>
+                                                                                                                                    <select class="form-control" name="acquisition.ownership">
+                                                                                                                                        <option ${item.acquisition?.ownership === 'Leased' ? 'selected' : ''}>Leased</option>
+                                                                                                                                        <option ${item.acquisition?.ownership === 'IRU' ? 'selected' : ''}>IRU</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Supplier</label>
+                                                                                                                                    <input type="text" class="form-control" name="acquisition.supplier" value="${item.acquisition?.supplier || ''}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Contract Ref</label>
+                                                                                                                                    <input type="text" class="form-control" name="acquisition.contractRef" value="${item.acquisition?.contractRef || ''}">
+                                                                                                                                </div>
+                                                                                                                            </div>
 
-                 <!--Locations -->
-                <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Location</h4>
-                <div class="grid-2">
-                    <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
-                        <h5 class="mb-2" style="color:var(--accent-primary)">A-End</h5>
-                        <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.aEnd.country" value="${item.location?.aEnd?.country || ''}"></div>
-                        <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.aEnd.city" value="${item.location?.aEnd?.city || ''}"></div>
-                        <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.aEnd.pop" value="${item.location?.aEnd?.pop || ''}"></div>
-                        <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.aEnd.device" value="${item.location?.aEnd?.device || ''}" placeholder="e.g., Router-01, Switch-HK"></div>
-                        <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.aEnd.port" value="${item.location?.aEnd?.port || ''}" placeholder="e.g., Eth1/1/1"></div>
-                    </div>
-                    <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
-                        <h5 class="mb-2" style="color:var(--accent-secondary)">Z-End</h5>
-                        <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.zEnd.country" value="${item.location?.zEnd?.country || ''}"></div>
-                        <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.zEnd.city" value="${item.location?.zEnd?.city || ''}"></div>
-                        <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.zEnd.pop" value="${item.location?.zEnd?.pop || ''}"></div>
-                        <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.zEnd.device" value="${item.location?.zEnd?.device || ''}" placeholder="e.g., Router-02, Switch-SG"></div>
-                        <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.zEnd.port" value="${item.location?.zEnd?.port || ''}" placeholder="e.g., Eth1/1/2"></div>
-                    </div>
-                </div>
+                                                                                                                            <!-- Technical Specs -->
+                                                                                                                            <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Technical Specs</h4>
+                                                                                                                            <div class="grid-2">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Cable System</label>
+                                                                                                                                    <input type="text" class="form-control" name="cableSystem" value="${item.cableSystem || ''}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Segment Type</label>
+                                                                                                                                    <select class="form-control" name="segmentType">
+                                                                                                                                        <option ${item.segmentType === 'Capacity' ? 'selected' : ''}>Capacity</option>
+                                                                                                                                        <option ${item.segmentType === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
+                                                                                                                                        <option ${item.segmentType === 'Spectrum' ? 'selected' : ''}>Spectrum</option>
+                                                                                                                                        <option ${item.segmentType === 'Backhaul' ? 'selected' : ''}>Backhaul</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Handoff Type</label>
+                                                                                                                                    <select class="form-control" name="handoffType" id="handoff-type-select">
+                                                                                                                                        <option ${item.handoffType === 'OTU-4' ? 'selected' : ''}>OTU-4</option>
+                                                                                                                                        <option ${item.handoffType === '100GE' ? 'selected' : ''}>100GE</option>
+                                                                                                                                        <option ${item.handoffType === '400GE' ? 'selected' : ''}>400GE</option>
+                                                                                                                                        <option ${item.handoffType === 'Other' || (item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType)) ? 'selected' : ''}>Other</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group" id="handoff-type-custom-container" style="display: ${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? 'block' : 'none'}">
+                                                                                                                                    <label class="form-label">Custom Handoff Type</label>
+                                                                                                                                    <input type="text" class="form-control" name="handoffTypeCustom" id="handoff-type-custom" value="${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? item.handoffType : ''}" placeholder="Enter custom handoff type">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-1">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Route Description</label>
+                                                                                                                                    <textarea class="form-control" name="routeDescription" rows="3" placeholder="Describe the cable routing path...">${item.routeDescription || ''}</textarea>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-3">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Capacity Value</label>
+                                                                                                                                    <input type="number" class="form-control" name="capacity.value" value="${item.capacity?.value || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Unit</label>
+                                                                                                                                    <select class="form-control" name="capacity.unit">
+                                                                                                                                        <option ${item.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
+                                                                                                                                        <option ${item.capacity?.unit === 'Tbps' ? 'selected' : ''}>Tbps</option>
+                                                                                                                                        <option ${item.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
+                                                                                                                                        <option ${item.capacity?.unit === 'Half Fiber Pair' ? 'selected' : ''}>Half Fiber Pair</option>
+                                                                                                                                        <option ${item.capacity?.unit === 'GHz' ? 'selected' : ''}>GHz</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Protection</label>
+                                                                                                                                    <select class="form-control" name="protection" id="protection-select">
+                                                                                                                                        <option ${item.protection === 'Unprotected' || !item.protection ? 'selected' : ''}>Unprotected</option>
+                                                                                                                                        <option ${item.protection === 'Protected' ? 'selected' : ''}>Protected</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-1" id="protection-cable-container" style="display: ${item.protection === 'Protected' ? 'block' : 'none'}">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Protection Cable System</label>
+                                                                                                                                    <input type="text" class="form-control" name="protectionCableSystem" value="${item.protectionCableSystem || ''}" placeholder="Specify the cable system used for protection">
+                                                                                                                                </div>
+                                                                                                                            </div>
 
-                <!--Financials -->
-                <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Financials & Terms</h4>
-                <div class="grid-3" id="financials-grid">
-                    <div class="form-group" id="mrc-container" style="display: ${item.acquisition?.ownership === 'IRU' ? 'none' : 'block'}">
-                        <label class="form-label">MRC Cost ($)</label>
-                        <input type="number" class="form-control" name="financials.mrc" value="${item.financials?.mrc || 0}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC ($)'}</label>
-                        <input type="number" class="form-control" name="financials.otc" value="${item.financials?.otc || 0}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Term (Months)</label>
-                        <input type="number" class="form-control" id="term-input" name="financials.term" value="${item.financials?.term || 12}">
-                    </div>
-                </div>
-                <div class="grid-1" id="om-rate-container" style="display: ${['IRU', 'Owned'].includes(item.acquisition?.ownership) ? 'block' : 'none'}">
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">O&M Rate (%)</label>
-                            <input type="number" class="form-control" id="om-rate-input" name="financials.omRate" value="${item.financials?.omRate || 0}" placeholder="e.g., 2.5 for 2.5%" step="0.1" min="0" max="100">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Annual O&M Cost ($)</label>
-                            <input type="number" class="form-control" id="annual-om-cost" name="financials.annualOmCost" value="${item.financials?.annualOmCost || 0}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
-                        </div>
-                    </div>
-                </div>
-                <div class="grid-2 mt-4">
-                    <div class="form-group">
-                        <label class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="start-date-input" name="dates.start" value="${item.dates?.start || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">End Date (Auto-calculated)</label>
-                        <input type="date" class="form-control" id="end-date-input" name="dates.end" value="${item.dates?.end || ''}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
-                    </div>
-                </div>
-    `;
+                                                                                                                            <!--Locations -->
+                                                                                                                            <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Location</h4>
+                                                                                                                            <div class="grid-2">
+                                                                                                                                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
+                                                                                                                                    <h5 class="mb-2" style="color:var(--accent-primary)">A-End</h5>
+                                                                                                                                    <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.aEnd.country" value="${item.location?.aEnd?.country || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.aEnd.city" value="${item.location?.aEnd?.city || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.aEnd.pop" value="${item.location?.aEnd?.pop || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.aEnd.device" value="${item.location?.aEnd?.device || ''}" placeholder="e.g., Router-01, Switch-HK"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.aEnd.port" value="${item.location?.aEnd?.port || ''}" placeholder="e.g., Eth1/1/1"></div>
+                                                                                                                                </div>
+                                                                                                                                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
+                                                                                                                                    <h5 class="mb-2" style="color:var(--accent-secondary)">Z-End</h5>
+                                                                                                                                    <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.zEnd.country" value="${item.location?.zEnd?.country || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.zEnd.city" value="${item.location?.zEnd?.city || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.zEnd.pop" value="${item.location?.zEnd?.pop || ''}"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.zEnd.device" value="${item.location?.zEnd?.device || ''}" placeholder="e.g., Router-02, Switch-SG"></div>
+                                                                                                                                    <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.zEnd.port" value="${item.location?.zEnd?.port || ''}" placeholder="e.g., Eth1/1/2"></div>
+                                                                                                                                </div>
+                                                                                                                            </div>
+
+                                                                                                                            <!--Financials -->
+                                                                                                                            <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Financials & Terms</h4>
+                                                                                                                            <div class="grid-3" id="financials-grid">
+                                                                                                                                <div class="form-group" id="mrc-container" style="display: ${item.acquisition?.ownership === 'IRU' ? 'none' : 'block'}">
+                                                                                                                                    <label class="form-label">MRC Cost ($)</label>
+                                                                                                                                    <input type="number" class="form-control" name="financials.mrc" value="${item.financials?.mrc || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC ($)'}</label>
+                                                                                                                                    <input type="number" class="form-control" name="financials.otc" value="${item.financials?.otc || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Term (Months)</label>
+                                                                                                                                    <input type="number" class="form-control" id="term-input" name="financials.term" value="${item.financials?.term || 12}">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-1" id="om-rate-container" style="display: ${['IRU', 'Owned'].includes(item.acquisition?.ownership) ? 'block' : 'none'}">
+                                                                                                                                <div class="grid-2">
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">O&M Rate (%)</label>
+                                                                                                                                        <input type="number" class="form-control" id="om-rate-input" name="financials.omRate" value="${item.financials?.omRate || 0}" placeholder="e.g., 2.5 for 2.5%" step="0.1" min="0" max="100">
+                                                                                                                                    </div>
+                                                                                                                                    <div class="form-group">
+                                                                                                                                        <label class="form-label">Annual O&M Cost ($)</label>
+                                                                                                                                        <input type="number" class="form-control" id="annual-om-cost" name="financials.annualOmCost" value="${item.financials?.annualOmCost || 0}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2 mt-4">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Start Date</label>
+                                                                                                                                    <input type="date" class="form-control" id="start-date-input" name="dates.start" value="${item.dates?.start || ''}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">End Date (Auto-calculated)</label>
+                                                                                                                                    <input type="date" class="form-control" id="end-date-input" name="dates.end" value="${item.dates?.end || ''}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `;
 
         this.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, (form) => {
             // Save Logic - use the form passed from openModal
@@ -2421,37 +2440,37 @@ const App = {
         this.headerActions.appendChild(addBtn);
 
         const html = `
-            <style>
-                .sales-table tbody tr:hover { background: rgba(99, 91, 255, 0.08); }
-                .margin-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-                .margin-high { background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
-                .margin-mid { background: rgba(255, 179, 71, 0.15); color: #ffb347; }
-                .margin-low { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
-                .type-icon { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; }
-                .type-resale { background: rgba(99, 91, 255, 0.2); color: #635bff; }
-                .type-inventory { background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
-                .type-hybrid { background: rgba(255, 179, 71, 0.2); color: #ffb347; }
-                .type-swap { background: rgba(150, 150, 150, 0.2); color: #999; }
-            </style>
-            <div class="table-container">
-                <table class="sales-table">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Type</th>
-                            <th>Capacity</th>
-                            <th>Status</th>
-                            <th>Revenue</th>
-                            <th class="col-margin">Margin</th>
-                            <th class="col-margin-percent">Margin %</th>
-                            <th class="col-salesperson">Salesperson</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
-                        ${data.map(item => {
+                                                                                                                            <style>
+                                                                                                                                .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
+                                                                                                                                .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+                                                                                                                                .margin-high {background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
+                                                                                                                                .margin-mid {background: rgba(255, 179, 71, 0.15); color: #ffb347; }
+                                                                                                                                .margin-low {background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+                                                                                                                                .type-icon {font - size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; }
+                                                                                                                                .type-resale {background: rgba(99, 91, 255, 0.2); color: #635bff; }
+                                                                                                                                .type-inventory {background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
+                                                                                                                                .type-hybrid {background: rgba(255, 179, 71, 0.2); color: #ffb347; }
+                                                                                                                                .type-swap {background: rgba(150, 150, 150, 0.2); color: #999; }
+                                                                                                                            </style>
+                                                                                                                            <div class="table-container">
+                                                                                                                                <table class="sales-table">
+                                                                                                                                    <thead>
+                                                                                                                                        <tr>
+                                                                                                                                            <th>Order ID</th>
+                                                                                                                                            <th>Customer</th>
+                                                                                                                                            <th>Type</th>
+                                                                                                                                            <th>Capacity</th>
+                                                                                                                                            <th>Status</th>
+                                                                                                                                            <th>Revenue</th>
+                                                                                                                                            <th class="col-margin">Margin</th>
+                                                                                                                                            <th class="col-margin-percent">Margin %</th>
+                                                                                                                                            <th class="col-salesperson">Salesperson</th>
+                                                                                                                                            <th>Actions</th>
+                                                                                                                                        </tr>
+                                                                                                                                    </thead>
+                                                                                                                                    <tbody>
+                                                                                                                                        ${data.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders yet. Click "New Sale" to add one.</td></tr>' : ''}
+                                                                                                                                        ${data.map(item => {
             const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
             // Calculate margin based on actual costs
             const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ', 'cable'];
@@ -2517,10 +2536,10 @@ const App = {
                             </tr>
                             `;
         }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                                                                                                                                    </tbody>
+                                                                                                                                </table>
+                                                                                                                            </div>
+                                                                                                                            `;
         this.container.innerHTML = html;
     },
 
@@ -2547,56 +2566,56 @@ const App = {
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
 
         const detailsHtml = `
-            <div class="grid-2" style="gap:1.5rem; align-items: start;">
-                <div>
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
-                        <table style="width:100%;">
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${order.salesModel || 'Lease'}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${order.salesType || 'Resale'}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td>${order.dates?.term || '-'} months</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
-                        </table>
-                    </div>
-                </div>
-                <div>
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
-                        <table style="width:100%;">
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
-                        </table>
-                    </div>
-                    
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Cost Breakdown (MRC)</h4>
-                        <table style="width:100%;">
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
-                        </table>
-                    </div>
+                                                                                                                            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                                                                                                                                <div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${order.salesModel || 'Lease'}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${order.salesType || 'Resale'}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td>${order.dates?.term || '-'} months</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div>
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
 
-                    <div style="${sectionStyle}">
-                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
-                        <table style="width:100%;">
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Cost Breakdown (MRC)</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
+
+                                                                                                                                    <div style="${sectionStyle}">
+                                                                                                                                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
+                                                                                                                                        <table style="width:100%;">
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+                                                                                                                                        </table>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `;
 
         this.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
     },
@@ -2609,54 +2628,54 @@ const App = {
             .map(name => `<option ${order.salesperson === name ? 'selected' : ''}>${name}</option>`).join('');
 
         const editHtml = `
-            <div class="grid-2" style="gap:1.5rem;">
-                <div class="form-group">
-                    <label class="form-label">Customer Name</label>
-                    <input type="text" class="form-control" name="customerName" value="${order.customerName}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Salesperson</label>
-                    <select class="form-control" name="salesperson">
-                        <option value="">Select...</option>
-                        ${salespersonOptions}
-                    </select>
-                </div>
-            </div>
-            <div class="grid-2" style="gap:1.5rem;">
-                <div class="form-group">
-                    <label class="form-label">Capacity Value</label>
-                    <input type="number" class="form-control" name="capacity.value" value="${order.capacity?.value || 0}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Capacity Unit</label>
-                    <select class="form-control" name="capacity.unit">
-                        <option ${order.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
-                        <option ${order.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
-                        <option ${order.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid-2" style="gap:1.5rem;">
-                <div class="form-group">
-                    <label class="form-label">MRC Sales ($)</label>
-                    <input type="number" class="form-control" name="financials.mrcSales" value="${order.financials?.mrcSales || 0}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">NRC Sales ($)</label>
-                    <input type="number" class="form-control" name="financials.nrcSales" value="${order.financials?.nrcSales || 0}">
-                </div>
-            </div>
-            <div class="grid-2" style="gap:1.5rem;">
-                <div class="form-group">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" class="form-control" name="dates.start" value="${order.dates?.start || ''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">End Date</label>
-                    <input type="date" class="form-control" name="dates.end" value="${order.dates?.end || ''}">
-                </div>
-            </div>
-        `;
+                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Customer Name</label>
+                                                                                                                                    <input type="text" class="form-control" name="customerName" value="${order.customerName}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Salesperson</label>
+                                                                                                                                    <select class="form-control" name="salesperson">
+                                                                                                                                        <option value="">Select...</option>
+                                                                                                                                        ${salespersonOptions}
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Capacity Value</label>
+                                                                                                                                    <input type="number" class="form-control" name="capacity.value" value="${order.capacity?.value || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Capacity Unit</label>
+                                                                                                                                    <select class="form-control" name="capacity.unit">
+                                                                                                                                        <option ${order.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
+                                                                                                                                        <option ${order.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
+                                                                                                                                        <option ${order.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
+                                                                                                                                    </select>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">MRC Sales ($)</label>
+                                                                                                                                    <input type="number" class="form-control" name="financials.mrcSales" value="${order.financials?.mrcSales || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">NRC Sales ($)</label>
+                                                                                                                                    <input type="number" class="form-control" name="financials.nrcSales" value="${order.financials?.nrcSales || 0}">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Start Date</label>
+                                                                                                                                    <input type="date" class="form-control" name="dates.start" value="${order.dates?.start || ''}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">End Date</label>
+                                                                                                                                    <input type="date" class="form-control" name="dates.end" value="${order.dates?.end || ''}">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            `;
 
         this.openModal(`Edit: ${order.salesOrderId}`, editHtml, (form) => {
             // Update order data

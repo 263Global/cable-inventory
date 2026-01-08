@@ -533,3 +533,84 @@ select.form-control {
         padding: 0.15rem 0.5rem;
     }
 }
+
+/* ===== Capacity Card - Special Layout ===== */
+.capacity-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.capacity-card .capacity-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.capacity-card .capacity-right {
+    width: 100%;
+}
+
+.capacity-card .capacity-bar-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Desktop: vertical layout with full width progress bar */
+@media (min-width: 769px) {
+    .capacity-card .capacity-right {
+        margin-top: 0.25rem;
+    }
+}
+
+/* Mobile: compact inline layout */
+@media (max-width: 768px) {
+    .capacity-card {
+        flex-direction: row !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .capacity-card .capacity-left {
+        flex-shrink: 0;
+    }
+
+    .capacity-card .capacity-left .metric-label {
+        font-size: 0.65rem;
+    }
+
+    .capacity-card .capacity-left .metric-value {
+        font-size: 1.1rem;
+    }
+
+    .capacity-card .capacity-sold {
+        font-size: 1em;
+    }
+
+    .capacity-card .capacity-total {
+        font-size: 0.7em !important;
+    }
+
+    .capacity-card .capacity-right {
+        flex: 1;
+        min-width: 80px;
+        max-width: 120px;
+    }
+
+    .capacity-card .capacity-bar-wrapper {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .capacity-card .capacity-bar-wrapper>div:first-child {
+        flex: 1;
+    }
+
+    .capacity-card .capacity-bar-wrapper span {
+        font-size: 0.65rem !important;
+        white-space: nowrap;
+    }
+}
