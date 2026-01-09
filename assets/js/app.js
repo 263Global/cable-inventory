@@ -3,6 +3,159 @@
  * Main application logic
  */
 
+/**
+ * Unified profit calculation engine
+ * Computes financial metrics for a sales order based on Mixed Recognition Model
+ * @param {object} order - Sales order object
+ * @returns {object} Financial metrics
+ */
+function computeOrderFinancials(order) {
+    const salesModel = order.salesModel || 'Lease';
+    const salesType = order.salesType || 'Resale';
+    const salesTerm = order.dates?.term || 12;
+    const salesCapacity = order.capacity?.value || 1;
+
+    // Get linked inventory for Inventory/Hybrid types
+    const inventoryLink = order.inventoryLink;
+    const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
+    const inventoryCapacity = linkedResource?.capacity?.value || 1;
+    const capacityRatio = salesCapacity / inventoryCapacity;
+
+    // Calculate Inventory Monthly Cost (if applicable)
+    let inventoryMonthlyCost = 0;
+    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid')) {
+        const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
+        if (invOwnership === 'IRU') {
+            const invOtc = linkedResource.financials?.otc || 0;
+            const invTerm = linkedResource.financials?.term || 1;
+            const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
+            inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
+        } else {
+            inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
+        }
+    }
+
+    // Get Operating Costs (Backhaul, XC, Other)
+    const costs = order.costs || {};
+    const backhaulMRC = (costs.backhaul?.aEnd?.monthly || 0) + (costs.backhaul?.zEnd?.monthly || 0);
+    const xcMRC = (costs.crossConnect?.aEnd?.monthly || 0) + (costs.crossConnect?.zEnd?.monthly || 0);
+    const otherMonthly = costs.otherCosts?.monthly || 0;
+    const operatingCosts = backhaulMRC + xcMRC + otherMonthly;
+
+    // Initialize results
+    let monthlyRevenue = 0;
+    let monthlyProfit = 0;
+    let firstMonthProfit = 0;
+    let firstMonthMargin = 0;
+    let recurringMonthlyProfit = 0;
+    let recurringMargin = 0;
+    let isIruResale = false;
+
+    if (salesModel === 'Lease') {
+        // ========== LEASE MODEL ==========
+        const mrcSales = order.financials?.mrcSales || 0;
+        monthlyRevenue = mrcSales;
+
+        // Get Cable MRC (for Resale and Hybrid)
+        let cableMRC = 0;
+        if (salesType === 'Resale' || salesType === 'Hybrid') {
+            const cableModel = costs.cable?.model || 'Lease';
+            if (cableModel === 'Lease') {
+                cableMRC = costs.cable?.mrc || 0;
+            } else {
+                cableMRC = (costs.cable?.annualOm || 0) / 12;
+            }
+        }
+
+        switch (salesType) {
+            case 'Resale':
+                monthlyProfit = mrcSales - cableMRC - operatingCosts;
+                break;
+            case 'Inventory':
+                monthlyProfit = mrcSales - inventoryMonthlyCost - operatingCosts;
+                break;
+            case 'Hybrid':
+                monthlyProfit = mrcSales - inventoryMonthlyCost - cableMRC - operatingCosts;
+                break;
+            default:
+                monthlyProfit = mrcSales - operatingCosts;
+        }
+
+    } else if (salesModel === 'IRU') {
+        // ========== IRU MODEL ==========
+        const otcRevenue = order.financials?.otc || 0;
+        const annualOmRevenue = order.financials?.annualOm || 0;
+        const monthlyOmRevenue = annualOmRevenue / 12;
+
+        // Get Cable costs (for Resale and Hybrid)
+        const cableOtc = costs.cable?.otc || 0;
+        const cableAnnualOm = costs.cable?.annualOm || 0;
+        const cableTerm = costs.cable?.termMonths || salesTerm;
+        const cableMonthlyOtc = cableOtc / cableTerm;
+        const cableMonthlyOm = cableAnnualOm / 12;
+
+        switch (salesType) {
+            case 'Resale':
+                // IRU Resale: OTC profit captured in first month
+                isIruResale = true;
+                const otcProfit = otcRevenue - cableOtc;
+                const monthlyOmProfit = monthlyOmRevenue - cableMonthlyOm;
+
+                // First month: OTC profit + monthly O&M profit - operating costs
+                firstMonthProfit = otcProfit + monthlyOmProfit - operatingCosts;
+                // First month margin: based on total first month value (OTC + O&M)
+                const firstMonthRevenue = otcRevenue + monthlyOmRevenue;
+                firstMonthMargin = firstMonthRevenue > 0 ? (firstMonthProfit / firstMonthRevenue) * 100 : 0;
+
+                // Recurring months: just O&M profit - operating costs
+                recurringMonthlyProfit = monthlyOmProfit - operatingCosts;
+                recurringMargin = monthlyOmRevenue > 0 ? (recurringMonthlyProfit / monthlyOmRevenue) * 100 : 0;
+
+                // For general display, use recurring values
+                monthlyRevenue = monthlyOmRevenue;
+                monthlyProfit = recurringMonthlyProfit;
+                break;
+
+            case 'Inventory':
+                // IRU Inventory: OTC revenue amortized monthly
+                const monthlyOtcRevenue = otcRevenue / salesTerm;
+                monthlyRevenue = monthlyOtcRevenue + monthlyOmRevenue;
+                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - operatingCosts;
+                break;
+
+            case 'Hybrid':
+                // IRU Hybrid: OTC revenue amortized, both inventory and cable costs
+                const monthlyOtcRev = otcRevenue / salesTerm;
+                monthlyRevenue = monthlyOtcRev + monthlyOmRevenue;
+                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - cableMonthlyOtc - cableMonthlyOm - operatingCosts;
+                break;
+
+            case 'Swapped Out':
+                // Swapped Out: No profit
+                monthlyRevenue = 0;
+                monthlyProfit = 0;
+                break;
+
+            default:
+                monthlyProfit = 0;
+        }
+    }
+
+    // Calculate general margin
+    const marginPercent = monthlyRevenue > 0 ? (monthlyProfit / monthlyRevenue) * 100 : 0;
+
+    return {
+        monthlyRevenue,
+        monthlyProfit,
+        marginPercent,
+        isIruResale,
+        firstMonthProfit,
+        firstMonthMargin,
+        recurringMonthlyProfit,
+        recurringMargin
+    };
+}
+
 const App = {
     init() {
         this.cacheDOM();
@@ -517,8 +670,13 @@ const App = {
                                 <span class="font-mono text-success" id="disp-gross-margin">$0.00</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
-                                <span>Margin (%):</span>
+                                <span id="margin-percent-label">Margin (%):</span>
                                 <span class="font-mono" id="disp-margin-percent">0.0%</span>
+                            </div>
+                            <!-- Recurring Margin Row (for IRU Resale only) -->
+                            <div id="recurring-margin-row" style="display:none; justify-content:space-between; font-weight:bold; font-size:1.1em; margin-top:0.5rem;">
+                                <span>续月利润率:</span>
+                                <span class="font-mono" id="disp-recurring-margin">0.0%</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.9em; opacity:0.8;">
                                 <span>NRC Profit:</span>
@@ -1601,7 +1759,13 @@ const App = {
             }
         }
 
-        // ===== Calculate Margin =====
+        // ===== Calculate Overall Margin =====
+        // For IRU Resale: first month margin is based on OTC + O&M
+        // For others: based on monthly revenue
+        const firstMonthMargin = isIruResale && (monthlyRevenue + (getValue('financials.otc') || 0)) > 0
+            ? (firstMonthProfit / (getValue('financials.otc') + monthlyRevenue)) * 100
+            : 0;
+        const recurringMargin = monthlyRevenue > 0 ? (ongoingMonthlyProfit / monthlyRevenue) * 100 : 0;
         const marginPercent = monthlyRevenue > 0 ? (monthlyProfit / monthlyRevenue) * 100 : 0;
         const totalMonthlyCost = monthlyRevenue - monthlyProfit;
 
@@ -1613,8 +1777,29 @@ const App = {
         marginEl.style.color = monthlyProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
         const percentEl = document.getElementById('disp-margin-percent');
-        percentEl.textContent = marginPercent.toFixed(1) + '%';
-        percentEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        const marginLabel = document.getElementById('margin-percent-label');
+        const recurringRow = document.getElementById('recurring-margin-row');
+        const recurringEl = document.getElementById('disp-recurring-margin');
+
+        if (isIruResale) {
+            // Show dual margins for IRU Resale
+            marginLabel.textContent = '首月利润率:';
+            percentEl.textContent = firstMonthMargin.toFixed(1) + '%';
+            percentEl.style.color = firstMonthMargin >= 20 ? 'var(--accent-success)' : (firstMonthMargin > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+
+            // Show recurring margin row
+            recurringRow.style.display = 'flex';
+            recurringEl.textContent = recurringMargin.toFixed(1) + '%';
+            recurringEl.style.color = recurringMargin >= 20 ? 'var(--accent-success)' : (recurringMargin > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        } else {
+            // Standard single margin display
+            marginLabel.textContent = 'Margin (%):';
+            percentEl.textContent = marginPercent.toFixed(1) + '%';
+            percentEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+
+            // Hide recurring margin row
+            recurringRow.style.display = 'none';
+        }
 
         // NRC Profit display - for IRU Resale show first month profit, otherwise show regular NRC
         const nrcEl = document.getElementById('disp-nrc-profit');
@@ -1648,23 +1833,8 @@ const App = {
         if (today < start) status = 'Pending';
         if (today > end) status = 'Expired';
 
-        // Re-run calc to get final calculated values (stored in UI specific trigger function, so logic duplicated or simplified here)
-        // We will store raw inputs and compute on view, but for financials summary, let's trust the logic is consistent.
-
-        // Use logic from calculateSalesFinancials to get stored computed values if needed, 
-        // OR simply rely on raw data and re-computing on display. 
-        // For 'marginPercent', we should probably store it for easier sorting/filtering later.
-
-        // Let's implement a quick helper for the margin percent to save it
-        const mrcSales = getNum('financials.mrcSales');
-        // ... (re-implementing full calc here is redundant, let's create a helper func or just calc margin simply)
-        // For simplicity in this step, let's grab the raw inputs. The Store logic is what matters.
-
-        const marginText = document.getElementById('disp-margin-percent').textContent;
-        const marginPercent = parseFloat(marginText); // quick grab from UI which just ran calc
-
         const newOrder = {
-            resourceId: getVal('orderId') || null, // Use custom ID or auto-generate
+            resourceId: getVal('orderId') || null,
             customerName: getVal('customerName'),
             inventoryLink: getVal('inventoryLink'),
             status: status,
@@ -1697,8 +1867,8 @@ const App = {
                 // IRU fields
                 otc: getNum('financials.otc'),
                 omRate: getNum('financials.omRate'),
-                annualOm: getNum('financials.annualOm'),
-                marginPercent: marginPercent // Storing for easy display
+                annualOm: getNum('financials.annualOm')
+                // Computed fields will be added below
             },
             costs: {
                 cable: {
@@ -1737,6 +1907,19 @@ const App = {
                 }
             }
         };
+
+        // Calculate and store financial metrics using unified engine
+        const computed = computeOrderFinancials(newOrder);
+        newOrder.financials.marginPercent = computed.marginPercent;
+        newOrder.financials.monthlyProfit = computed.monthlyProfit;
+
+        // Store IRU Resale specific metrics
+        if (computed.isIruResale) {
+            newOrder.financials.firstMonthProfit = computed.firstMonthProfit;
+            newOrder.financials.firstMonthMargin = computed.firstMonthMargin;
+            newOrder.financials.recurringMargin = computed.recurringMargin;
+        }
+
         window.Store.addSalesOrder(newOrder);
         this.renderView('sales');
     },
@@ -2597,27 +2780,32 @@ const App = {
                     <tbody>
                         ${paginatedData.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>' : ''}
                         ${paginatedData.map(item => {
-            const mrr = item.financials?.totalMrr || item.financials?.mrcSales || 0;
-            // Calculate margin based on actual costs
-            const costProps = ['cableCost', 'backhaulA', 'backhaulZ', 'crossConnectA', 'crossConnectZ', 'cable'];
-            let totalDirectCost = 0;
-            if (item.costs) {
-                costProps.forEach(k => {
-                    totalDirectCost += (item.costs[k]?.mrc || 0);
-                });
-            }
-            const margin = mrr - totalDirectCost;
-            const marginPercent = mrr > 0 ? ((margin / mrr) * 100).toFixed(1) : 0;
+            // Use unified calculation engine
+            const computed = computeOrderFinancials(item);
+            const salesModel = item.salesModel || 'Lease';
+            const salesType = item.salesType || 'Resale';
+
+            // Revenue display
+            const mrr = computed.monthlyRevenue;
+
+            // Margin display - prepare for both single and dual display
+            const margin = computed.monthlyProfit;
+            const marginPercent = computed.marginPercent.toFixed(1);
+
+            // For IRU Resale, show dual margins (first month + recurring)
+            const isIruResale = computed.isIruResale;
+            const firstMonthMargin = computed.firstMonthMargin?.toFixed(1) || '0.0';
+            const recurringMargin = computed.recurringMargin?.toFixed(1) || '0.0';
 
             // Color coding for margin
             const marginClass = marginPercent >= 50 ? 'margin-high' : (marginPercent >= 20 ? 'margin-mid' : 'margin-low');
+            const firstMonthMarginClass = firstMonthMargin >= 50 ? 'margin-high' : (firstMonthMargin >= 20 ? 'margin-mid' : 'margin-low');
+            const recurringMarginClass = recurringMargin >= 50 ? 'margin-high' : (recurringMargin >= 20 ? 'margin-mid' : 'margin-low');
 
             // Status badge
             const statusClass = item.status === 'Active' ? 'badge-success' : (item.status === 'Pending' ? 'badge-warning' : 'badge-danger');
 
             // Type icons
-            const salesType = item.salesType || 'Resale';
-            const salesModel = item.salesModel || 'Lease';
             const typeClass = salesType === 'Resale' ? 'type-resale' :
                 salesType === 'Inventory' ? 'type-inventory' :
                     salesType === 'Hybrid' ? 'type-hybrid' : 'type-swap';
@@ -2627,6 +2815,20 @@ const App = {
 
             // Inventory indicator
             const hasInventory = item.inventoryLink ? '✓' : '';
+
+            // Build margin percent cell - dual display for IRU Resale
+            const marginPercentCell = isIruResale ? `
+                <div style="display:flex; flex-direction:column; gap:2px; align-items:flex-end;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:0.65rem; color:var(--text-muted);">1st</span>
+                        <span class="margin-badge ${firstMonthMarginClass}" style="font-size:0.75rem; padding:2px 6px;">${firstMonthMargin}%</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:0.65rem; color:var(--text-muted);">续</span>
+                        <span class="margin-badge ${recurringMarginClass}" style="font-size:0.75rem; padding:2px 6px;">${recurringMargin}%</span>
+                    </div>
+                </div>
+            ` : `<span class="margin-badge ${marginClass}">${marginPercent}%</span>`;
 
             return `
                             <tr>
@@ -2644,7 +2846,7 @@ const App = {
                                 <td><span class="badge ${statusClass}">${item.status}</span></td>
                                 <td class="col-revenue font-mono" style="text-align:right; color: var(--accent-success)">$${mrr.toLocaleString()}</td>
                                 <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString()}</td>
-                                <td class="col-margin-percent" style="text-align:right"><span class="margin-badge ${marginClass}">${marginPercent}%</span></td>
+                                <td class="col-margin-percent" style="text-align:right">${marginPercentCell}</td>
                                 <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
                                 <td>
                                     <div class="flex gap-4">
