@@ -2922,21 +2922,51 @@ const App = {
         const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
         if (!order) return;
 
-        const mrr = order.financials?.totalMrr || order.financials?.mrcSales || 0;
-        const nrc = order.financials?.nrcSales || 0;
+        // Use unified calculation engine
+        const computed = computeOrderFinancials(order);
+        const salesModel = order.salesModel || 'Lease';
+        const salesType = order.salesType || 'Resale';
+
+        // Revenue display - handle both Lease and IRU
+        const isIru = salesModel === 'IRU';
+        const mrrDisplay = isIru ? computed.monthlyRevenue : (order.financials?.mrcSales || 0);
+        const nrcDisplay = isIru ? (order.financials?.otc || 0) : (order.financials?.nrcSales || 0);
+        const revenueLabel1 = isIru ? 'Monthly O&M Revenue' : 'Monthly Revenue (MRR)';
+        const revenueLabel2 = isIru ? 'OTC Revenue' : 'One-time Revenue (NRC)';
+
         const statusClass = order.status === 'Active' ? 'badge-success' : (order.status === 'Pending' ? 'badge-warning' : 'badge-danger');
 
-        // Calculate costs and margin
+        // Calculate costs display
         const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
         const backhaulAMrc = order.costs?.backhaulA?.mrc || order.costs?.backhaul?.aEnd?.monthly || 0;
         const backhaulZMrc = order.costs?.backhaulZ?.mrc || order.costs?.backhaul?.zEnd?.monthly || 0;
         const xcAMrc = order.costs?.crossConnectA?.mrc || order.costs?.crossConnect?.aEnd?.monthly || 0;
         const xcZMrc = order.costs?.crossConnectZ?.mrc || order.costs?.crossConnect?.zEnd?.monthly || 0;
-
         const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc;
-        const grossMargin = mrr - totalCostsMrc;
-        const marginPercent = mrr > 0 ? ((grossMargin / mrr) * 100).toFixed(1) : 0;
+
+        // Use computed values for margin
+        const grossMargin = computed.monthlyProfit;
+        const marginPercent = computed.marginPercent.toFixed(1);
         const marginColor = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+
+        // Build profitability section - different for IRU Resale
+        let profitabilityHtml = '';
+        if (computed.isIruResale) {
+            const firstMonthMargin = computed.firstMonthMargin?.toFixed(1) || '0.0';
+            const recurringMargin = computed.recurringMargin?.toFixed(1) || '0.0';
+            const firstMonthProfit = computed.firstMonthProfit || 0;
+            profitabilityHtml = `
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润</td><td class="font-mono" style="color:${firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; font-weight:600">$${firstMonthProfit.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${firstMonthMargin}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${recurringMargin}%</td></tr>
+            `;
+        } else {
+            profitabilityHtml = `
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+            `;
+        }
 
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
 
@@ -2964,8 +2994,8 @@ const App = {
                                                                                                                                     <div style="${sectionStyle}">
                                                                                                                                         <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
                                                                                                                                         <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Revenue (MRR)</td><td class="font-mono" style="color:var(--accent-success)">$${mrr.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">One-time Revenue (NRC)</td><td class="font-mono">$${nrc.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
+                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
                                                                                                                                         </table>
                                                                                                                                     </div>
 
@@ -2984,8 +3014,7 @@ const App = {
                                                                                                                                     <div style="${sectionStyle}">
                                                                                                                                         <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
                                                                                                                                         <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+                                                                                                                                            ${profitabilityHtml}
                                                                                                                                         </table>
                                                                                                                                     </div>
                                                                                                                                 </div>
