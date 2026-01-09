@@ -2089,7 +2089,7 @@ const App = {
 
             return `
                             <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}">
-                                <td class="font-mono" style="color: var(--accent-secondary)">${item.resourceId}</td>
+                                <td class="font-mono" style="color: var(--accent-secondary); white-space: nowrap;">${item.resourceId}</td>
                                 <td>
                                     <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
                                     <!-- Usage Progress Bar -->
