@@ -153,6 +153,46 @@ class Store {
         this.init();
     }
 
+    // ============ Helper Methods ============
+
+    /**
+     * Calculate total sold capacity for a given resource
+     * @param {string} resourceId - The resource ID to check
+     * @returns {number} Total sold capacity
+     */
+    getSoldCapacity(resourceId) {
+        return this.salesOrders
+            .filter(s => s.inventoryLink === resourceId)
+            .reduce((total, sale) => total + (sale.capacity?.value || 0), 0);
+    }
+
+    /**
+     * Update inventory status based on sold vs total capacity
+     * @param {string} resourceId - The resource ID to update
+     * @param {object} options - Optional: { latestCustomer, latestOrderId } for usage info
+     */
+    updateResourceStatus(resourceId, options = {}) {
+        const resourceIndex = this.inventory.findIndex(r => r.resourceId === resourceId);
+        if (resourceIndex === -1) return;
+
+        const resource = this.inventory[resourceIndex];
+        const totalCapacity = resource.capacity?.value || 0;
+        const soldCapacity = this.getSoldCapacity(resourceId);
+
+        // Update status
+        this.inventory[resourceIndex].status = soldCapacity >= totalCapacity ? 'Sold Out' : 'Available';
+
+        // Update usage info
+        if (options.latestCustomer !== undefined) {
+            this.inventory[resourceIndex].usage = {
+                currentUser: options.latestCustomer,
+                orderLink: options.latestOrderId || null
+            };
+        }
+    }
+
+    // ============ Core Methods ============
+
     init() {
         const stored = localStorage.getItem(DB_KEY);
         let dataToLoad;
@@ -180,28 +220,21 @@ class Store {
     }
 
     getAvailableResources() {
-        const allSales = this.salesOrders;
         const today = new Date();
 
         return this.inventory.filter(item => {
             // Check if contract is expired
             const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-            if (endDate && today > endDate) return false; // Expired
+            if (endDate && today > endDate) return false;
 
             // Check if contract hasn't started yet
             const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-            if (startDate && today < startDate) return false; // Draft
-
-            // Calculate used capacity
-            const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
-            let totalSoldCapacity = 0;
-            linkedSales.forEach(sale => {
-                totalSoldCapacity += (sale.capacity?.value || 0);
-            });
+            if (startDate && today < startDate) return false;
 
             // Check if there's remaining capacity
             const totalCapacity = item.capacity?.value || 0;
-            return totalSoldCapacity < totalCapacity; // Has remaining capacity
+            const soldCapacity = this.getSoldCapacity(item.resourceId);
+            return soldCapacity < totalCapacity;
         });
     }
 
@@ -259,33 +292,12 @@ class Store {
         // 1. Add Sales Order
         this.salesOrders.push(order);
 
-        // 2. Update Inventory Link
+        // 2. Update linked inventory status
         if (order.inventoryLink) {
-            const resourceIndex = this.inventory.findIndex(r => r.resourceId === order.inventoryLink);
-            if (resourceIndex !== -1) {
-                const resource = this.inventory[resourceIndex];
-                const totalCapacity = resource.capacity?.value || 0;
-
-                // Calculate total sold capacity from all linked sales
-                const linkedSales = this.salesOrders.filter(s => s.inventoryLink === order.inventoryLink);
-                let totalSoldCapacity = 0;
-                linkedSales.forEach(s => {
-                    totalSoldCapacity += (s.capacity?.value || 0);
-                });
-
-                // Set status based on remaining capacity
-                if (totalSoldCapacity >= totalCapacity) {
-                    this.inventory[resourceIndex].status = 'Sold Out';
-                } else {
-                    this.inventory[resourceIndex].status = 'Available';
-                }
-
-                // Update usage info with latest customer
-                this.inventory[resourceIndex].usage = {
-                    currentUser: order.customerName,
-                    orderLink: order.salesOrderId
-                };
-            }
+            this.updateResourceStatus(order.inventoryLink, {
+                latestCustomer: order.customerName,
+                latestOrderId: order.salesOrderId
+            });
         }
 
         this.save();
@@ -299,39 +311,15 @@ class Store {
         // Remove the order first
         this.salesOrders = this.salesOrders.filter(s => s.salesOrderId !== id);
 
+        // Update linked inventory status
         if (orderToDelete && orderToDelete.inventoryLink) {
-            const resourceIndex = this.inventory.findIndex(r => r.resourceId === orderToDelete.inventoryLink);
-            if (resourceIndex !== -1) {
-                const resource = this.inventory[resourceIndex];
-                const totalCapacity = resource.capacity?.value || 0;
+            const remainingSales = this.salesOrders.filter(s => s.inventoryLink === orderToDelete.inventoryLink);
+            const latestSale = remainingSales[remainingSales.length - 1];
 
-                // Calculate remaining sold capacity from other orders
-                const remainingLinkedSales = this.salesOrders.filter(s => s.inventoryLink === orderToDelete.inventoryLink);
-                let totalSoldCapacity = 0;
-                remainingLinkedSales.forEach(s => {
-                    totalSoldCapacity += (s.capacity?.value || 0);
-                });
-
-                // Set status based on remaining capacity
-                if (totalSoldCapacity >= totalCapacity) {
-                    this.inventory[resourceIndex].status = 'Sold Out';
-                } else {
-                    this.inventory[resourceIndex].status = 'Available';
-                    // Update usage to show the latest remaining customer if any
-                    if (remainingLinkedSales.length > 0) {
-                        const latestSale = remainingLinkedSales[remainingLinkedSales.length - 1];
-                        this.inventory[resourceIndex].usage = {
-                            currentUser: latestSale.customerName,
-                            orderLink: latestSale.salesOrderId
-                        };
-                    } else {
-                        this.inventory[resourceIndex].usage = {
-                            currentUser: null,
-                            orderLink: null
-                        };
-                    }
-                }
-            }
+            this.updateResourceStatus(orderToDelete.inventoryLink, {
+                latestCustomer: latestSale?.customerName || null,
+                latestOrderId: latestSale?.salesOrderId || null
+            });
         }
 
         this.save();
