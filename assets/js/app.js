@@ -339,6 +339,22 @@ const App = {
         }
     },
 
+    navigateToView(viewName, options = {}) {
+        // Store pending filter for the view to pick up
+        this._pendingFilter = options.filter || null;
+
+        // Update nav item active state
+        this.navItems.forEach(n => {
+            n.classList.remove('active');
+            if (n.dataset.view === viewName) {
+                n.classList.add('active');
+            }
+        });
+
+        // Render the view
+        this.renderView(viewName);
+    },
+
     /* ================= Views ================= */
 
     renderDashboard() {
@@ -349,8 +365,32 @@ const App = {
         const totalCapacity = inventory.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
         const totalSoldCapacity = sales.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
         const capacityUsagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
-        const totalMrr = sales.reduce((acc, item) => acc + (item.financials?.totalMrr || 0), 0);
-        const activeOrders = sales.filter(s => s.status === 'Active').length;
+
+        // Use mrcSales and filter for Active orders with valid contract dates (same logic as MRR Trend)
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        let totalMrr = 0;
+        let activeOrders = 0;
+        sales.forEach(s => {
+            if (s.status !== 'Active') return;
+
+            const mrr = s.financials?.mrcSales || s.financials?.totalMrr || 0;
+            if (mrr <= 0) return;
+
+            // Check contract dates - same logic as MRR Trend
+            const contractStart = s.dates?.start ? new Date(s.dates.start) : null;
+            const contractEnd = s.dates?.end ? new Date(s.dates.end) : null;
+            const startedBeforeOrDuring = !contractStart || contractStart <= currentMonthEnd;
+            const endedAfterOrDuring = !contractEnd || contractEnd >= currentMonthStart;
+
+            if (startedBeforeOrDuring && endedAfterOrDuring) {
+                totalMrr += mrr;
+                activeOrders++;
+            }
+        });
+
         const totalOpex = inventory.reduce((acc, item) => acc + (item.financials?.mrc || 0), 0);
 
         const profit = totalMrr - totalOpex;
@@ -400,6 +440,62 @@ const App = {
         });
         const totalSalesCount = salesTypeCount.Resale + salesTypeCount.Inventory + salesTypeCount.Hybrid;
 
+        // Monthly MRR Trend (last 6 months) - Cumulative Active MRR
+        const monthlyMrr = {};
+        // Note: reusing 'now' variable defined earlier
+
+        // Initialize last 6 months
+        const monthKeys = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthlyMrr[key] = 0;
+            monthKeys.push(key);
+        }
+
+        // For each month, calculate cumulative MRR of all active contracts
+        monthKeys.forEach(monthKey => {
+            const [year, month] = monthKey.split('-').map(Number);
+            // First and last day of this month
+            const monthStart = new Date(year, month - 1, 1);
+            const monthEnd = new Date(year, month, 0); // Last day of month
+
+            sales.forEach(s => {
+                // Only count Active orders (Pending orders are not yet billing)
+                if (s.status !== 'Active') return;
+
+                const mrr = s.financials?.mrcSales || s.financials?.totalMrr || 0;
+                if (mrr <= 0) return;
+
+                // Get contract dates
+                const contractStart = s.dates?.start ? new Date(s.dates.start) : null;
+                const contractEnd = s.dates?.end ? new Date(s.dates.end) : null;
+
+                // Check if contract was active during this month
+                // Active if: started before or during this month AND (no end date OR ended after or during this month)
+                const startedBeforeOrDuring = !contractStart || contractStart <= monthEnd;
+                const endedAfterOrDuring = !contractEnd || contractEnd >= monthStart;
+
+                if (startedBeforeOrDuring && endedAfterOrDuring) {
+                    monthlyMrr[monthKey] += mrr;
+                }
+            });
+        });
+
+        const mrrTrendData = Object.entries(monthlyMrr).sort((a, b) => a[0].localeCompare(b[0]));
+        const maxMrrTrend = Math.max(...mrrTrendData.map(d => d[1]), 1);
+
+        // Margin Distribution
+        const marginDist = { high: 0, mid: 0, low: 0 };
+        sales.filter(s => s.status !== 'Swapped Out').forEach(s => {
+            const computed = computeOrderFinancials(s);
+            const m = computed.marginPercent || 0;
+            if (m >= 50) marginDist.high++;
+            else if (m >= 20) marginDist.mid++;
+            else marginDist.low++;
+        });
+        const marginTotal = marginDist.high + marginDist.mid + marginDist.low;
+
         const html = `
             <!-- Top Stats -->
             <div class="grid-4 mb-6 dashboard-grid-metrics">
@@ -407,7 +503,7 @@ const App = {
                     <div class="capacity-left">
                         <span class="metric-label"><ion-icon name="cube-outline" class="metric-icon"></ion-icon> Capacity</span>
                         <span class="metric-value" style="color: var(--accent-primary)">
-                            <span class="capacity-sold">${totalSoldCapacity.toLocaleString()}</span><span class="capacity-total" style="font-size:0.65em; color:var(--text-muted)">/${totalCapacity.toLocaleString()}</span>
+                            <span class="capacity-sold">${totalSoldCapacity.toLocaleString()}</span><span class="capacity-total" style="font-size:0.65em; color:var(--text-muted)">/${totalCapacity.toLocaleString()}</span><span style="font-size:0.5em; color:var(--text-muted); margin-left:0.25rem">Gbps</span>
                         </span>
                     </div>
                     <div class="capacity-right">
@@ -455,7 +551,7 @@ const App = {
                             </div>`;
         }).join('')}
                         </div>
-                        ${expiringSales.length > 5 ? `<div class="alert-more">+${expiringSales.length - 5} more</div>` : ''}
+                        ${expiringSales.length > 5 ? `<div class="alert-more" onclick="App.navigateToView('sales', {filter: 'expiring'})" style="cursor:pointer;">+${expiringSales.length - 5} more</div>` : ''}
                     `}
                     </div>
                 </div>
@@ -478,62 +574,66 @@ const App = {
                             </div>`;
         }).join('')}
                         </div>
-                        ${expiringInventory.length > 5 ? `<div class="alert-more">+${expiringInventory.length - 5} more</div>` : ''}
+                        ${expiringInventory.length > 5 ? `<div class="alert-more" onclick="App.navigateToView('inventory', {filter: 'expiring'})" style="cursor:pointer;">+${expiringInventory.length - 5} more</div>` : ''}
                     `}
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom Actions -->
+            <!-- Bottom Analytics -->
             <div class="grid-3 mb-4 dashboard-grid-bottom dashboard-secondary mobile-hidden">
-                <!-- Sales Leaderboard -->
-                <div class="card leaderboard-card" style="border-left: 4px solid var(--accent-primary);">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
+                <!-- 1. MRR Trend Chart -->
+                <div class="card" style="border-left: 4px solid var(--accent-success);">
+                    <h3 class="mb-4" style="color: var(--accent-success)"><ion-icon name="trending-up-outline"></ion-icon> MRR Trend (6 Months)</h3>
+                    <div style="display: flex; align-items: flex-end; gap: 0.5rem; height: 120px; padding-bottom: 1.5rem; position: relative;">
+                        ${mrrTrendData.map(([month, mrr]) => {
+            const height = maxMrrTrend > 0 ? Math.max((mrr / maxMrrTrend) * 100, 2) : 2;
+            const [year, mon] = month.split('-');
+            const shortYear = year.slice(2);
+            const label = `${shortYear}/${mon}`;
+            return `
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem;">$${(mrr / 1000).toFixed(0)}k</div>
+                                <div style="width: 100%; height: ${height}%; background: linear-gradient(180deg, var(--accent-success), rgba(0, 212, 170, 0.5)); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s;"></div>
+                                <div style="font-size: 0.6rem; color: var(--text-muted); margin-top: 0.25rem;">${label}</div>
+                            </div>
+                        `;
+        }).join('')}
                     </div>
-                    ${leaderboard.length === 0 ? '<p style="color:var(--text-muted)">No sales data available.</p>' : `
-                        <div class="leaderboard-list">
-                            ${(() => {
-                    const maxMrr = leaderboard.length > 0 ? leaderboard[0].totalMrr : 1;
-                    return leaderboard.slice(0, 5).map((p, idx) => {
-                        const medals = ['🥇', '🥈', '🥉'];
-                        const medal = idx < 3 ? medals[idx] : `<span style="color:var(--text-muted); width:20px; display:inline-block; text-align:center;">${idx + 1}</span>`;
-                        const barWidth = maxMrr > 0 ? Math.round((p.totalMrr / maxMrr) * 100) : 0;
-                        const isTop3 = idx < 3;
-                        return `
-                                        <div class="leaderboard-item ${isTop3 ? 'top-' + (idx + 1) : ''}">
-                                            <div class="leaderboard-rank">${medal}</div>
-                                            <div class="leaderboard-info">
-                                                <div class="leaderboard-name">${p.name}</div>
-                                                <div class="leaderboard-bar" style="background: var(--border-color); height: 4px; border-radius: 2px; margin-top: 4px;">
-                                                    <div style="width: ${barWidth}%; height: 100%; background: ${idx === 0 ? 'var(--accent-warning)' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--accent-primary)'}; border-radius: 2px; transition: width 0.3s;"></div>
-                                                </div>
-                                            </div>
-                                            <div class="leaderboard-stats">
-                                                <span class="font-mono" style="color:var(--accent-success); font-weight: 600;">$${p.totalMrr.toLocaleString()}</span>
-                                                <span style="font-size: 0.7rem; color: var(--text-muted);">${p.orderCount} orders</span>
-                                            </div>
-                                        </div>
-                                    `;
-                    }).join('');
-                })()}
+                </div>
+
+                <!-- 2. Margin Distribution -->
+                <div class="card" style="border-left: 4px solid var(--accent-warning);">
+                    <h3 class="mb-4" style="color: var(--accent-warning)"><ion-icon name="stats-chart-outline"></ion-icon> Margin Distribution</h3>
+                    ${marginTotal === 0 ? '<p style="color:var(--text-muted)">No sales data.</p>' : `
+                        <div>
+                            <div style="display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;">
+                                ${marginDist.high > 0 ? `<div style="flex: ${marginDist.high}; background: var(--accent-success);" title="High (≥50%)"></div>` : ''}
+                                ${marginDist.mid > 0 ? `<div style="flex: ${marginDist.mid}; background: var(--accent-warning);" title="Mid (20-50%)"></div>` : ''}
+                                ${marginDist.low > 0 ? `<div style="flex: ${marginDist.low}; background: var(--accent-danger);" title="Low (<20%)"></div>` : ''}
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.8rem;">
+                                <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent-success);border-radius:2px;margin-right:4px;"></span>≥50%: ${marginDist.high}</span>
+                                <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent-warning);border-radius:2px;margin-right:4px;"></span>20-50%: ${marginDist.mid}</span>
+                                <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent-danger);border-radius:2px;margin-right:4px;"></span><20%: ${marginDist.low}</span>
+                            </div>
                         </div>
                     `}
                 </div>
 
+                <!-- 3. Sales by Type -->
                 <div class="card">
                     <h3 class="mb-4"><ion-icon name="pie-chart-outline"></ion-icon> Sales by Type</h3>
-                    ${totalSalesCount === 0 ? '<p style="color:var(--text-muted)">No sales data available.</p>' : `
+                    ${totalSalesCount === 0 ? '<p style="color:var(--text-muted)">No sales data.</p>' : `
                         <div style="display: flex; align-items: center; gap: 2rem;">
-                            <div style="position: relative; width: 150px; height: 150px;">
+                            <div style="position: relative; width: 120px; height: 120px;">
                                 <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
                                     ${(() => {
                     const colors = { Resale: '#635bff', Inventory: '#00d4aa', Hybrid: '#ffb347' };
-                    const types = ['Resale', 'Inventory', 'Hybrid'];
                     let offset = 0;
-                    return types.map(type => {
+                    return ['Resale', 'Inventory', 'Hybrid'].map(type => {
                         const pct = totalSalesCount > 0 ? (salesTypeCount[type] / totalSalesCount) * 100 : 0;
-                        const circle = pct > 0 ? `<circle cx="18" cy="18" r="15.91549430918954" fill="transparent" stroke="${colors[type]}" stroke-width="4" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}" />` : '';
+                        const circle = pct > 0 ? `<circle cx="18" cy="18" r="15.9" fill="transparent" stroke="${colors[type]}" stroke-width="4" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}" />` : '';
                         offset += pct;
                         return circle;
                     }).join('');
@@ -541,29 +641,51 @@ const App = {
                                 </svg>
                             </div>
                             <div style="font-size: 0.85rem;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: #635bff; border-radius: 2px;"></span>
-                                    <span>Resale: ${salesTypeCount.Resale} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Resale / totalSalesCount * 100) : 0}%)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: #00d4aa; border-radius: 2px;"></span>
-                                    <span>Inventory: ${salesTypeCount.Inventory} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Inventory / totalSalesCount * 100) : 0}%)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: #ffb347; border-radius: 2px;"></span>
-                                    <span>Hybrid: ${salesTypeCount.Hybrid} (${totalSalesCount > 0 ? Math.round(salesTypeCount.Hybrid / totalSalesCount * 100) : 0}%)</span>
-                                </div>
+                                <div style="margin-bottom: 0.4rem;"><span style="display:inline-block;width:10px;height:10px;background:#635bff;border-radius:2px;margin-right:6px;"></span>Resale: ${salesTypeCount.Resale} (${Math.round(salesTypeCount.Resale / totalSalesCount * 100)}%)</div>
+                                <div style="margin-bottom: 0.4rem;"><span style="display:inline-block;width:10px;height:10px;background:#00d4aa;border-radius:2px;margin-right:6px;"></span>Inventory: ${salesTypeCount.Inventory} (${Math.round(salesTypeCount.Inventory / totalSalesCount * 100)}%)</div>
+                                <div><span style="display:inline-block;width:10px;height:10px;background:#ffb347;border-radius:2px;margin-right:6px;"></span>Hybrid: ${salesTypeCount.Hybrid} (${Math.round(salesTypeCount.Hybrid / totalSalesCount * 100)}%)</div>
                             </div>
                         </div>
                     `}
                 </div>
-                <div class="card" style="background: linear-gradient(145deg, rgba(99,91,255,0.05), transparent);">
-                    <h3 class="mb-4">Quick Actions</h3>
-                    <button class="btn btn-secondary" onclick="App.renderView('inventory')">View Inventory</button>
-                    <br><br>
-                        <button class="btn btn-secondary" onclick="App.renderView('sales')">View Sales</button>
+
+                <!-- 4. Leaderboard + Export -->
+                <div class="card leaderboard-card" style="border-left: 4px solid var(--accent-primary);">
+                    <h3 class="mb-4" style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
+                    ${leaderboard.length === 0 ? '<p style="color:var(--text-muted)">No data.</p>' : `
+                        <div class="leaderboard-list" style="margin-bottom: 1rem;">
+                            ${(() => {
+                    const maxMrr = leaderboard[0]?.totalMrr || 1;
+                    return leaderboard.slice(0, 4).map((p, idx) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const medal = idx < 3 ? medals[idx] : `<span style="color:var(--text-muted)">${idx + 1}</span>`;
+                        const barWidth = Math.round((p.totalMrr / maxMrr) * 100);
+                        return `
+                            <div class="leaderboard-item" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+                                <div style="width:20px;text-align:center;">${medal}</div>
+                                <div style="flex:1;">
+                                    <div style="font-size:0.85rem;">${p.name}</div>
+                                    <div style="background:var(--border-color);height:4px;border-radius:2px;margin-top:2px;">
+                                        <div style="width:${barWidth}%;height:100%;background:var(--accent-primary);border-radius:2px;"></div>
+                                    </div>
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--accent-success);font-weight:600;">$${p.totalMrr.toLocaleString()}</div>
+                            </div>`;
+                    }).join('');
+                })()}
+                        </div>
+                    `}
+                    <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="App.exportSalesToCSV()" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
+                            <ion-icon name="document-outline"></ion-icon> Sales CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.exportInventoryToCSV()" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
+                            <ion-icon name="cube-outline"></ion-icon> Inventory CSV
+                        </button>
                     </div>
                 </div>
+            </div>
                 `;
         this.container.innerHTML = html;
     },
@@ -2353,7 +2475,13 @@ const App = {
 
     /* ================= Inventory Logic ================= */
 
-    renderInventory(searchQuery = '', page = 1) {
+    renderInventory(searchQuery = '', page = 1, statusFilter = '') {
+        // Check if coming from Dashboard with an expiring filter
+        if (this._pendingFilter === 'expiring' && !statusFilter) {
+            statusFilter = 'Expiring';
+            this._pendingFilter = null;
+        }
+
         const ITEMS_PER_PAGE = 20;
         let data = window.Store.getInventory();
 
@@ -2364,6 +2492,22 @@ const App = {
                 item.resourceId.toLowerCase().includes(query) ||
                 (item.cableSystem && item.cableSystem.toLowerCase().includes(query))
             );
+        }
+
+        // Apply status filter
+        if (statusFilter) {
+            if (statusFilter === 'Expiring') {
+                const now = new Date();
+                data = data.filter(item => {
+                    if (item.status !== 'Active') return false;
+                    if (!item.dates?.end) return false;
+                    const endDate = new Date(item.dates.end);
+                    const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+                    return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
+                });
+            } else {
+                data = data.filter(item => item.status === statusFilter);
+            }
         }
 
         // Pagination
@@ -2387,6 +2531,12 @@ const App = {
                     <ion-icon name="search-outline"></ion-icon>
                     <input type="text" id="inventory-search" class="form-control" placeholder="Search Resource ID or Cable..." value="${searchQuery}">
                 </div>
+                <select id="inventory-status-filter" class="form-control" style="max-width: 160px;">
+                    <option value="">All Status</option>
+                    <option value="Active" ${statusFilter === 'Active' ? 'selected' : ''}>Active</option>
+                    <option value="Pending" ${statusFilter === 'Pending' ? 'selected' : ''}>Pending</option>
+                    <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
+                </select>
                 <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
                 </div>
@@ -2531,26 +2681,34 @@ const App = {
             `;
         this.container.innerHTML = html;
 
-        // Add search event listener
+        // Add filter event listeners
         const searchInput = document.getElementById('inventory-search');
+        const statusFilterEl = document.getElementById('inventory-status-filter');
+
+        const applyFilters = (page = 1) => {
+            const search = searchInput?.value || '';
+            const status = statusFilterEl?.value || '';
+            this.headerActions.innerHTML = '';
+            this.renderInventory(search, page, status);
+        };
+
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.headerActions.innerHTML = '';
-                this.renderInventory(e.target.value, 1); // Reset to page 1 on search
-            });
-            // Focus cursor at the end of search input if there's a value
+            searchInput.addEventListener('input', () => applyFilters(1));
             if (searchQuery) {
                 searchInput.focus();
                 searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
             }
         }
 
+        if (statusFilterEl) {
+            statusFilterEl.addEventListener('change', () => applyFilters(1));
+        }
+
         // Add pagination event listeners
         document.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const targetPage = parseInt(e.currentTarget.dataset.page);
-                this.headerActions.innerHTML = '';
-                this.renderInventory(searchQuery, targetPage);
+                applyFilters(targetPage);
             });
         });
     },
@@ -3103,6 +3261,12 @@ const App = {
     },
 
     renderSales(filters = {}) {
+        // Check if coming from Dashboard with an expiring filter
+        if (this._pendingFilter === 'expiring' && !filters.status) {
+            filters.status = 'Expiring';
+            this._pendingFilter = null;
+        }
+
         let data = window.Store.getSales();
 
         // Sort by contract start date (newest first), orders without date go to end
@@ -3136,7 +3300,19 @@ const App = {
         }
 
         if (statusValue) {
-            data = data.filter(item => item.status === statusValue);
+            if (statusValue === 'Expiring') {
+                // Filter for Active orders expiring within 90 days
+                const now = new Date();
+                data = data.filter(item => {
+                    if (item.status !== 'Active') return false;
+                    if (!item.dates?.end) return false;
+                    const endDate = new Date(item.dates.end);
+                    const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+                    return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
+                });
+            } else {
+                data = data.filter(item => item.status === statusValue);
+            }
         }
 
         // Pagination
@@ -3166,11 +3342,12 @@ const App = {
                     <option value="">All Salespersons</option>
                     ${salespersons.map(s => `<option value="${s}" ${s === salespersonValue ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
-                <select id="sales-status-filter" class="form-control" style="max-width: 140px;">
+                <select id="sales-status-filter" class="form-control" style="max-width: 160px;">
                     <option value="">All Status</option>
                     <option value="Active" ${statusValue === 'Active' ? 'selected' : ''}>Active</option>
                     <option value="Pending" ${statusValue === 'Pending' ? 'selected' : ''}>Pending</option>
                     <option value="Churned" ${statusValue === 'Churned' ? 'selected' : ''}>Churned</option>
+                    <option value="Expiring" ${statusValue === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
                 </select>
                 <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
@@ -3569,6 +3746,127 @@ const App = {
     editSalesOrder(salesOrderId) {
         // Use the full form modal with edit mode support
         this.openAddSalesModal(salesOrderId);
+    },
+
+    // ============ CSV Export Functions ============
+
+    exportSalesToCSV() {
+        const sales = window.Store.getSales();
+        if (sales.length === 0) {
+            alert('No sales data to export.');
+            return;
+        }
+
+        // CSV Headers
+        const headers = [
+            'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
+            'Salesperson', 'Capacity', 'Unit', 'Contract Start', 'Contract End', 'Term (Months)',
+            'MRC Sales', 'NRC Sales', 'Monthly Cost', 'Monthly Margin', 'Margin %',
+            'A-End City', 'A-End PoP', 'Z-End City', 'Z-End PoP', 'Notes'
+        ];
+
+        // Generate rows
+        const rows = sales.map(s => {
+            const computed = computeOrderFinancials(s);
+            return [
+                s.salesOrderId || '',
+                s.customerName || '',
+                s.status || '',
+                s.salesModel || '',
+                s.salesType || '',
+                s.salesperson || '',
+                s.capacity?.value || 0,
+                s.capacity?.unit || 'Gbps',
+                s.dates?.start || '',
+                s.dates?.end || '',
+                s.dates?.term || '',
+                s.financials?.mrcSales || s.financials?.totalMrr || 0,
+                s.financials?.nrcSales || 0,
+                computed.monthlyProfit ? (s.financials?.mrcSales || 0) - computed.monthlyProfit : 0,
+                computed.monthlyProfit || 0,
+                computed.marginPercent?.toFixed(1) || 0,
+                s.locationAEnd?.city || '',
+                s.locationAEnd?.pop || '',
+                s.locationZEnd?.city || '',
+                s.locationZEnd?.pop || '',
+                (s.notes || '').replace(/"/g, '""') // Escape quotes
+            ].map(v => `"${v}"`).join(',');
+        });
+
+        // Combine and download
+        const csv = [headers.join(','), ...rows].join('\n');
+        this.downloadCSV(csv, `sales_export_${new Date().toISOString().split('T')[0]}.csv`);
+    },
+
+    exportInventoryToCSV() {
+        const inventory = window.Store.getInventory();
+        if (inventory.length === 0) {
+            alert('No inventory data to export.');
+            return;
+        }
+
+        // CSV Headers
+        const headers = [
+            'Resource ID', 'Status', 'Cable System', 'Segment Type', 'Protection',
+            'Ownership', 'Supplier', 'Capacity', 'Unit',
+            'A-End Country', 'A-End City', 'A-End PoP',
+            'Z-End Country', 'Z-End City', 'Z-End PoP',
+            'MRC', 'OTC', 'Annual O&M', 'Contract Start', 'Contract End', 'Term (Months)'
+        ];
+
+        // Generate rows
+        const rows = inventory.map(i => [
+            i.resourceId || '',
+            i.status || '',
+            i.cableSystem || '',
+            i.segmentType || '',
+            i.protection || '',
+            i.acquisition?.ownership || '',
+            i.acquisition?.supplier || '',
+            i.capacity?.value || 0,
+            i.capacity?.unit || 'Gbps',
+            i.location?.aEnd?.country || '',
+            i.location?.aEnd?.city || '',
+            i.location?.aEnd?.pop || '',
+            i.location?.zEnd?.country || '',
+            i.location?.zEnd?.city || '',
+            i.location?.zEnd?.pop || '',
+            i.financials?.mrc || 0,
+            i.financials?.otc || 0,
+            i.financials?.annualOmCost || 0,
+            i.dates?.start || '',
+            i.dates?.end || '',
+            i.financials?.term || ''
+        ].map(v => `"${v}"`).join(','));
+
+        // Combine and download
+        const csv = [headers.join(','), ...rows].join('\n');
+        this.downloadCSV(csv, `inventory_export_${new Date().toISOString().split('T')[0]}.csv`);
+    },
+
+    downloadCSV(csvContent, filename) {
+        // Use Data URL approach for better browser compatibility
+        const BOM = '\uFEFF';
+        const csvData = BOM + csvContent;
+
+        // Encode as base64 for data URL
+        const base64 = btoa(unescape(encodeURIComponent(csvData)));
+        const dataUrl = 'data:text/csv;charset=utf-8;base64,' + base64;
+
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+
+        // For Safari, we need to open in new window
+        if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+            window.open(dataUrl, '_blank');
+            alert(`文件已在新窗口打开，请手动保存为: ${filename}`);
+        } else {
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert(`已下载: ${filename}`);
+        }
     }
 };
 
