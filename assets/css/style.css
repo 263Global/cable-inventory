@@ -1285,6 +1285,7 @@ h6 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-main);
 }
 
 .leaderboard-stats {
@@ -1307,4 +1308,50 @@ h6 {
 .leaderboard-item.top-3 .leaderboard-name {
     font-weight: 600;
     color: #cd7f32;
+}
+
+/* ===== Sales Order Form - 3-Column Layout Responsive ===== */
+
+/* Mobile/Tablet: Single column stacked layout */
+@media (max-width: 1024px) {
+    .sales-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* Profitability - not sticky on mobile */
+    .sales-form-grid>div:first-child {
+        position: relative !important;
+    }
+
+    /* Profitability widget - more compact on mobile */
+    #profitability-widget {
+        padding: 1rem !important;
+    }
+}
+
+/* Small mobile - even more compact */
+@media (max-width: 768px) {
+
+    /* Main margin display - smaller on mobile */
+    #disp-margin-percent {
+        font-size: 1.75rem !important;
+    }
+
+    /* Recurring margin - smaller */
+    #disp-recurring-margin {
+        font-size: 1.25rem !important;
+    }
+
+    /* Cost structure header - sticky on mobile too */
+    #cost-buttons {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 15 !important;
+    }
+
+    /* Grid-2 inside sections become single column */
+    .modal-body .grid-2 {
+        grid-template-columns: 1fr !important;
+    }
 }

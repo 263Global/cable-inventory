@@ -96,6 +96,9 @@ CREATE TABLE sales_orders (
     -- Costs stored as JSON for flexibility
     costs JSONB DEFAULT '{}'::jsonb,
     
+    -- Notes
+    notes TEXT,
+    
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

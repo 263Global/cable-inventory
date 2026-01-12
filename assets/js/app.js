@@ -500,8 +500,82 @@ const App = {
         }).join('');
 
         const modalContent = `
-                <div class="grid-2 gap-2" style="align-items: start;">
-                    <!-- LEFT COLUMN: Sales Info -->
+                <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
+                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
+                    
+                    <!-- COLUMN 1: Profitability Analysis (Sticky) -->
+                    <div style="position: sticky; top: 0; z-index: 10;">
+                        <div id="profitability-widget" style="
+                            background: var(--bg-secondary);
+                            border-radius: 12px;
+                            border: 1px solid var(--border-color);
+                            padding: 1.25rem;
+                            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                        ">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                                <ion-icon name="analytics-outline" style="font-size: 1.2rem; color: var(--accent-primary);"></ion-icon>
+                                <h5 style="margin: 0; font-weight: 600; font-size: 0.95rem;">Profitability Analysis</h5>
+                            </div>
+                            
+                            <!-- Cost & Margin Summary -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Monthly Cost
+                                    </div>
+                                    <div class="font-mono" id="disp-total-cost" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">$0</div>
+                                </div>
+                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Gross Margin
+                                    </div>
+                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-success);">$0</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Main Margin Display -->
+                            <div style="
+                                background: var(--bg-card);
+                                border-radius: 10px;
+                                padding: 1.25rem 1rem;
+                                text-align: center;
+                                border: 1px solid var(--border-color);
+                                margin-bottom: 0.75rem;
+                            ">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;" id="margin-percent-label">
+                                    Margin Rate
+                                </div>
+                                <div class="font-mono" id="disp-margin-percent" style="font-size: 2.25rem; font-weight: 800; color: var(--accent-success); line-height: 1; margin-top: 0.25rem;">0.0%</div>
+                            </div>
+                            
+                            <!-- Recurring Margin Row (for IRU Resale only) -->
+                            <div id="recurring-margin-row" style="
+                                display: none;
+                                background: var(--bg-card);
+                                border-radius: 10px;
+                                padding: 0.75rem 1rem;
+                                border: 1px solid var(--border-color);
+                                margin-bottom: 0.75rem;
+                                justify-content: space-between;
+                                align-items: center;
+                            ">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                                    RECURRING MARGIN
+                                </div>
+                                <div class="font-mono" id="disp-recurring-margin" style="font-size: 1.5rem; font-weight: 800; color: var(--accent-primary);">0.0%</div>
+                            </div>
+                            
+                            <!-- NRC Profit -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                                    NRC Profit
+                                </span>
+                                <span class="font-mono" id="disp-nrc-profit" style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 2: Sales Information -->
                     <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
@@ -577,31 +651,31 @@ const App = {
                         </div>
 
                         <h5 class="mt-4 mb-2">Delivery Location</h5>
-                        <div class="grid-2">
-                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                                <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
-                                <div class="grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">City</label>
-                                        <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">PoP</label>
-                                        <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
-                                    </div>
+                        <!-- A-End -->
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
+                            <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
                                 </div>
                             </div>
-                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                                <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
-                                <div class="grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">City</label>
-                                        <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">PoP</label>
-                                        <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
-                                    </div>
+                        </div>
+                        <!-- Z-End -->
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                            <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
                                 </div>
                             </div>
                         </div>
@@ -657,35 +731,9 @@ const App = {
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Profitability Summary Widget -->
-                        <div class="mt-4 p-3" style="background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h5 class="mb-3">Profitability Analysis</h5>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                <span>Total Monthly Cost:</span>
-                                <span class="font-mono text-warning" id="disp-total-cost">$0.00</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                <span>Gross Margin ($):</span>
-                                <span class="font-mono text-success" id="disp-gross-margin">$0.00</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
-                                <span id="margin-percent-label">Margin (%):</span>
-                                <span class="font-mono" id="disp-margin-percent">0.0%</span>
-                            </div>
-                            <!-- Recurring Margin Row (for IRU Resale only) -->
-                            <div id="recurring-margin-row" style="display:none; justify-content:space-between; font-weight:bold; font-size:1.1em; margin-top:0.5rem;">
-                                <span>续月利润率:</span>
-                                <span class="font-mono" id="disp-recurring-margin">0.0%</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.9em; opacity:0.8;">
-                                <span>NRC Profit:</span>
-                                <span class="font-mono" id="disp-nrc-profit">$0.00</span>
-                            </div>
-                        </div>
                     </div>
 
-                    <!-- RIGHT COLUMN: Cost Structure -->
+                    <!-- COLUMN 3: Cost Structure -->
                     <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
@@ -748,9 +796,21 @@ const App = {
                                                                                                                         <input type="hidden" name="costs.otherCosts.description" value="">
                                                                                                                             <input type="hidden" name="costs.otherCosts.oneOff" value="0">
                                                                                                                                 <input type="hidden" name="costs.otherCosts.monthly" value="0">
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
+                                    </div>
+                                </div>
+                                <!-- Close Cost Structure Column -->
+                            </div>
+                            
+                            <!-- Order Notes - Spans all 3 columns -->
+                            <div class="section-card" style="grid-column: 1 / -1; margin-top: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                                <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <ion-icon name="document-text-outline"></ion-icon> Order Notes
+                                </h4>
+                                <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;"></textarea>
+                            </div>
+                        </div>
+                        <!-- Close 3-Column Grid -->
+                `;
 
         this.openModal('New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
 
@@ -1905,7 +1965,8 @@ const App = {
                     oneOff: getNum('costs.otherCosts.oneOff'),
                     monthly: getNum('costs.otherCosts.monthly')
                 }
-            }
+            },
+            notes: getVal('notes') || ''
         };
 
         // Calculate and store financial metrics using unified engine
@@ -1930,20 +1991,20 @@ const App = {
                 <div class="modal ${isLarge ? 'modal-lg' : ''}">
                     <div class="modal-header">
                         <h3>${title}</h3>
-                        <button class="btn-icon" id="modal-close"><ion-icon name="close-outline"></ion-icon></button>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            ${onSave ? `
+                                <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
+                            ` : `
+                                <button type="button" class="btn btn-secondary" id="modal-cancel">Close</button>
+                            `}
+                            <button class="btn-icon" id="modal-close"><ion-icon name="close-outline"></ion-icon></button>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <form id="modal-form">
                             ${content}
                         </form>
-                    </div>
-                    <div class="modal-footer">
-                        ${onSave ? `
-                            <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                            <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
-                        ` : `
-                            <button type="button" class="btn btn-secondary" id="modal-cancel">Close</button>
-                        `}
                     </div>
                 </div>
             </div>
@@ -2926,6 +2987,7 @@ const App = {
         const computed = computeOrderFinancials(order);
         const salesModel = order.salesModel || 'Lease';
         const salesType = order.salesType || 'Resale';
+        const term = order.dates?.term || 12;
 
         // Revenue display - handle both Lease and IRU
         const isIru = salesModel === 'IRU';
@@ -2936,7 +2998,7 @@ const App = {
 
         const statusClass = order.status === 'Active' ? 'badge-success' : (order.status === 'Pending' ? 'badge-warning' : 'badge-danger');
 
-        // Calculate costs display
+        // Calculate costs display - MRC
         const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
         const backhaulAMrc = order.costs?.backhaulA?.mrc || order.costs?.backhaul?.aEnd?.monthly || 0;
         const backhaulZMrc = order.costs?.backhaulZ?.mrc || order.costs?.backhaul?.zEnd?.monthly || 0;
@@ -2944,10 +3006,30 @@ const App = {
         const xcZMrc = order.costs?.crossConnectZ?.mrc || order.costs?.crossConnect?.zEnd?.monthly || 0;
         const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc;
 
+        // Calculate costs display - NRC
+        const cableCostNrc = order.costs?.cableCost?.nrc || order.costs?.cable?.nrc || 0;
+        const backhaulANrc = order.costs?.backhaulA?.nrc || 0;
+        const backhaulZNrc = order.costs?.backhaulZ?.nrc || 0;
+        const xcANrc = order.costs?.crossConnectA?.nrc || 0;
+        const xcZNrc = order.costs?.crossConnectZ?.nrc || 0;
+        const totalCostsNrc = cableCostNrc + backhaulANrc + backhaulZNrc + xcANrc + xcZNrc;
+
+        // Contract totals
+        const totalRevenue = (mrrDisplay * term) + nrcDisplay;
+        const totalCost = (totalCostsMrc * term) + totalCostsNrc;
+        const totalProfit = totalRevenue - totalCost;
+        const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100).toFixed(1) : 0;
+
+        // Annual figures
+        const annualRevenue = mrrDisplay * 12;
+        const annualCost = totalCostsMrc * 12;
+        const annualProfit = annualRevenue - annualCost;
+
         // Use computed values for margin
         const grossMargin = computed.monthlyProfit;
         const marginPercent = computed.marginPercent.toFixed(1);
         const marginColor = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        const totalProfitColor = totalProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
         // Build profitability section - different for IRU Resale
         let profitabilityHtml = '';
@@ -2956,70 +3038,156 @@ const App = {
             const recurringMargin = computed.recurringMargin?.toFixed(1) || '0.0';
             const firstMonthProfit = computed.firstMonthProfit || 0;
             profitabilityHtml = `
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润</td><td class="font-mono" style="color:${firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; font-weight:600">$${firstMonthProfit.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${firstMonthMargin}%</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${recurringMargin}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">First Month Profit</td><td class="font-mono" style="color:${firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; font-weight:600">$${firstMonthProfit.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">First Month Margin</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${firstMonthMargin}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Recurring Profit</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Recurring Margin</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${recurringMargin}%</td></tr>
             `;
         } else {
             profitabilityHtml = `
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Profit</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin Rate</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
             `;
         }
 
+        // Location info
+        const aEndCity = order.locationAEnd?.city || order.aEndCity || '-';
+        const aEndPop = order.locationAEnd?.pop || order.aEndPop || '-';
+        const zEndCity = order.locationZEnd?.city || order.zEndCity || '-';
+        const zEndPop = order.locationZEnd?.pop || order.zEndPop || '-';
+
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+        const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
 
         const detailsHtml = `
-                                                                                                                            <div class="grid-2" style="gap:1.5rem; align-items: start;">
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${order.salesModel || 'Lease'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${order.salesType || 'Resale'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td>${order.dates?.term || '-'} months</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <!-- Contract Summary - Highlighted -->
+            <div style="${highlightStyle}">
+                <h4 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <ion-icon name="briefcase-outline"></ion-icon> Contract Summary
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Revenue</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">$${totalRevenue.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Cost</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-danger);">$${totalCost.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Profit</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: ${totalProfitColor};">$${totalProfit.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Contract Margin</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: ${totalProfitColor};">${totalMargin}%</div>
+                    </div>
+                </div>
+            </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Cost Breakdown (MRC)</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                <div>
+                    <!-- Order Information -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${salesModel}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${salesType}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            ${profitabilityHtml}
-                                                                                                                                        </table>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
+                    <!-- Contract Period -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Contract Period</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td class="font-mono">${term} months</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Route / Location -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Route</h4>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">A-End</div>
+                                <div style="font-weight: 600; margin-top: 0.25rem;">${aEndCity}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${aEndPop}</div>
+                            </div>
+                            <ion-icon name="arrow-forward-outline" style="font-size: 1.5rem; color: var(--text-muted);"></ion-icon>
+                            <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Z-End</div>
+                                <div style="font-weight: 600; margin-top: 0.25rem;">${zEndCity}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${zEndPop}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <!-- Revenue -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; color:var(--text-muted); font-size:0.85rem;">Annual Revenue</td><td class="font-mono" style="font-weight:600">$${annualRevenue.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Cost Breakdown MRC -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Monthly Costs (MRC)</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total MRC</td><td class="font-mono" style="color:var(--accent-danger); font-weight:600">$${totalCostsMrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Cost Breakdown NRC -->
+                    ${totalCostsNrc > 0 ? `
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">One-time Costs (NRC)</h4>
+                        <table style="width:100%;">
+                            ${cableCostNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable NRC</td><td class="font-mono">$${cableCostNrc.toLocaleString()}</td></tr>` : ''}
+                            ${backhaulANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A NRC</td><td class="font-mono">$${backhaulANrc.toLocaleString()}</td></tr>` : ''}
+                            ${backhaulZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z NRC</td><td class="font-mono">$${backhaulZNrc.toLocaleString()}</td></tr>` : ''}
+                            ${xcANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC A NRC</td><td class="font-mono">$${xcANrc.toLocaleString()}</td></tr>` : ''}
+                            ${xcZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC Z NRC</td><td class="font-mono">$${xcZNrc.toLocaleString()}</td></tr>` : ''}
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total NRC</td><td class="font-mono" style="color:var(--accent-warning); font-weight:600">$${totalCostsNrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+                    ` : ''}
+
+                    <!-- Profitability -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
+                        <table style="width:100%;">
+                            ${profitabilityHtml}
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; color:var(--text-muted); font-size:0.85rem;">Annual Profit</td><td class="font-mono" style="font-weight:600; color: ${annualProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${annualProfit.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            ${order.notes ? `
+            <div style="${sectionStyle}">
+                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.9rem;">Notes</h4>
+                <p style="margin: 0; font-size: 0.9rem; line-height: 1.5;">${order.notes}</p>
+            </div>
+            ` : ''}
+        `;
 
         this.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
     },
