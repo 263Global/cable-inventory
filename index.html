@@ -61,6 +61,9 @@
                     <span id="user-email"
                         style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
                 </div>
+                <button class="btn btn-secondary" id="change-password-btn" style="width: 100%; margin-bottom: 0.5rem;">
+                    <ion-icon name="key-outline"></ion-icon> Change Password
+                </button>
                 <button class="btn btn-secondary" id="logout-btn" style="width: 100%;">
                     <ion-icon name="log-out-outline"></ion-icon> Sign Out
                 </button>
@@ -129,6 +132,38 @@
         document.getElementById('logout-btn')?.addEventListener('click', async () => {
             await Auth.signOut();
             window.location.href = 'login.html';
+        });
+
+        // Change password handler
+        document.getElementById('change-password-btn')?.addEventListener('click', async () => {
+            const newPassword = prompt('Enter new password (minimum 6 characters):');
+            if (!newPassword) return;
+
+            if (newPassword.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
+            const confirmPassword = prompt('Confirm new password:');
+            if (newPassword !== confirmPassword) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            try {
+                const { error } = await window.SupabaseClient.auth.updateUser({
+                    password: newPassword
+                });
+
+                if (error) {
+                    alert('Failed to update password: ' + error.message);
+                    return;
+                }
+
+                alert('Password updated successfully!');
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
         });
     </script>
 </body>
