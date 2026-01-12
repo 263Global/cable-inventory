@@ -4116,28 +4116,26 @@ const App = {
     },
 
     downloadCSV(csvContent, filename) {
-        // Use Data URL approach for better browser compatibility
+        // Use Blob approach for better browser compatibility (including Safari)
         const BOM = '\uFEFF';
         const csvData = BOM + csvContent;
 
-        // Encode as base64 for data URL
-        const base64 = btoa(unescape(encodeURIComponent(csvData)));
-        const dataUrl = 'data:text/csv;charset=utf-8;base64,' + base64;
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
 
         const link = document.createElement('a');
-        link.href = dataUrl;
+        link.href = url;
         link.download = filename;
+        link.style.display = 'none';
 
-        // For Safari, we need to open in new window
-        if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
-            window.open(dataUrl, '_blank');
-            alert(`文件已在新窗口打开，请手动保存为: ${filename}`);
-        } else {
-            document.body.appendChild(link);
-            link.click();
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        setTimeout(() => {
             document.body.removeChild(link);
-            alert(`已下载: ${filename}`);
-        }
+            URL.revokeObjectURL(url);
+        }, 100);
     }
 };
 
