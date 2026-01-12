@@ -248,6 +248,9 @@ const App = {
         this.bindEvents();
         this.initTheme();
         this.renderView('dashboard');
+        // Selection state
+        this._selectedSales = new Set();
+        this._selectedInventory = new Set();
     },
 
     cacheDOM() {
@@ -2541,17 +2544,32 @@ const App = {
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
                 </div>
             </div>
+            <div id="inventory-bulk-toolbar" class="bulk-toolbar" style="display: ${this._selectedInventory.size > 0 ? 'flex' : 'none'}; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+                <span style="font-weight: 600; color: var(--accent-primary);">
+                    <ion-icon name="checkbox-outline"></ion-icon>
+                    <span id="inventory-selection-count">${this._selectedInventory.size}</span> selected
+                </span>
+                <button class="btn btn-secondary" onclick="App.exportSelectedInventory()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                    <ion-icon name="download-outline"></ion-icon> Export Selected
+                </button>
+                <button class="btn" onclick="App.clearInventorySelection()" style="font-size: 0.8rem; padding: 0.4rem 0.5rem; color: var(--text-muted);">
+                    <ion-icon name="close-outline"></ion-icon> Clear
+                </button>
+            </div>
             <style>
                 .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
                 .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
                 .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
                 .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
                 .search-box input { padding-left: 2.25rem; }
+                .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
+                .inventory-row-checkbox, #inventory-select-all { cursor: pointer; width: 16px; height: 16px; }
             </style>
             <div class="table-container">
                 <table class="inventory-table">
                     <thead>
                                                                                                                                         <tr>
+                                                                                                                                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="inventory-select-all" title="Select All"></th>
                                                                                                                                             <th>Resource ID</th>
                                                                                                                                             <th>Status</th>
                                                                                                                                             <th class="col-acquisition">Acquisition</th>
@@ -2607,7 +2625,8 @@ const App = {
                     calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
 
             return `
-                            <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}">
+                            <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}" class="${this._selectedInventory.has(item.resourceId) ? 'row-selected' : ''}">
+                                <td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${item.resourceId}" ${this._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>
                                 <td class="font-mono" style="color: var(--accent-secondary); white-space: nowrap;">${item.resourceId}</td>
                                 <td>
                                     <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
@@ -2709,6 +2728,41 @@ const App = {
             btn.addEventListener('click', (e) => {
                 const targetPage = parseInt(e.currentTarget.dataset.page);
                 applyFilters(targetPage);
+            });
+        });
+
+        // Checkbox event listeners
+        const selectAllCheckbox = document.getElementById('inventory-select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = paginatedData.length > 0 && paginatedData.every(item => this._selectedInventory.has(item.resourceId));
+            selectAllCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    paginatedData.forEach(item => this._selectedInventory.add(item.resourceId));
+                } else {
+                    paginatedData.forEach(item => this._selectedInventory.delete(item.resourceId));
+                }
+                this.updateInventoryBulkToolbar();
+                document.querySelectorAll('.inventory-row-checkbox').forEach(cb => {
+                    cb.checked = e.target.checked;
+                    cb.closest('tr').classList.toggle('row-selected', e.target.checked);
+                });
+            });
+        }
+
+        document.querySelectorAll('.inventory-row-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = e.target.dataset.id;
+                if (e.target.checked) {
+                    this._selectedInventory.add(id);
+                } else {
+                    this._selectedInventory.delete(id);
+                }
+                e.target.closest('tr').classList.toggle('row-selected', e.target.checked);
+                this.updateInventoryBulkToolbar();
+                // Update select-all checkbox state
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = paginatedData.every(item => this._selectedInventory.has(item.resourceId));
+                }
             });
         });
     },
@@ -3353,6 +3407,24 @@ const App = {
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
                 </div>
             </div>
+            <div id="sales-bulk-toolbar" class="bulk-toolbar" style="display: ${this._selectedSales.size > 0 ? 'flex' : 'none'}; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+                <span style="font-weight: 600; color: var(--accent-primary);">
+                    <ion-icon name="checkbox-outline"></ion-icon>
+                    <span id="sales-selection-count">${this._selectedSales.size}</span> selected
+                </span>
+                <button class="btn btn-secondary" onclick="App.exportSelectedSales()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                    <ion-icon name="download-outline"></ion-icon> Export Selected
+                </button>
+                <select id="sales-bulk-status" class="form-control" style="max-width: 140px; font-size: 0.8rem;" onchange="App.bulkUpdateSalesStatus(this.value)">
+                    <option value="">Change Status...</option>
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Churned">Churned</option>
+                </select>
+                <button class="btn" onclick="App.clearSalesSelection()" style="font-size: 0.8rem; padding: 0.4rem 0.5rem; color: var(--text-muted);">
+                    <ion-icon name="close-outline"></ion-icon> Clear
+                </button>
+            </div>
             <style>
                 .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
                 .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
@@ -3372,11 +3444,14 @@ const App = {
                 .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
                 .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
                 .search-box input { padding-left: 2.25rem; }
+                .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
+                .sales-row-checkbox, #sales-select-all { cursor: pointer; width: 16px; height: 16px; }
             </style>
             <div class="table-container">
                 <table class="sales-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="sales-select-all" title="Select All"></th>
                             <th>Order ID</th>
                             <th>Customer</th>
                             <th>Type</th>
@@ -3390,7 +3465,7 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${paginatedData.length === 0 ? '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>' : ''}
+                        ${paginatedData.length === 0 ? '<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>' : ''}
                         ${paginatedData.map(item => {
             // Use unified calculation engine
             const computed = computeOrderFinancials(item);
@@ -3443,7 +3518,8 @@ const App = {
             ` : `<span class="margin-badge ${marginClass}">${marginPercent}%</span>`;
 
             return `
-                            <tr>
+                            <tr class="${this._selectedSales.has(item.salesOrderId) ? 'row-selected' : ''}">
+                                <td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${item.salesOrderId}" ${this._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>
                                 <td class="font-mono order-id-cell">${item.salesOrderId}</td>
                                 <td>
                                     <div class="customer-name" style="font-weight:600" title="${item.customerName}">${item.customerName}</div>
@@ -3526,6 +3602,41 @@ const App = {
             btn.addEventListener('click', (e) => {
                 const targetPage = parseInt(e.currentTarget.dataset.page);
                 applyFilters(targetPage);
+            });
+        });
+
+        // Checkbox event listeners
+        const selectAllCheckbox = document.getElementById('sales-select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = paginatedData.length > 0 && paginatedData.every(item => this._selectedSales.has(item.salesOrderId));
+            selectAllCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    paginatedData.forEach(item => this._selectedSales.add(item.salesOrderId));
+                } else {
+                    paginatedData.forEach(item => this._selectedSales.delete(item.salesOrderId));
+                }
+                this.updateSalesBulkToolbar();
+                document.querySelectorAll('.sales-row-checkbox').forEach(cb => {
+                    cb.checked = e.target.checked;
+                    cb.closest('tr').classList.toggle('row-selected', e.target.checked);
+                });
+            });
+        }
+
+        document.querySelectorAll('.sales-row-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = e.target.dataset.id;
+                if (e.target.checked) {
+                    this._selectedSales.add(id);
+                } else {
+                    this._selectedSales.delete(id);
+                }
+                e.target.closest('tr').classList.toggle('row-selected', e.target.checked);
+                this.updateSalesBulkToolbar();
+                // Update select-all checkbox state
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = paginatedData.every(item => this._selectedSales.has(item.salesOrderId));
+                }
             });
         });
     },
@@ -3746,6 +3857,158 @@ const App = {
     editSalesOrder(salesOrderId) {
         // Use the full form modal with edit mode support
         this.openAddSalesModal(salesOrderId);
+    },
+
+    // ============ Bulk Operations ============
+
+    updateSalesBulkToolbar() {
+        const toolbar = document.getElementById('sales-bulk-toolbar');
+        const countEl = document.getElementById('sales-selection-count');
+        if (toolbar) {
+            toolbar.style.display = this._selectedSales.size > 0 ? 'flex' : 'none';
+        }
+        if (countEl) {
+            countEl.textContent = this._selectedSales.size;
+        }
+    },
+
+    exportSelectedSales() {
+        if (this._selectedSales.size === 0) {
+            alert('No items selected. Please select at least one order.');
+            return;
+        }
+
+        const sales = window.Store.getSales().filter(s => this._selectedSales.has(s.salesOrderId));
+
+        const headers = [
+            'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
+            'Capacity', 'Unit', 'MRC Sales', 'NRC Sales', 'Salesperson',
+            'Start Date', 'End Date', 'Term (Months)'
+        ];
+
+        const rows = sales.map(s => [
+            s.salesOrderId,
+            s.customerName || '',
+            s.status || '',
+            s.salesModel || '',
+            s.salesType || '',
+            s.capacity?.value || '',
+            s.capacity?.unit || 'Gbps',
+            s.financials?.mrcSales || 0,
+            s.financials?.nrcSales || 0,
+            s.salesperson || '',
+            s.dates?.start || '',
+            s.dates?.end || '',
+            s.dates?.term || ''
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        this.downloadCSV(csvContent, `sales_selected_${new Date().toISOString().slice(0, 10)}.csv`);
+        alert(`Exported ${sales.length} selected orders.`);
+    },
+
+    async bulkUpdateSalesStatus(newStatus) {
+        if (!newStatus) return;
+
+        if (this._selectedSales.size === 0) {
+            alert('No items selected.');
+            return;
+        }
+
+        if (!confirm(`Update ${this._selectedSales.size} orders to "${newStatus}" status?`)) {
+            document.getElementById('sales-bulk-status').value = '';
+            return;
+        }
+
+        const sales = window.Store.getSales();
+        for (const orderId of this._selectedSales) {
+            const order = sales.find(s => s.salesOrderId === orderId);
+            if (order) {
+                order.status = newStatus;
+                await window.Store.saveSalesOrder(order);
+            }
+        }
+
+        alert(`Updated ${this._selectedSales.size} orders to "${newStatus}".`);
+        this._selectedSales.clear();
+        this.headerActions.innerHTML = '';
+        this.renderSales();
+    },
+
+    clearSalesSelection() {
+        this._selectedSales.clear();
+        document.querySelectorAll('.sales-row-checkbox').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr')?.classList.remove('row-selected');
+        });
+        const selectAll = document.getElementById('sales-select-all');
+        if (selectAll) selectAll.checked = false;
+        this.updateSalesBulkToolbar();
+    },
+
+    // ============ Inventory Bulk Operations ============
+
+    updateInventoryBulkToolbar() {
+        const toolbar = document.getElementById('inventory-bulk-toolbar');
+        const countEl = document.getElementById('inventory-selection-count');
+        if (toolbar) {
+            toolbar.style.display = this._selectedInventory.size > 0 ? 'flex' : 'none';
+        }
+        if (countEl) {
+            countEl.textContent = this._selectedInventory.size;
+        }
+    },
+
+    exportSelectedInventory() {
+        if (this._selectedInventory.size === 0) {
+            alert('No items selected. Please select at least one resource.');
+            return;
+        }
+
+        const inventory = window.Store.getInventory().filter(i => this._selectedInventory.has(i.resourceId));
+
+        const headers = [
+            'Resource ID', 'Cable System', 'Status', 'Acquisition Type', 'Ownership',
+            'Capacity', 'Unit', 'MRC', 'NRC', 'A-End City', 'Z-End City',
+            'Start Date', 'End Date'
+        ];
+
+        const rows = inventory.map(i => [
+            i.resourceId,
+            i.cableSystem || '',
+            i.status || '',
+            i.acquisition?.type || '',
+            i.acquisition?.ownership || '',
+            i.capacity?.value || '',
+            i.capacity?.unit || 'Gbps',
+            i.financials?.mrc || 0,
+            i.financials?.nrc || 0,
+            i.location?.aEnd?.city || '',
+            i.location?.zEnd?.city || '',
+            i.dates?.start || '',
+            i.dates?.end || ''
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        this.downloadCSV(csvContent, `inventory_selected_${new Date().toISOString().slice(0, 10)}.csv`);
+        alert(`Exported ${inventory.length} selected resources.`);
+    },
+
+    clearInventorySelection() {
+        this._selectedInventory.clear();
+        document.querySelectorAll('.inventory-row-checkbox').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr')?.classList.remove('row-selected');
+        });
+        const selectAll = document.getElementById('inventory-select-all');
+        if (selectAll) selectAll.checked = false;
+        this.updateInventoryBulkToolbar();
     },
 
     // ============ CSV Export Functions ============
