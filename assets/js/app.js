@@ -3430,12 +3430,6 @@ const App = {
                 <button class="btn btn-secondary" onclick="App.exportSelectedSales()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;" ${this._selectedSales.size === 0 ? 'disabled' : ''}>
                     <ion-icon name="download-outline"></ion-icon> Export Selected
                 </button>
-                <select id="sales-bulk-status" class="form-control" style="max-width: 140px; font-size: 0.8rem;" onchange="App.bulkUpdateSalesStatus(this.value)" ${this._selectedSales.size === 0 ? 'disabled' : ''}>
-                    <option value="">Change Status...</option>
-                    <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Churned">Churned</option>
-                </select>
                 <button class="btn" onclick="App.exitSalesSelectionMode()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem; margin-left: auto;">
                     <ion-icon name="close-outline"></ion-icon> Exit Bulk Mode
                 </button>
@@ -3898,9 +3892,7 @@ const App = {
         }
         // Enable/disable buttons based on selection
         const exportBtn = document.querySelector('#sales-bulk-toolbar .btn-secondary');
-        const statusSelect = document.getElementById('sales-bulk-status');
         if (exportBtn) exportBtn.disabled = this._selectedSales.size === 0;
-        if (statusSelect) statusSelect.disabled = this._selectedSales.size === 0;
     },
 
     exportSelectedSales() {
@@ -3939,34 +3931,6 @@ const App = {
 
         this.downloadCSV(csvContent, `sales_selected_${new Date().toISOString().slice(0, 10)}.csv`);
         alert(`Exported ${sales.length} selected orders.`);
-    },
-
-    async bulkUpdateSalesStatus(newStatus) {
-        if (!newStatus) return;
-
-        if (this._selectedSales.size === 0) {
-            alert('No items selected.');
-            return;
-        }
-
-        if (!confirm(`Update ${this._selectedSales.size} orders to "${newStatus}" status?`)) {
-            document.getElementById('sales-bulk-status').value = '';
-            return;
-        }
-
-        const sales = window.Store.getSales();
-        for (const orderId of this._selectedSales) {
-            const order = sales.find(s => s.salesOrderId === orderId);
-            if (order) {
-                order.status = newStatus;
-                await window.Store.saveSalesOrder(order);
-            }
-        }
-
-        alert(`Updated ${this._selectedSales.size} orders to "${newStatus}".`);
-        this._selectedSales.clear();
-        this.headerActions.innerHTML = '';
-        this.renderSales();
     },
 
     clearSalesSelection() {
