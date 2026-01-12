@@ -73,6 +73,21 @@
                 <div class="actions" id="header-actions">
                     <!-- Dynamic Buttons will go here -->
                 </div>
+                <!-- Mobile User Menu -->
+                <div class="mobile-user-menu" id="mobile-user-menu">
+                    <button class="mobile-user-btn" id="mobile-user-btn">
+                        <ion-icon name="person-circle-outline"></ion-icon>
+                    </button>
+                    <div class="mobile-user-dropdown" id="mobile-user-dropdown">
+                        <div class="mobile-user-email" id="mobile-user-email"></div>
+                        <button class="mobile-user-item" id="mobile-change-password">
+                            <ion-icon name="key-outline"></ion-icon> Change Password
+                        </button>
+                        <button class="mobile-user-item mobile-user-logout" id="mobile-logout">
+                            <ion-icon name="log-out-outline"></ion-icon> Sign Out
+                        </button>
+                    </div>
+                </div>
             </header>
 
             <div class="content-area" id="content-container">
@@ -109,10 +124,12 @@
                 // Show user section
                 const userSection = document.getElementById('user-section');
                 const userEmail = document.getElementById('user-email');
+                const mobileUserEmail = document.getElementById('mobile-user-email');
                 const user = await Auth.getCurrentUser();
 
                 if (user) {
                     userEmail.textContent = user.email;
+                    if (mobileUserEmail) mobileUserEmail.textContent = user.email;
                     userSection.style.display = 'block';
                 }
 
@@ -123,6 +140,34 @@
                 App.init();
             }
         })();
+
+        // Mobile user menu toggle
+        document.getElementById('mobile-user-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('mobile-user-dropdown')?.classList.toggle('open');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('mobile-user-dropdown');
+            const btn = document.getElementById('mobile-user-btn');
+            if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        // Mobile logout handler
+        document.getElementById('mobile-logout')?.addEventListener('click', async () => {
+            await Auth.signOut();
+            window.location.href = 'login.html';
+        });
+
+        // Mobile change password handler
+        document.getElementById('mobile-change-password')?.addEventListener('click', async () => {
+            document.getElementById('mobile-user-dropdown')?.classList.remove('open');
+            // Reuse existing change password logic
+            document.getElementById('change-password-btn')?.click();
+        });
 
         // Logout handler
         document.getElementById('logout-btn')?.addEventListener('click', async () => {
