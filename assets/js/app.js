@@ -661,7 +661,7 @@ const App = {
                         <div class="leaderboard-list" style="margin-bottom: 1rem;">
                             ${(() => {
                     const maxMrr = leaderboard[0]?.totalMrr || 1;
-                    return leaderboard.slice(0, 4).map((p, idx) => {
+                    return leaderboard.slice(0, 5).map((p, idx) => {
                         const medals = ['🥇', '🥈', '🥉'];
                         const medal = idx < 3 ? medals[idx] : `<span style="color:var(--text-muted)">${idx + 1}</span>`;
                         const barWidth = Math.round((p.totalMrr / maxMrr) * 100);
