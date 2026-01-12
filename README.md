@@ -5,11 +5,12 @@ A professional Telecom Resource and P&L Management System for managing submarine
 ## Features
 
 ### Core Features
-- **📊 Dashboard** - Overview metrics with capacity usage tracking, MRR analytics, and sales leaderboards
+- **📊 Dashboard** - Key metrics, MRR trend charts, margin distribution, capacity tracking, and sales leaderboards
 - **📦 Inventory Management** - Track cable resources including IRU, Lease, and Swapped assets
 - **💼 Sales Order Tracking** - Manage customer orders with detailed cost structures and profitability analysis
 - **📱 Responsive Design** - Optimized for desktop, tablet, and mobile devices (iOS Safari compatible)
-- **🔍 Smart Search** - Fuzzy search with multi-tier filtering and pagination
+- **🔍 Smart Search** - Fuzzy search with multi-tier filtering (status, salesperson, expiring soon)
+- **📤 CSV Export** - Export Sales and Inventory data for offline analysis
 
 ### Sales Order Form
 - **3-Column Layout** - Profitability Analysis | Sales Info | Cost Structure
