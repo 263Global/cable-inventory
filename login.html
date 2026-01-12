@@ -149,7 +149,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .error-message {
@@ -171,6 +173,42 @@
         .error-message ion-icon {
             font-size: 1.25rem;
             flex-shrink: 0;
+        }
+
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            color: #22c55e;
+            font-size: 0.875rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .success-message.show {
+            display: flex;
+        }
+
+        .success-message ion-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-top: -0.5rem;
+        }
+
+        .forgot-password a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
         }
 
         .divider {
@@ -240,30 +278,25 @@
                     <span id="error-text">Invalid email or password</span>
                 </div>
 
+                <div class="success-message" id="success-message">
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    <span id="success-text"></span>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label" for="email">Email</label>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        name="email" 
-                        class="form-input" 
-                        placeholder="Enter your email"
-                        required
-                        autocomplete="email"
-                    >
+                    <input type="email" id="email" name="email" class="form-input" placeholder="Enter your email"
+                        required autocomplete="email">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="password">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        class="form-input" 
-                        placeholder="Enter your password"
-                        required
-                        autocomplete="current-password"
-                    >
+                    <input type="password" id="password" name="password" class="form-input"
+                        placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+
+                <div class="forgot-password">
+                    <a href="#" id="forgot-link">Forgot password?</a>
                 </div>
 
                 <button type="submit" class="login-btn" id="login-btn">
@@ -304,10 +337,10 @@
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // Hide previous error
             errorDiv.classList.remove('show');
-            
+
             // Get form data
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -336,6 +369,42 @@
 
             // Success - redirect to main app
             window.location.href = 'index.html';
+        });
+
+        // Forgot password handler
+        const successDiv = document.getElementById('success-message');
+        const successText = document.getElementById('success-text');
+
+        document.getElementById('forgot-link').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            if (!email) {
+                errorText.textContent = 'Please enter your email first';
+                errorDiv.classList.add('show');
+                successDiv.classList.remove('show');
+                return;
+            }
+
+            errorDiv.classList.remove('show');
+
+            try {
+                const { error } = await window.SupabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/reset-password.html'
+                });
+
+                if (error) {
+                    errorText.textContent = error.message;
+                    errorDiv.classList.add('show');
+                    return;
+                }
+
+                successText.textContent = 'Password reset email sent! Check your inbox.';
+                successDiv.classList.add('show');
+            } catch (err) {
+                errorText.textContent = err.message || 'Failed to send reset email';
+                errorDiv.classList.add('show');
+            }
         });
     </script>
 </body>
