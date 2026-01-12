@@ -160,7 +160,9 @@
                     return;
                 }
 
-                alert('Password updated successfully!');
+                alert('Password updated successfully! Please log in again.');
+                await Auth.signOut();
+                window.location.href = 'login.html';
             } catch (err) {
                 alert('Error: ' + err.message);
             }
