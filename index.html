@@ -50,6 +50,21 @@
                     <ion-icon name="download-outline"></ion-icon> Backup Data
                 </button>
             </div>
+
+            <!-- User Info & Logout -->
+            <div id="user-section"
+                style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: none;">
+                <div
+                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0 0.5rem;">
+                    <ion-icon name="person-circle-outline"
+                        style="font-size: 1.5rem; color: var(--accent-primary);"></ion-icon>
+                    <span id="user-email"
+                        style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                </div>
+                <button class="btn btn-secondary" id="logout-btn" style="width: 100%;">
+                    <ion-icon name="log-out-outline"></ion-icon> Sign Out
+                </button>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -70,8 +85,42 @@
     <!-- Modals Container -->
     <div id="modal-container"></div>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/supabase.js"></script>
+    <script src="assets/js/auth.js"></script>
     <script src="assets/js/store.js"></script>
     <script src="assets/js/app.js"></script>
+
+    <script>
+        // Auth check - redirect to login if not authenticated
+        (async () => {
+            const isAuthed = await Auth.requireAuth();
+            if (isAuthed) {
+                // Show user section
+                const userSection = document.getElementById('user-section');
+                const userEmail = document.getElementById('user-email');
+                const user = await Auth.getCurrentUser();
+
+                if (user) {
+                    userEmail.textContent = user.email;
+                    userSection.style.display = 'block';
+                }
+
+                // Initialize Store (load data from Supabase)
+                await window.Store.init();
+
+                // Initialize app
+                App.init();
+            }
+        })();
+
+        // Logout handler
+        document.getElementById('logout-btn')?.addEventListener('click', async () => {
+            await Auth.signOut();
+            window.location.href = 'login.html';
+        });
+    </script>
 </body>
 
 </html>

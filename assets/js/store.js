@@ -1,283 +1,309 @@
 /**
  * Store.js
- * Handles data persistence using localStorage
+ * Handles data persistence using Supabase
  */
-
-const DB_KEY = 'cable_inventory_db_v1';
 
 const generateId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 
-const defaultData = {
-    inventory: [
-        {
-            resourceId: 'INV-HKG-TYO-01',
-            status: 'Available',
-            cableSystem: 'APG',
-            segmentType: 'Trunk',
-            protection: 'Protected',
-            acquisition: { type: 'Purchased', ownership: 'Leased', supplier: 'SubCom' },
-            capacity: { unit: 'Gbps', value: 100 },
-            location: {
-                aEnd: { country: 'Hong Kong', city: 'Hong Kong', pop: 'Equinix HK1' },
-                zEnd: { country: 'Japan', city: 'Tokyo', pop: 'Equinix TY2' }
-            },
-            financials: { mrc: 5000, nrc: 10000, term: 60 },
-            dates: { start: '2024-01-01', end: '2028-12-31' },
-            usage: { currentUser: null, orderLink: null }
-        },
-        {
-            resourceId: 'INV-TYO-LAX-01',
-            status: 'Available',
-            cableSystem: 'SJC2',
-            segmentType: 'Trunk',
-            protection: 'Protected',
-            acquisition: { type: 'Purchased', ownership: 'IRU', supplier: 'NTT Communications' },
-            capacity: { unit: 'Gbps', value: 200 },
-            location: {
-                aEnd: { country: 'Japan', city: 'Tokyo', pop: 'Equinix TY2' },
-                zEnd: { country: 'USA', city: 'Los Angeles', pop: 'CoreSite LA1' }
-            },
-            financials: { otc: 120000, term: 180, omRate: 3, annualOmCost: 3600 },
-            dates: { start: '2024-01-01', end: '2039-12-31' },
-            usage: { currentUser: null, orderLink: null }
-        },
-        {
-            resourceId: 'INV-SGP-HKG-01',
-            status: 'Available',
-            cableSystem: 'SEA-ME-WE 6',
-            segmentType: 'Trunk',
-            protection: 'Unprotected',
-            acquisition: { type: 'Purchased', ownership: 'Leased', supplier: 'Telia' },
-            capacity: { unit: 'Gbps', value: 400 },
-            location: {
-                aEnd: { country: 'Singapore', city: 'Singapore', pop: 'Equinix SG3' },
-                zEnd: { country: 'Hong Kong', city: 'Hong Kong', pop: 'MEGA-i' }
-            },
-            financials: { mrc: 12000, nrc: 25000, term: 36 },
-            dates: { start: '2024-06-01', end: '2027-05-31' },
-            usage: { currentUser: null, orderLink: null }
-        }
-    ],
-    sales: [
-        {
-            salesOrderId: 'SO-2024-001',
-            customerName: 'ByteDance',
-            salesperson: 'Janna Dai',
-            status: 'Active',
-            salesModel: 'Lease',
-            salesType: 'Resale',
-            inventoryLink: '',
-            capacity: { value: 10, unit: 'Gbps' },
-            dates: { start: '2024-01-01', end: '2025-12-31', term: 24 },
-            financials: { mrcSales: 3000, nrcSales: 5000, totalMrr: 3000 },
-            costs: {
-                cable: { model: 'Lease', mrc: 2000, nrc: 3000 },
-                backhaulA: { mrc: 100 },
-                backhaulZ: { mrc: 100 },
-                crossConnectA: { mrc: 50 },
-                crossConnectZ: { mrc: 50 }
-            }
-        },
-        {
-            salesOrderId: 'SO-2024-002',
-            customerName: 'Tencent Cloud',
-            salesperson: 'Miki Chen',
-            status: 'Active',
-            salesModel: 'Lease',
-            salesType: 'Inventory',
-            inventoryLink: 'INV-HKG-TYO-01',
-            capacity: { value: 10, unit: 'Gbps' },
-            dates: { start: '2024-03-01', end: '2025-02-28', term: 12 },
-            financials: { mrcSales: 1000, nrcSales: 0, totalMrr: 1000 },
-            costs: {}
-        },
-        {
-            salesOrderId: 'SO-2024-003',
-            customerName: 'Alibaba Cloud',
-            salesperson: 'Wayne Jiang',
-            status: 'Active',
-            salesModel: 'Lease',
-            salesType: 'Inventory',
-            inventoryLink: 'INV-TYO-LAX-01',
-            capacity: { value: 20, unit: 'Gbps' },
-            dates: { start: '2024-04-01', end: '2026-03-31', term: 24 },
-            financials: { mrcSales: 2500, nrcSales: 0, totalMrr: 2500 },
-            costs: {}
-        },
-        {
-            salesOrderId: 'SO-2024-004',
-            customerName: 'Microsoft Azure',
-            salesperson: 'Kristen Gan',
-            status: 'Active',
-            salesModel: 'IRU',
-            salesType: 'Resale',
-            inventoryLink: '',
-            capacity: { value: 10, unit: 'Gbps' },
-            dates: { start: '2024-01-01', end: '2028-12-31', term: 60 },
-            financials: { otc: 50000, annualOm: 1500, totalMrr: 0 },
-            costs: {
-                cable: { model: 'IRU', otc: 30000, annualOm: 900 }
-            }
-        },
-        {
-            salesOrderId: 'SO-2024-005',
-            customerName: 'AWS',
-            salesperson: 'Becky Hai',
-            status: 'Active',
-            salesModel: 'IRU',
-            salesType: 'Inventory',
-            inventoryLink: 'INV-TYO-LAX-01',
-            capacity: { value: 50, unit: 'Gbps' },
-            dates: { start: '2024-02-01', end: '2029-01-31', term: 60 },
-            financials: { otc: 80000, annualOm: 2400, totalMrr: 0 },
-            costs: {}
-        },
-        {
-            salesOrderId: 'SO-2024-006',
-            customerName: 'Swap Partner - PCCW',
-            salesperson: 'Procurement Team',
-            status: 'Active',
-            salesModel: 'IRU',
-            salesType: 'Swapped Out',
-            inventoryLink: 'INV-SGP-HKG-01',
-            capacity: { value: 100, unit: 'Gbps' },
-            dates: { start: '2024-06-01', end: '2027-05-31', term: 36 },
-            financials: { otc: 0, annualOm: 0, totalMrr: 0 },
-            costs: {}
-        }
-    ]
-};
-
 class Store {
     constructor() {
-        this.init();
+        this.inventory = [];
+        this.salesOrders = [];
+        this.initialized = false;
+    }
+
+    // ============ Initialization ============
+
+    async init() {
+        if (this.initialized) return;
+
+        try {
+            // Fetch all data from Supabase
+            const [invResult, salesResult] = await Promise.all([
+                window.SupabaseClient.from('inventory').select('*').order('created_at', { ascending: false }),
+                window.SupabaseClient.from('sales_orders').select('*').order('created_at', { ascending: false })
+            ]);
+
+            if (invResult.error) throw invResult.error;
+            if (salesResult.error) throw salesResult.error;
+
+            // Transform flat DB rows to nested JS objects
+            this.inventory = (invResult.data || []).map(row => this.dbToInventory(row));
+            this.salesOrders = (salesResult.data || []).map(row => this.dbToSalesOrder(row));
+
+            this.initialized = true;
+            console.log('Store initialized with Supabase data');
+        } catch (err) {
+            console.error('Failed to initialize store:', err);
+            this.inventory = [];
+            this.salesOrders = [];
+        }
+    }
+
+    // ============ Data Transformers ============
+
+    // DB row -> JS object (inventory)
+    dbToInventory(row) {
+        return {
+            resourceId: row.resource_id,
+            status: row.status,
+            cableSystem: row.cable_system,
+            segmentType: row.segment_type,
+            protection: row.protection,
+            acquisition: {
+                type: row.acquisition_type,
+                ownership: row.ownership,
+                supplier: row.supplier,
+                contractRef: row.contract_ref
+            },
+            capacity: {
+                value: parseFloat(row.capacity_value) || 0,
+                unit: row.capacity_unit
+            },
+            location: {
+                aEnd: {
+                    country: row.a_end_country,
+                    city: row.a_end_city,
+                    pop: row.a_end_pop,
+                    device: row.a_end_device,
+                    port: row.a_end_port
+                },
+                zEnd: {
+                    country: row.z_end_country,
+                    city: row.z_end_city,
+                    pop: row.z_end_pop,
+                    device: row.z_end_device,
+                    port: row.z_end_port
+                }
+            },
+            financials: {
+                mrc: parseFloat(row.mrc) || 0,
+                nrc: parseFloat(row.nrc) || 0,
+                otc: parseFloat(row.otc) || 0,
+                omRate: parseFloat(row.om_rate) || 0,
+                annualOmCost: parseFloat(row.annual_om_cost) || 0,
+                term: row.term_months
+            },
+            dates: {
+                start: row.start_date,
+                end: row.end_date
+            },
+            usage: {
+                currentUser: row.current_user_name,
+                orderLink: row.order_link
+            }
+        };
+    }
+
+    // JS object -> DB row (inventory)
+    inventoryToDb(item) {
+        return {
+            resource_id: item.resourceId,
+            status: item.status || 'Available',
+            cable_system: item.cableSystem,
+            segment_type: item.segmentType,
+            protection: item.protection,
+            acquisition_type: item.acquisition?.type,
+            ownership: item.acquisition?.ownership,
+            supplier: item.acquisition?.supplier,
+            contract_ref: item.acquisition?.contractRef,
+            capacity_value: item.capacity?.value,
+            capacity_unit: item.capacity?.unit,
+            a_end_country: item.location?.aEnd?.country,
+            a_end_city: item.location?.aEnd?.city,
+            a_end_pop: item.location?.aEnd?.pop,
+            a_end_device: item.location?.aEnd?.device,
+            a_end_port: item.location?.aEnd?.port,
+            z_end_country: item.location?.zEnd?.country,
+            z_end_city: item.location?.zEnd?.city,
+            z_end_pop: item.location?.zEnd?.pop,
+            z_end_device: item.location?.zEnd?.device,
+            z_end_port: item.location?.zEnd?.port,
+            mrc: item.financials?.mrc,
+            nrc: item.financials?.nrc,
+            otc: item.financials?.otc,
+            om_rate: item.financials?.omRate,
+            annual_om_cost: item.financials?.annualOmCost,
+            term_months: item.financials?.term,
+            start_date: item.dates?.start,
+            end_date: item.dates?.end,
+            current_user_name: item.usage?.currentUser,
+            order_link: item.usage?.orderLink
+        };
+    }
+
+    // DB row -> JS object (sales order)
+    dbToSalesOrder(row) {
+        return {
+            salesOrderId: row.sales_order_id,
+            inventoryLink: row.inventory_link,
+            status: row.status,
+            customerName: row.customer_name,
+            salesperson: row.salesperson,
+            salesModel: row.sales_model,
+            salesType: row.sales_type,
+            capacity: {
+                value: parseFloat(row.capacity_value) || 0,
+                unit: row.capacity_unit
+            },
+            dates: {
+                start: row.start_date,
+                end: row.end_date,
+                term: row.term_months
+            },
+            location: {
+                aEnd: { city: row.a_end_city, pop: row.a_end_pop },
+                zEnd: { city: row.z_end_city, pop: row.z_end_pop }
+            },
+            financials: {
+                mrcSales: parseFloat(row.mrc_sales) || 0,
+                nrcSales: parseFloat(row.nrc_sales) || 0,
+                otc: parseFloat(row.otc) || 0,
+                omRate: parseFloat(row.om_rate) || 0,
+                annualOm: parseFloat(row.annual_om) || 0,
+                totalMrr: parseFloat(row.total_mrr) || 0
+            },
+            costs: row.costs || {}
+        };
+    }
+
+    // JS object -> DB row (sales order)
+    salesOrderToDb(order) {
+        return {
+            sales_order_id: order.salesOrderId,
+            inventory_link: order.inventoryLink,
+            status: order.status || 'Pending',
+            customer_name: order.customerName,
+            salesperson: order.salesperson,
+            sales_model: order.salesModel,
+            sales_type: order.salesType,
+            capacity_value: order.capacity?.value,
+            capacity_unit: order.capacity?.unit,
+            start_date: order.dates?.start,
+            end_date: order.dates?.end,
+            term_months: order.dates?.term,
+            a_end_city: order.location?.aEnd?.city,
+            a_end_pop: order.location?.aEnd?.pop,
+            z_end_city: order.location?.zEnd?.city,
+            z_end_pop: order.location?.zEnd?.pop,
+            mrc_sales: order.financials?.mrcSales,
+            nrc_sales: order.financials?.nrcSales,
+            otc: order.financials?.otc,
+            om_rate: order.financials?.omRate,
+            annual_om: order.financials?.annualOm,
+            total_mrr: order.financials?.totalMrr || order.financials?.mrcSales,
+            costs: order.costs || {}
+        };
     }
 
     // ============ Helper Methods ============
 
-    /**
-     * Calculate total sold capacity for a given resource
-     * @param {string} resourceId - The resource ID to check
-     * @returns {number} Total sold capacity
-     */
     getSoldCapacity(resourceId) {
         return this.salesOrders
             .filter(s => s.inventoryLink === resourceId)
             .reduce((total, sale) => total + (sale.capacity?.value || 0), 0);
     }
 
-    /**
-     * Update inventory status based on sold vs total capacity
-     * @param {string} resourceId - The resource ID to update
-     * @param {object} options - Optional: { latestCustomer, latestOrderId } for usage info
-     */
-    updateResourceStatus(resourceId, options = {}) {
-        const resourceIndex = this.inventory.findIndex(r => r.resourceId === resourceId);
-        if (resourceIndex === -1) return;
+    async updateResourceStatus(resourceId, options = {}) {
+        const resource = this.inventory.find(r => r.resourceId === resourceId);
+        if (!resource) return;
 
-        const resource = this.inventory[resourceIndex];
         const totalCapacity = resource.capacity?.value || 0;
         const soldCapacity = this.getSoldCapacity(resourceId);
+        const newStatus = soldCapacity >= totalCapacity ? 'Sold Out' : 'Available';
 
-        // Update status
-        this.inventory[resourceIndex].status = soldCapacity >= totalCapacity ? 'Sold Out' : 'Available';
-
-        // Update usage info
-        if (options.latestCustomer !== undefined) {
-            this.inventory[resourceIndex].usage = {
-                currentUser: options.latestCustomer,
-                orderLink: options.latestOrderId || null
-            };
-        }
-    }
-
-    // ============ Core Methods ============
-
-    init() {
-        const stored = localStorage.getItem(DB_KEY);
-        let dataToLoad;
-        if (!stored) {
-            dataToLoad = defaultData;
-            localStorage.setItem(DB_KEY, JSON.stringify(defaultData)); // Save default data initially
-        } else {
-            dataToLoad = JSON.parse(stored);
-        }
-        this.inventory = dataToLoad.inventory || [];
-        this.salesOrders = dataToLoad.sales || []; // Renamed from 'sales' to 'salesOrders' for consistency
-    }
-
-    save() {
-        const data = {
-            inventory: this.inventory,
-            sales: this.salesOrders // Save as 'sales' for backward compatibility with defaultData structure
+        const updates = {
+            status: newStatus,
+            usage: {
+                currentUser: options.latestCustomer ?? resource.usage?.currentUser,
+                orderLink: options.latestOrderId ?? resource.usage?.orderLink
+            }
         };
-        localStorage.setItem(DB_KEY, JSON.stringify(data));
+
+        await this.updateInventory(resourceId, updates);
     }
 
-    // Inventory Methods
+    // ============ Inventory Methods ============
+
     getInventory() {
         return this.inventory;
     }
 
     getAvailableResources() {
         const today = new Date();
-
         return this.inventory.filter(item => {
-            // Check if contract is expired
             const endDate = item.dates?.end ? new Date(item.dates.end) : null;
             if (endDate && today > endDate) return false;
 
-            // Check if contract hasn't started yet
             const startDate = item.dates?.start ? new Date(item.dates.start) : null;
             if (startDate && today < startDate) return false;
 
-            // Check if there's remaining capacity
             const totalCapacity = item.capacity?.value || 0;
             const soldCapacity = this.getSoldCapacity(item.resourceId);
             return soldCapacity < totalCapacity;
         });
     }
 
-    addInventory(item) {
-        // Ensure ID
-        if (!item.resourceId) item.resourceId = generateId();
+    async addInventory(item) {
+        if (!item.resourceId) item.resourceId = 'INV-' + generateId();
 
-        // Preserve all item properties, only set defaults for missing fields
-        const newItem = {
-            ...item,
-            resourceId: item.resourceId,
-            status: item.status || 'Available',
-            acquisition: item.acquisition || {},
-            location: {
-                aEnd: item.location?.aEnd || {},
-                zEnd: item.location?.zEnd || {}
-            },
-            financials: item.financials || {},
-            dates: item.dates || {},
-            capacity: item.capacity || {},
-            usage: item.usage || { currentUser: null, orderLink: null }
-        };
+        const dbRow = this.inventoryToDb(item);
+        const { data, error } = await window.SupabaseClient
+            .from('inventory')
+            .insert(dbRow)
+            .select()
+            .single();
 
-        this.inventory.push(newItem);
-        this.save();
+        if (error) {
+            console.error('Failed to add inventory:', error);
+            throw error;
+        }
+
+        const newItem = this.dbToInventory(data);
+        this.inventory.unshift(newItem);
         return newItem;
     }
 
-    updateInventory(id, updates) {
+    async updateInventory(id, updates) {
         const index = this.inventory.findIndex(i => i.resourceId === id);
         if (index === -1) return null;
 
-        this.inventory[index] = { ...this.inventory[index], ...updates };
-        this.save();
-        return this.inventory[index];
+        const merged = { ...this.inventory[index], ...updates };
+        const dbRow = this.inventoryToDb(merged);
+
+        const { data, error } = await window.SupabaseClient
+            .from('inventory')
+            .update(dbRow)
+            .eq('resource_id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to update inventory:', error);
+            throw error;
+        }
+
+        const updated = this.dbToInventory(data);
+        this.inventory[index] = updated;
+        return updated;
     }
 
-    deleteInventory(id) {
+    async deleteInventory(id) {
+        const { error } = await window.SupabaseClient
+            .from('inventory')
+            .delete()
+            .eq('resource_id', id);
+
+        if (error) {
+            console.error('Failed to delete inventory:', error);
+            throw error;
+        }
+
         this.inventory = this.inventory.filter(i => i.resourceId !== id);
-        this.save();
     }
 
-    // Sales Methods
+    // ============ Sales Methods ============
+
     getSalesOrders() {
         return this.salesOrders;
     }
@@ -286,60 +312,102 @@ class Store {
         return this.salesOrders;
     }
 
-    addSalesOrder(order) {
+    async addSalesOrder(order) {
         if (!order.salesOrderId) order.salesOrderId = 'SO-' + generateId();
 
-        // 1. Add Sales Order
-        this.salesOrders.push(order);
+        const dbRow = this.salesOrderToDb(order);
+        const { data, error } = await window.SupabaseClient
+            .from('sales_orders')
+            .insert(dbRow)
+            .select()
+            .single();
 
-        // 2. Update linked inventory status
+        if (error) {
+            console.error('Failed to add sales order:', error);
+            throw error;
+        }
+
+        const newOrder = this.dbToSalesOrder(data);
+        this.salesOrders.unshift(newOrder);
+
+        // Update linked inventory status
         if (order.inventoryLink) {
-            this.updateResourceStatus(order.inventoryLink, {
+            await this.updateResourceStatus(order.inventoryLink, {
                 latestCustomer: order.customerName,
                 latestOrderId: order.salesOrderId
             });
         }
 
-        this.save();
-        return order;
+        return newOrder;
     }
 
-    deleteSalesOrder(id) {
-        // Find the order to be deleted to get its inventory link
+    async updateSalesOrder(id, updates) {
+        const index = this.salesOrders.findIndex(s => s.salesOrderId === id);
+        if (index === -1) return null;
+
+        const merged = { ...this.salesOrders[index], ...updates };
+        const dbRow = this.salesOrderToDb(merged);
+
+        const { data, error } = await window.SupabaseClient
+            .from('sales_orders')
+            .update(dbRow)
+            .eq('sales_order_id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to update sales order:', error);
+            throw error;
+        }
+
+        const updated = this.dbToSalesOrder(data);
+        this.salesOrders[index] = updated;
+        return updated;
+    }
+
+    async deleteSalesOrder(id) {
         const orderToDelete = this.salesOrders.find(s => s.salesOrderId === id);
 
-        // Remove the order first
+        const { error } = await window.SupabaseClient
+            .from('sales_orders')
+            .delete()
+            .eq('sales_order_id', id);
+
+        if (error) {
+            console.error('Failed to delete sales order:', error);
+            throw error;
+        }
+
         this.salesOrders = this.salesOrders.filter(s => s.salesOrderId !== id);
 
         // Update linked inventory status
-        if (orderToDelete && orderToDelete.inventoryLink) {
+        if (orderToDelete?.inventoryLink) {
             const remainingSales = this.salesOrders.filter(s => s.inventoryLink === orderToDelete.inventoryLink);
             const latestSale = remainingSales[remainingSales.length - 1];
 
-            this.updateResourceStatus(orderToDelete.inventoryLink, {
+            await this.updateResourceStatus(orderToDelete.inventoryLink, {
                 latestCustomer: latestSale?.customerName || null,
                 latestOrderId: latestSale?.salesOrderId || null
             });
         }
-
-        this.save();
     }
 
-    // Backup
+    // ============ Backup (JSON Export) ============
+
     exportParams() {
         const data = {
             inventory: this.inventory,
             sales: this.salesOrders
         };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
         downloadAnchorNode.setAttribute("download", "cable_inventory_backup_" + new Date().toISOString().slice(0, 10) + ".json");
-        document.body.appendChild(downloadAnchorNode); // required for firefox
+        document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
     }
 }
 
-// Global instance for console access if needed
+// Global instance
 window.Store = new Store();

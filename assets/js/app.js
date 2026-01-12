@@ -216,16 +216,16 @@ const App = {
         }
     },
 
-    deleteInventoryItem(id) {
+    async deleteInventoryItem(id) {
         if (confirm('Are you sure you want to delete this resource?')) {
-            window.Store.deleteInventory(id);
+            await window.Store.deleteInventory(id);
             this.renderInventoryView();
         }
     },
 
-    deleteSalesOrder(id) {
+    async deleteSalesOrder(id) {
         if (confirm('Are you sure you want to delete this sales order?')) {
-            window.Store.deleteSalesOrder(id);
+            await window.Store.deleteSalesOrder(id);
             this.renderView('sales');
         }
     },
@@ -1818,7 +1818,7 @@ const App = {
         }
     },
 
-    handleSalesSubmit(form) {
+    async handleSalesSubmit(form) {
         // Collect Data
         const formData = new FormData(form);
         const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value;
@@ -1920,7 +1920,7 @@ const App = {
             newOrder.financials.recurringMargin = computed.recurringMargin;
         }
 
-        window.Store.addSalesOrder(newOrder);
+        await window.Store.addSalesOrder(newOrder);
         this.renderView('sales');
     },
 
@@ -1963,9 +1963,9 @@ const App = {
         closeBtn.addEventListener('click', close);
         cancelBtn.addEventListener('click', close);
 
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
             if (onSave && typeof onSave === 'function') {
-                onSave(form);
+                await onSave(form);
                 close();
             }
         });
@@ -2523,7 +2523,7 @@ const App = {
                                                                                                                             </div>
                                                                                                                             `;
 
-        this.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, (form) => {
+        this.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, async (form) => {
             // Save Logic - use the form passed from openModal
             // Construct Object manually because of nested naming "location.aEnd.country"
             const handoffTypeValue = form.querySelector('[name="handoffType"]').value;
@@ -2579,9 +2579,9 @@ const App = {
             };
 
             if (isEdit) {
-                window.Store.updateInventory(newItem.resourceId, newItem);
+                await window.Store.updateInventory(newItem.resourceId, newItem);
             } else {
-                window.Store.addInventory(newItem);
+                await window.Store.addInventory(newItem);
             }
 
             // Refresh the inventory view to show updated data
@@ -3112,7 +3112,4 @@ const App = {
 // CRITICAL: Make App globally accessible for onclick handlers
 window.App = App;
 
-// Start
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
+// NOTE: App.init() is now called from index.html after authentication check
