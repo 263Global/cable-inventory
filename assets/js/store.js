@@ -163,7 +163,8 @@ class Store {
                 annualOm: parseFloat(row.annual_om) || 0,
                 totalMrr: parseFloat(row.total_mrr) || 0
             },
-            costs: row.costs || {}
+            costs: row.costs || {},
+            notes: row.notes || ''
         };
     }
 
@@ -192,7 +193,8 @@ class Store {
             om_rate: order.financials?.omRate,
             annual_om: order.financials?.annualOm,
             total_mrr: order.financials?.totalMrr || order.financials?.mrcSales,
-            costs: order.costs || {}
+            costs: order.costs || {},
+            notes: order.notes || ''
         };
     }
 

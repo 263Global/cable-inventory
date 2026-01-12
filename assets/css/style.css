@@ -1285,6 +1285,7 @@ h6 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-main);
 }
 
 .leaderboard-stats {
@@ -1307,4 +1308,135 @@ h6 {
 .leaderboard-item.top-3 .leaderboard-name {
     font-weight: 600;
     color: #cd7f32;
+}
+
+/* ===== Sales Order Form - 3-Column Layout Responsive ===== */
+
+/* Mobile/Tablet: Single column stacked layout */
+@media (max-width: 1024px) {
+    .sales-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* Profitability - not sticky on mobile */
+    .sales-form-grid>div:first-child {
+        position: relative !important;
+    }
+
+    /* Profitability widget - more compact on mobile */
+    #profitability-widget {
+        padding: 1rem !important;
+    }
+
+    /* Fix profit summary grid - keep 2 columns but smaller gap */
+    #profit-summary-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Smaller font for values inside profit cards */
+    #profit-summary-grid .font-mono,
+    #disp-total-cost,
+    #disp-gross-margin {
+        font-size: 0.95rem !important;
+    }
+}
+
+/* Small mobile - even more compact */
+@media (max-width: 768px) {
+
+    /* Main margin display - smaller on mobile */
+    #disp-margin-percent {
+        font-size: 1.75rem !important;
+    }
+
+    /* Recurring margin - smaller */
+    #disp-recurring-margin {
+        font-size: 1.25rem !important;
+    }
+
+    /* Cost structure header - sticky on mobile too */
+    #cost-buttons {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 15 !important;
+    }
+
+    /* Grid-2 inside sections become single column */
+    .modal-body .grid-2 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ===== Form Validation Styles ===== */
+
+/* Error state for form inputs */
+.form-control.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid {
+    border-color: var(--accent-danger) !important;
+    box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.15) !important;
+}
+
+.form-control.is-invalid:focus,
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+    border-color: var(--accent-danger) !important;
+    box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.25) !important;
+}
+
+/* Error message styling */
+.validation-error {
+    color: var(--accent-danger);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.validation-error ion-icon {
+    font-size: 0.875rem;
+}
+
+/* Shake animation for invalid fields */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-4px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+.form-control.shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Success state */
+.form-control.is-valid {
+    border-color: var(--accent-success) !important;
+}
+
+/* Required field indicator */
+.required-indicator {
+    color: var(--accent-danger);
+    margin-left: 2px;
 }

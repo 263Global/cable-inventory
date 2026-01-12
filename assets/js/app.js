@@ -156,6 +156,92 @@ function computeOrderFinancials(order) {
     };
 }
 
+/**
+ * Form Validation Utility
+ * Validates sales order form and displays errors
+ * @param {HTMLFormElement} form - The form to validate
+ * @returns {boolean} - True if valid, false otherwise
+ */
+function validateSalesForm(form) {
+    // Clear previous errors
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid', 'shake'));
+    form.querySelectorAll('.validation-error').forEach(el => el.remove());
+
+    let isValid = true;
+    const errors = [];
+
+    // Helper to show error
+    const showError = (fieldName, message) => {
+        const field = form.querySelector(`[name="${fieldName}"]`);
+        if (field) {
+            field.classList.add('is-invalid', 'shake');
+            // Remove shake after animation
+            setTimeout(() => field.classList.remove('shake'), 400);
+            // Add error message
+            const errorEl = document.createElement('div');
+            errorEl.className = 'validation-error';
+            errorEl.innerHTML = `<ion-icon name="alert-circle-outline"></ion-icon> ${message}`;
+            field.parentNode.appendChild(errorEl);
+        }
+        errors.push(message);
+        isValid = false;
+    };
+
+    // Helper to get field value
+    const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value?.trim();
+    const getNum = (name) => Number(form.querySelector(`[name="${name}"]`)?.value || 0);
+
+    // Required field validation
+    if (!getVal('customerName')) {
+        showError('customerName', 'Customer Name is required');
+    }
+
+    if (!getVal('salesperson')) {
+        showError('salesperson', 'Salesperson is required');
+    }
+
+    if (!getVal('inventoryLink')) {
+        showError('inventoryLink', 'Linked Resource is required');
+    }
+
+    if (!getVal('dates.start')) {
+        showError('dates.start', 'Contract Start date is required');
+    }
+
+    // Number validation (non-negative)
+    const capacityValue = getNum('capacity.value');
+    if (capacityValue <= 0) {
+        showError('capacity.value', 'Capacity must be greater than 0');
+    }
+
+    const term = getNum('dates.term');
+    if (term <= 0) {
+        showError('dates.term', 'Term must be greater than 0');
+    }
+
+    // Date logic validation
+    const startDate = getVal('dates.start');
+    const endDate = getVal('dates.end');
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end < start) {
+            showError('dates.end', 'End date must be after start date');
+        }
+    }
+
+    // Scroll to first error if any
+    if (!isValid) {
+        const firstError = form.querySelector('.is-invalid');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstError.focus();
+        }
+    }
+
+    return isValid;
+}
+
 const App = {
     init() {
         this.cacheDOM();
@@ -484,35 +570,132 @@ const App = {
 
     /* ================= Modal System ================= */
 
-    openAddSalesModal() {
+    openAddSalesModal(existingOrderId = null) {
+        // Get existing order for edit mode
+        const existingOrder = existingOrderId ? window.Store.getSales().find(s => s.salesOrderId === existingOrderId) : null;
+        const isEditMode = !!existingOrder;
+
+        // Store edit mode info on App for submit handler
+        this._editingOrderId = existingOrderId;
+
         // Get Available Resources
         const availableResources = window.Store.getAvailableResources();
         const allSales = window.Store.getSales();
 
-        const resourceOptions = availableResources.map(r => {
+        // For edit mode, include current linked resource even if not available
+        let resourceOptionsArr = [...availableResources];
+        if (isEditMode && existingOrder.inventoryLink) {
+            const currentResource = window.Store.getInventory().find(r => r.resourceId === existingOrder.inventoryLink);
+            if (currentResource && !resourceOptionsArr.find(r => r.resourceId === currentResource.resourceId)) {
+                resourceOptionsArr.unshift(currentResource);
+            }
+        }
+
+        const resourceOptions = resourceOptionsArr.map(r => {
             // Calculate available capacity
-            const linkedSales = allSales.filter(s => s.inventoryLink === r.resourceId);
+            const linkedSales = allSales.filter(s => s.inventoryLink === r.resourceId && s.salesOrderId !== existingOrderId);
             let soldCapacity = 0;
             linkedSales.forEach(s => { soldCapacity += (s.capacity?.value || 0); });
             const availableCapacity = (r.capacity?.value || 0) - soldCapacity;
+            const isSelected = existingOrder?.inventoryLink === r.resourceId ? 'selected' : '';
 
-            return `<option value="${r.resourceId}">${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
+            return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
         }).join('');
 
         const modalContent = `
-                <div class="grid-2 gap-2" style="align-items: start;">
-                    <!-- LEFT COLUMN: Sales Info -->
+                <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
+                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
+                    
+                    <!-- COLUMN 1: Profitability Analysis (Sticky) -->
+                    <div style="position: sticky; top: 0; z-index: 10;">
+                        <div id="profitability-widget" style="
+                            background: var(--bg-secondary);
+                            border-radius: 12px;
+                            border: 1px solid var(--border-color);
+                            padding: 1.25rem;
+                            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                        ">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                                <ion-icon name="analytics-outline" style="font-size: 1.2rem; color: var(--accent-primary);"></ion-icon>
+                                <h5 style="margin: 0; font-weight: 600; font-size: 0.95rem;">Profitability Analysis</h5>
+                            </div>
+                            
+                            <!-- Cost & Margin Summary -->
+                            <div id="profit-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Monthly Cost
+                                    </div>
+                                    <div class="font-mono" id="disp-total-cost" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">$0</div>
+                                </div>
+                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Gross Margin
+                                    </div>
+                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-success);">$0</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Main Margin Display -->
+                            <div style="
+                                background: var(--bg-card);
+                                border-radius: 10px;
+                                padding: 1.25rem 1rem;
+                                text-align: center;
+                                border: 1px solid var(--border-color);
+                                margin-bottom: 0.75rem;
+                            ">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;" id="margin-percent-label">
+                                    Monthly Margin
+                                </div>
+                                <div class="font-mono" id="disp-margin-percent" style="font-size: 2.25rem; font-weight: 800; color: var(--accent-success); line-height: 1; margin-top: 0.25rem;">0.0%</div>
+                            </div>
+                            
+                            <!-- Recurring Margin Row (for IRU Resale only) -->
+                            <div id="recurring-margin-row" style="
+                                display: none;
+                                background: var(--bg-card);
+                                border-radius: 10px;
+                                padding: 0.75rem 1rem;
+                                border: 1px solid var(--border-color);
+                                margin-bottom: 0.75rem;
+                                justify-content: space-between;
+                                align-items: center;
+                            ">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                                    RECURRING MARGIN
+                                </div>
+                                <div class="font-mono" id="disp-recurring-margin" style="font-size: 1.5rem; font-weight: 800; color: var(--accent-primary);">0.0%</div>
+                            </div>
+                            
+                            <!-- NRC Profit -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                                    NRC Profit
+                                </span>
+                                <span class="font-mono" id="disp-nrc-profit" style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">$0</span>
+                            </div>
+                            
+                            <!-- Cost Date Warning (hidden by default) -->
+                            <div id="cost-date-warning" style="display: none; margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(255, 193, 7, 0.15); border: 1px solid var(--accent-warning); border-radius: 6px; font-size: 0.75rem; color: var(--accent-warning);">
+                                <ion-icon name="alert-circle-outline" style="vertical-align: middle; margin-right: 0.25rem;"></ion-icon>
+                                <span id="cost-date-warning-text">成本开始日期早于销售合同</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 2: Sales Information -->
                     <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label class="form-label">Order ID <small style="color:var(--text-muted)">(Auto if blank)</small></label>
-                                <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001">
+                                <label class="form-label">Order ID <small style="color:var(--text-muted)">${isEditMode ? '(Read-only)' : '(Auto if blank)'}</small></label>
+                                <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001" value="${existingOrder?.salesOrderId || ''}" ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Customer Name</label>
-                                <input type="text" class="form-control" name="customerName" required>
+                                <label class="form-label">Customer Name <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                                <input type="text" class="form-control" name="customerName" required value="${existingOrder?.customerName || ''}">
                             </div>
                         </div>
 
@@ -528,14 +711,14 @@ const App = {
                         <div class="grid-2">
                             <div class="form-group">
                                 <label class="form-label">Capacity Sold</label>
-                                <input type="number" class="form-control" name="capacity.value" value="10" min="1" placeholder="e.g., 10">
+                                <input type="number" class="form-control" name="capacity.value" value="${existingOrder?.capacity?.value || 10}" min="1" placeholder="e.g., 10">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Unit</label>
                                 <select class="form-control" name="capacity.unit">
-                                    <option>Gbps</option>
-                                    <option>Wavelength</option>
-                                    <option>Fiber Pair</option>
+                                    <option ${existingOrder?.capacity?.unit === 'Gbps' || !existingOrder ? 'selected' : ''}>Gbps</option>
+                                    <option ${existingOrder?.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
+                                    <option ${existingOrder?.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
                                 </select>
                             </div>
                         </div>
@@ -543,65 +726,65 @@ const App = {
                         <div class="grid-3">
                             <div class="form-group">
                                 <label class="form-label">Contract Start</label>
-                                <input type="date" class="form-control" name="dates.start" id="sales-start-date" required>
+                                <input type="date" class="form-control" name="dates.start" id="sales-start-date" required value="${existingOrder?.dates?.start || ''}">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Term (Months)</label>
-                                <input type="number" class="form-control" name="dates.term" id="sales-term" value="12" min="1" required>
+                                <input type="number" class="form-control" name="dates.term" id="sales-term" value="${existingOrder?.dates?.term || 12}" min="1" required>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Contract End <small style="color:var(--text-muted)">(Auto)</small></label>
-                                <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);">
+                                <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);" value="${existingOrder?.dates?.end || ''}">
                             </div>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
                                 <label class="form-label">Sales Status</label>
-                                <input type="text" class="form-control" id="sales-status-display" value="Pending" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                                <input type="text" class="form-control" id="sales-status-display" value="${existingOrder?.status || 'Pending'}" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Salesperson</label>
+                                <label class="form-label">Salesperson <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
                                 <select class="form-control" name="salesperson" required>
                                     <option value="">Select...</option>
-                                    <option>Janna Dai</option>
-                                    <option>Miki Chen</option>
-                                    <option>Wayne Jiang</option>
-                                    <option>Kristen Gan</option>
-                                    <option>Becky Hai</option>
-                                    <option>Wolf Yuan</option>
-                                    <option>Yifeng Jiang</option>
-                                    <option>Procurement Team</option>
+                                    <option ${existingOrder?.salesperson === 'Janna Dai' ? 'selected' : ''}>Janna Dai</option>
+                                    <option ${existingOrder?.salesperson === 'Miki Chen' ? 'selected' : ''}>Miki Chen</option>
+                                    <option ${existingOrder?.salesperson === 'Wayne Jiang' ? 'selected' : ''}>Wayne Jiang</option>
+                                    <option ${existingOrder?.salesperson === 'Kristen Gan' ? 'selected' : ''}>Kristen Gan</option>
+                                    <option ${existingOrder?.salesperson === 'Becky Hai' ? 'selected' : ''}>Becky Hai</option>
+                                    <option ${existingOrder?.salesperson === 'Wolf Yuan' ? 'selected' : ''}>Wolf Yuan</option>
+                                    <option ${existingOrder?.salesperson === 'Yifeng Jiang' ? 'selected' : ''}>Yifeng Jiang</option>
+                                    <option ${existingOrder?.salesperson === 'Procurement Team' ? 'selected' : ''}>Procurement Team</option>
                                 </select>
                             </div>
                         </div>
 
                         <h5 class="mt-4 mb-2">Delivery Location</h5>
-                        <div class="grid-2">
-                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                                <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
-                                <div class="grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">City</label>
-                                        <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">PoP</label>
-                                        <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1">
-                                    </div>
+                        <!-- A-End -->
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
+                            <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong" value="${existingOrder?.location?.aEnd?.city || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1" value="${existingOrder?.location?.aEnd?.pop || ''}">
                                 </div>
                             </div>
-                            <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
-                                <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
-                                <div class="grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">City</label>
-                                        <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">PoP</label>
-                                        <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1">
-                                    </div>
+                        </div>
+                        <!-- Z-End -->
+                        <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px;">
+                            <h6 style="color:var(--accent-secondary); margin: 0 0 0.5rem 0; font-size:0.8rem;">Z-End</h6>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore" value="${existingOrder?.location?.zEnd?.city || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PoP</label>
+                                    <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1" value="${existingOrder?.location?.zEnd?.pop || ''}">
                                 </div>
                             </div>
                         </div>
@@ -611,86 +794,122 @@ const App = {
                             <div class="form-group">
                                 <label class="form-label">Sales Model</label>
                                 <select class="form-control" name="salesModel" id="sales-model-select">
-                                    <option value="Lease">Lease (月租模式)</option>
-                                    <option value="IRU">IRU (买断模式)</option>
+                                    <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
+                                    <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Sales Type</label>
                                 <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                    <option value="Resale">Resale (外部资源)</option>
-                                    <option value="Hybrid">Hybrid (混合资源)</option>
-                                    <option value="Inventory">Inventory (自有资源)</option>
-                                    <option value="Swapped Out">Swapped Out (置换出去)</option>
+                                    <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
+                                    <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
+                                    <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
+                                    <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
                                 </select>
                             </div>
                         </div>
 
                         <h5 class="mt-4 mb-2">Revenue / Price</h5>
                         <!-- Lease Revenue Fields -->
-                        <div id="lease-revenue-fields">
+                        <div id="lease-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? 'display:none;' : ''}">
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">MRC Sales ($)</label>
-                                    <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="0">
+                                    <input type="number" class="form-control calc-trigger" name="financials.mrcSales" value="${existingOrder?.financials?.mrcSales || 0}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">NRC Sales ($)</label>
-                                    <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="0">
+                                    <input type="number" class="form-control calc-trigger" name="financials.nrcSales" value="${existingOrder?.financials?.nrcSales || 0}">
                                 </div>
                             </div>
                         </div>
                         <!-- IRU Revenue Fields -->
-                        <div id="iru-revenue-fields" style="display:none;">
+                        <div id="iru-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? '' : 'display:none;'}">
                             <div class="grid-3" style="align-items: end;">
                                 <div class="form-group">
                                     <label class="form-label">OTC ($)</label>
-                                    <input type="number" class="form-control calc-trigger" name="financials.otc" id="sales-otc" value="0">
+                                    <input type="number" class="form-control calc-trigger" name="financials.otc" id="sales-otc" value="${existingOrder?.financials?.otc || 0}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">O&M Rate (%)</label>
-                                    <input type="number" class="form-control calc-trigger" name="financials.omRate" id="sales-om-rate" value="3" step="0.1">
+                                    <input type="number" class="form-control calc-trigger" name="financials.omRate" id="sales-om-rate" value="${existingOrder?.financials?.omRate || 3}" step="0.1">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Annual O&M</label>
-                                    <input type="number" class="form-control" name="financials.annualOm" id="sales-annual-om" value="0" readonly style="background: var(--bg-card-hover);">
+                                    <input type="number" class="form-control" name="financials.annualOm" id="sales-annual-om" value="${existingOrder?.financials?.annualOm || 0}" readonly style="background: var(--bg-card-hover);">
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Profitability Summary Widget -->
-                        <div class="mt-4 p-3" style="background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h5 class="mb-3">Profitability Analysis</h5>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                <span>Total Monthly Cost:</span>
-                                <span class="font-mono text-warning" id="disp-total-cost">$0.00</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                <span>Gross Margin ($):</span>
-                                <span class="font-mono text-success" id="disp-gross-margin">$0.00</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
-                                <span id="margin-percent-label">Margin (%):</span>
-                                <span class="font-mono" id="disp-margin-percent">0.0%</span>
-                            </div>
-                            <!-- Recurring Margin Row (for IRU Resale only) -->
-                            <div id="recurring-margin-row" style="display:none; justify-content:space-between; font-weight:bold; font-size:1.1em; margin-top:0.5rem;">
-                                <span>续月利润率:</span>
-                                <span class="font-mono" id="disp-recurring-margin">0.0%</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.9em; opacity:0.8;">
-                                <span>NRC Profit:</span>
-                                <span class="font-mono" id="disp-nrc-profit">$0.00</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- RIGHT COLUMN: Cost Structure -->
+                    <!-- COLUMN 3: Cost Structure -->
                     <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
+                        ${isEditMode && existingOrder?.costs ? `
+                        <!-- Read-only Cost Summary (Edit Mode) -->
+                        <div id="cost-summary-readonly" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <h5 style="color: var(--text-primary); margin: 0; font-size: 0.85rem;">Current Costs</h5>
+                                <button type="button" id="btn-edit-costs" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                                    <ion-icon name="create-outline"></ion-icon> Edit Costs
+                                </button>
+                            </div>
+                            <table style="width: 100%; font-size: 0.85rem;">
+                                ${existingOrder.costs.cable || existingOrder.costs.cableCost ? `
+                                <tr>
+                                    <td style="padding: 0.3rem 0; color: var(--text-muted);">3rd Party Cable</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
+                                        MRC: $${((existingOrder.costs.cable?.mrc || existingOrder.costs.cableCost?.mrc || 0)).toLocaleString()}
+                                        ${(existingOrder.costs.cable?.nrc || existingOrder.costs.cableCost?.nrc) ? ` / NRC: $${(existingOrder.costs.cable?.nrc || existingOrder.costs.cableCost?.nrc).toLocaleString()}` : ''}
+                                    </td>
+                                </tr>` : ''}
+                                ${existingOrder.costs.backhaulA || existingOrder.costs.backhaul?.aEnd ? `
+                                <tr>
+                                    <td style="padding: 0.3rem 0; color: var(--text-muted);">Backhaul A-End</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
+                                        MRC: $${((existingOrder.costs.backhaulA?.mrc || existingOrder.costs.backhaul?.aEnd?.monthly || 0)).toLocaleString()}
+                                    </td>
+                                </tr>` : ''}
+                                ${existingOrder.costs.backhaulZ || existingOrder.costs.backhaul?.zEnd ? `
+                                <tr>
+                                    <td style="padding: 0.3rem 0; color: var(--text-muted);">Backhaul Z-End</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
+                                        MRC: $${((existingOrder.costs.backhaulZ?.mrc || existingOrder.costs.backhaul?.zEnd?.monthly || 0)).toLocaleString()}
+                                    </td>
+                                </tr>` : ''}
+                                ${existingOrder.costs.crossConnectA || existingOrder.costs.xcA || existingOrder.costs.crossConnect?.aEnd ? `
+                                <tr>
+                                    <td style="padding: 0.3rem 0; color: var(--text-muted);">Cross-Connect A</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
+                                        MRC: $${((existingOrder.costs.crossConnectA?.mrc || existingOrder.costs.xcA?.mrc || existingOrder.costs.crossConnect?.aEnd?.monthly || 0)).toLocaleString()}
+                                    </td>
+                                </tr>` : ''}
+                                ${existingOrder.costs.crossConnectZ || existingOrder.costs.xcZ || existingOrder.costs.crossConnect?.zEnd ? `
+                                <tr>
+                                    <td style="padding: 0.3rem 0; color: var(--text-muted);">Cross-Connect Z</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
+                                        MRC: $${((existingOrder.costs.crossConnectZ?.mrc || existingOrder.costs.xcZ?.mrc || existingOrder.costs.crossConnect?.zEnd?.monthly || 0)).toLocaleString()}
+                                    </td>
+                                </tr>` : ''}
+                                <tr style="border-top: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem 0 0.3rem; color: var(--text-primary); font-weight: 600;">Total Monthly Cost</td>
+                                    <td class="font-mono" style="text-align: right; color: var(--accent-danger); font-weight: 600;">
+                                        $${(
+                    (existingOrder.costs.cable?.mrc || existingOrder.costs.cableCost?.mrc || 0) +
+                    (existingOrder.costs.backhaulA?.mrc || existingOrder.costs.backhaul?.aEnd?.monthly || 0) +
+                    (existingOrder.costs.backhaulZ?.mrc || existingOrder.costs.backhaul?.zEnd?.monthly || 0) +
+                    (existingOrder.costs.crossConnectA?.mrc || existingOrder.costs.xcA?.mrc || existingOrder.costs.crossConnect?.aEnd?.monthly || 0) +
+                    (existingOrder.costs.crossConnectZ?.mrc || existingOrder.costs.xcZ?.mrc || existingOrder.costs.crossConnect?.zEnd?.monthly || 0)
+                ).toLocaleString()}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        ` : ''}
+
                         <!-- Add Cost Buttons (Sticky with Wrapper) -->
-                        <div id="cost-buttons" class="mb-4" style="display: flex; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div id="cost-buttons" class="mb-4" style="display: ${isEditMode ? 'none' : 'flex'}; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
                             <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
                                 <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
                             </button>
@@ -712,50 +931,166 @@ const App = {
                         </div>
 
                         <!-- Dynamic Cost Cards Container -->
-                        <div id="cost-cards-container">
+                        <div id="cost-cards-container" style="${isEditMode ? 'display: none;' : ''}">
                             <!-- Cost cards will be inserted here dynamically -->
                         </div>
 
                         <!-- Hidden inputs for form submission (will be populated by JS) -->
                         <!-- Cable Cost -->
-                        <input type="hidden" name="costs.cable.supplier" value="">
-                            <input type="hidden" name="costs.cable.orderNo" value="">
-                                <input type="hidden" name="costs.cable.cableSystem" value="">
-                                    <input type="hidden" name="costs.cable.capacity" value="0">
-                                        <input type="hidden" name="costs.cable.capacityUnit" value="Gbps">
-                                            <input type="hidden" name="costs.cable.model" value="Lease">
-                                                <input type="hidden" name="costs.cable.protection" value="Unprotected">
-                                                    <input type="hidden" name="costs.cable.protectionCableSystem" value="">
-                                                        <input type="hidden" name="costs.cable.mrc" value="0">
-                                                            <input type="hidden" name="costs.cable.nrc" value="0">
-                                                                <input type="hidden" name="costs.cable.otc" value="0">
-                                                                    <input type="hidden" name="costs.cable.omRate" value="0">
-                                                                        <input type="hidden" name="costs.cable.annualOm" value="0">
-                                                                            <input type="hidden" name="costs.cable.startDate" value="">
-                                                                                <input type="hidden" name="costs.cable.termMonths" value="12">
-                                                                                    <input type="hidden" name="costs.cable.endDate" value="">
-                                                                                        <!-- Backhaul -->
-                                                                                        <input type="hidden" name="costs.backhaul.aEnd.monthly" value="0">
-                                                                                            <input type="hidden" name="costs.backhaul.aEnd.nrc" value="0">
-                                                                                                <input type="hidden" name="costs.backhaul.zEnd.monthly" value="0">
-                                                                                                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="0">
-                                                                                                        <!-- Cross Connect -->
-                                                                                                        <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="0">
-                                                                                                            <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="0">
-                                                                                                                <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="0">
-                                                                                                                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="0">
-                                                                                                                        <!-- Other Costs -->
-                                                                                                                        <input type="hidden" name="costs.otherCosts.description" value="">
-                                                                                                                            <input type="hidden" name="costs.otherCosts.oneOff" value="0">
-                                                                                                                                <input type="hidden" name="costs.otherCosts.monthly" value="0">
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
+                        <input type="hidden" name="costs.cable.supplier" value="${existingOrder?.costs?.cable?.supplier || ''}">
+                        <input type="hidden" name="costs.cable.orderNo" value="${existingOrder?.costs?.cable?.orderNo || ''}">
+                        <input type="hidden" name="costs.cable.cableSystem" value="${existingOrder?.costs?.cable?.cableSystem || ''}">
+                        <input type="hidden" name="costs.cable.capacity" value="${existingOrder?.costs?.cable?.capacity || 0}">
+                        <input type="hidden" name="costs.cable.capacityUnit" value="${existingOrder?.costs?.cable?.capacityUnit || 'Gbps'}">
+                        <input type="hidden" name="costs.cable.model" value="${existingOrder?.costs?.cable?.model || 'Lease'}">
+                        <input type="hidden" name="costs.cable.protection" value="${existingOrder?.costs?.cable?.protection || 'Unprotected'}">
+                        <input type="hidden" name="costs.cable.protectionCableSystem" value="${existingOrder?.costs?.cable?.protectionCableSystem || ''}">
+                        <input type="hidden" name="costs.cable.mrc" value="${existingOrder?.costs?.cable?.mrc || 0}">
+                        <input type="hidden" name="costs.cable.nrc" value="${existingOrder?.costs?.cable?.nrc || 0}">
+                        <input type="hidden" name="costs.cable.otc" value="${existingOrder?.costs?.cable?.otc || 0}">
+                        <input type="hidden" name="costs.cable.omRate" value="${existingOrder?.costs?.cable?.omRate || 0}">
+                        <input type="hidden" name="costs.cable.annualOm" value="${existingOrder?.costs?.cable?.annualOm || 0}">
+                        <input type="hidden" name="costs.cable.startDate" value="${existingOrder?.costs?.cable?.startDate || ''}">
+                        <input type="hidden" name="costs.cable.termMonths" value="${existingOrder?.costs?.cable?.termMonths || 12}">
+                        <input type="hidden" name="costs.cable.endDate" value="${existingOrder?.costs?.cable?.endDate || ''}">
+                        <!-- Backhaul -->
+                        <input type="hidden" name="costs.backhaul.aEnd.monthly" value="${existingOrder?.costs?.backhaul?.aEnd?.monthly || 0}">
+                        <input type="hidden" name="costs.backhaul.aEnd.nrc" value="${existingOrder?.costs?.backhaul?.aEnd?.nrc || 0}">
+                        <input type="hidden" name="costs.backhaul.zEnd.monthly" value="${existingOrder?.costs?.backhaul?.zEnd?.monthly || 0}">
+                        <input type="hidden" name="costs.backhaul.zEnd.nrc" value="${existingOrder?.costs?.backhaul?.zEnd?.nrc || 0}">
+                        <!-- Cross Connect -->
+                        <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="${existingOrder?.costs?.crossConnect?.aEnd?.monthly || 0}">
+                        <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="${existingOrder?.costs?.crossConnect?.aEnd?.nrc || 0}">
+                        <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="${existingOrder?.costs?.crossConnect?.zEnd?.monthly || 0}">
+                        <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="${existingOrder?.costs?.crossConnect?.zEnd?.nrc || 0}">
+                        <!-- Other Costs -->
+                        <input type="hidden" name="costs.otherCosts.description" value="${existingOrder?.costs?.otherCosts?.description || ''}">
+                        <input type="hidden" name="costs.otherCosts.oneOff" value="${existingOrder?.costs?.otherCosts?.oneOff || 0}">
+                        <input type="hidden" name="costs.otherCosts.monthly" value="${existingOrder?.costs?.otherCosts?.monthly || 0}">
+                    </div>
+                    <!-- Close Cost Structure Column -->
+                    
+                    <!-- Order Notes - Spans all 3 columns -->
+                    <div class="section-card" style="grid-column: 1 / -1; margin-top: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                        <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <ion-icon name="document-text-outline"></ion-icon> Order Notes
+                        </h4>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                    </div>
+                </div>
+                <!-- Close 3-Column Grid -->
+                `;
 
-        this.openModal('New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
+        this.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
 
         // Attach Event Listeners for Dynamic Logic
         this.attachSalesFormListeners();
+
+        // If edit mode, sync hidden inputs and add Edit Costs button handler
+        if (isEditMode && existingOrder) {
+            // Sync hidden inputs from existing order data for correct calculation
+            const syncHiddenInput = (name, value) => {
+                const input = document.querySelector(`input[name="${name}"]`);
+                if (input && value !== undefined && value !== null) {
+                    input.value = value;
+                }
+            };
+
+            // Get cost data using both paths
+            const cableCost = existingOrder.costs?.cableCost || existingOrder.costs?.cable || {};
+            const bhA = existingOrder.costs?.backhaulA || existingOrder.costs?.backhaul?.aEnd || {};
+            const bhZ = existingOrder.costs?.backhaulZ || existingOrder.costs?.backhaul?.zEnd || {};
+            const xcA = existingOrder.costs?.crossConnectA || existingOrder.costs?.xcA || existingOrder.costs?.crossConnect?.aEnd || {};
+            const xcZ = existingOrder.costs?.crossConnectZ || existingOrder.costs?.xcZ || existingOrder.costs?.crossConnect?.zEnd || {};
+
+            // Sync cable costs
+            syncHiddenInput('costs.cable.mrc', cableCost.mrc || 0);
+            syncHiddenInput('costs.cable.nrc', cableCost.nrc || 0);
+            syncHiddenInput('costs.cable.otc', cableCost.otc || 0);
+            syncHiddenInput('costs.cable.supplier', cableCost.supplier || '');
+
+            // Sync backhaul costs
+            syncHiddenInput('costs.backhaul.aEnd.monthly', bhA.mrc || bhA.monthly || 0);
+            syncHiddenInput('costs.backhaul.aEnd.nrc', bhA.nrc || 0);
+            syncHiddenInput('costs.backhaul.zEnd.monthly', bhZ.mrc || bhZ.monthly || 0);
+            syncHiddenInput('costs.backhaul.zEnd.nrc', bhZ.nrc || 0);
+
+            // Sync cross-connect costs
+            syncHiddenInput('costs.crossConnect.aEnd.monthly', xcA.mrc || xcA.monthly || 0);
+            syncHiddenInput('costs.crossConnect.aEnd.nrc', xcA.nrc || 0);
+            syncHiddenInput('costs.crossConnect.zEnd.monthly', xcZ.mrc || xcZ.monthly || 0);
+            syncHiddenInput('costs.crossConnect.zEnd.nrc', xcZ.nrc || 0);
+
+            // Trigger calculation after sync
+            setTimeout(() => this.calculateSalesFinancials(), 100);
+
+            // Add Edit Costs button handler
+            const editCostsBtn = document.getElementById('btn-edit-costs');
+            if (editCostsBtn) {
+                editCostsBtn.addEventListener('click', () => {
+                    // Hide the read-only summary
+                    const summary = document.getElementById('cost-summary-readonly');
+                    if (summary) summary.style.display = 'none';
+
+                    // Show the cost buttons and cards container
+                    const costButtons = document.getElementById('cost-buttons');
+                    const cardsContainer = document.getElementById('cost-cards-container');
+                    if (costButtons) costButtons.style.display = 'flex';
+                    if (cardsContainer) cardsContainer.style.display = 'block';
+
+                    // Auto-create cost cards with existing data
+                    setTimeout(() => {
+                        // Helper to populate card field
+                        const populateCardField = (selector, value) => {
+                            const field = document.querySelector(selector);
+                            if (field && value !== undefined && value !== null && value !== '' && value !== 0) {
+                                field.value = value;
+                            }
+                        };
+
+                        // Cable cost card
+                        if (cableCost.mrc > 0 || cableCost.otc > 0 || cableCost.supplier) {
+                            const addCableBtn = document.querySelector('.cost-add-btn[data-cost-type="cable"]');
+                            if (addCableBtn && !addCableBtn.disabled) {
+                                addCableBtn.click();
+                                setTimeout(() => {
+                                    populateCardField('[data-field="costs.cable.mrc"]', cableCost.mrc);
+                                    populateCardField('[data-field="costs.cable.nrc"]', cableCost.nrc);
+                                    populateCardField('[data-field="costs.cable.supplier"]', cableCost.supplier);
+                                    this.calculateSalesFinancials();
+                                }, 50);
+                            }
+                        }
+
+                        // Backhaul A
+                        const bhAMrc = bhA.mrc || bhA.monthly || 0;
+                        if (bhAMrc > 0) {
+                            const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulA"]');
+                            if (addBtn && !addBtn.disabled) {
+                                addBtn.click();
+                                setTimeout(() => {
+                                    populateCardField('[data-field="costs.backhaulA.mrc"]', bhAMrc);
+                                    populateCardField('[data-field="costs.backhaulA.nrc"]', bhA.nrc);
+                                }, 50);
+                            }
+                        }
+
+                        // Backhaul Z
+                        const bhZMrc = bhZ.mrc || bhZ.monthly || 0;
+                        if (bhZMrc > 0) {
+                            const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulZ"]');
+                            if (addBtn && !addBtn.disabled) {
+                                addBtn.click();
+                                setTimeout(() => {
+                                    populateCardField('[data-field="costs.backhaulZ.mrc"]', bhZMrc);
+                                    populateCardField('[data-field="costs.backhaulZ.nrc"]', bhZ.nrc);
+                                }, 50);
+                            }
+                        }
+                    }, 100);
+                });
+            }
+        }
     },
 
     attachSalesFormListeners() {
@@ -1816,13 +2151,34 @@ const App = {
             nrcEl.textContent = fmt(nrcProfit);
             nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
         }
+
+        // ===== Check for cost date mismatch warning =====
+        const salesStartDate = getVal('dates.start');
+        const cableStartDate = getVal('costs.cable.startDate');
+        const warningEl = document.getElementById('cost-date-warning');
+        const warningText = document.getElementById('cost-date-warning-text');
+
+        if (warningEl && salesStartDate && cableStartDate && cableStartDate < salesStartDate) {
+            warningEl.style.display = 'block';
+            warningText.textContent = `成本开始日期 (${cableStartDate}) 早于销售合同 (${salesStartDate})`;
+        } else if (warningEl) {
+            warningEl.style.display = 'none';
+        }
     },
 
     async handleSalesSubmit(form) {
+        // Validate form before processing
+        if (!validateSalesForm(form)) {
+            return false; // Prevent submission
+        }
+
         // Collect Data
         const formData = new FormData(form);
         const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value;
         const getNum = (name) => Number(getVal(name) || 0);
+
+        // Check if we're editing an existing order
+        const isEditMode = !!this._editingOrderId;
 
         // Calculate Status to ensure it's accurate at save time
         let status = 'Active';
@@ -1833,8 +2189,8 @@ const App = {
         if (today < start) status = 'Pending';
         if (today > end) status = 'Expired';
 
-        const newOrder = {
-            resourceId: getVal('orderId') || null,
+        const orderData = {
+            salesOrderId: isEditMode ? this._editingOrderId : (getVal('orderId') || null),
             customerName: getVal('customerName'),
             inventoryLink: getVal('inventoryLink'),
             status: status,
@@ -1905,22 +2261,32 @@ const App = {
                     oneOff: getNum('costs.otherCosts.oneOff'),
                     monthly: getNum('costs.otherCosts.monthly')
                 }
-            }
+            },
+            notes: getVal('notes') || ''
         };
 
         // Calculate and store financial metrics using unified engine
-        const computed = computeOrderFinancials(newOrder);
-        newOrder.financials.marginPercent = computed.marginPercent;
-        newOrder.financials.monthlyProfit = computed.monthlyProfit;
+        const computed = computeOrderFinancials(orderData);
+        orderData.financials.marginPercent = computed.marginPercent;
+        orderData.financials.monthlyProfit = computed.monthlyProfit;
 
         // Store IRU Resale specific metrics
         if (computed.isIruResale) {
-            newOrder.financials.firstMonthProfit = computed.firstMonthProfit;
-            newOrder.financials.firstMonthMargin = computed.firstMonthMargin;
-            newOrder.financials.recurringMargin = computed.recurringMargin;
+            orderData.financials.firstMonthProfit = computed.firstMonthProfit;
+            orderData.financials.firstMonthMargin = computed.firstMonthMargin;
+            orderData.financials.recurringMargin = computed.recurringMargin;
         }
 
-        await window.Store.addSalesOrder(newOrder);
+        // Use update or add based on edit mode
+        if (isEditMode) {
+            await window.Store.updateSalesOrder(this._editingOrderId, orderData);
+        } else {
+            await window.Store.addSalesOrder(orderData);
+        }
+
+        // Clear edit mode tracking
+        this._editingOrderId = null;
+
         this.renderView('sales');
     },
 
@@ -1930,20 +2296,20 @@ const App = {
                 <div class="modal ${isLarge ? 'modal-lg' : ''}">
                     <div class="modal-header">
                         <h3>${title}</h3>
-                        <button class="btn-icon" id="modal-close"><ion-icon name="close-outline"></ion-icon></button>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            ${onSave ? `
+                                <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
+                            ` : `
+                                <button type="button" class="btn btn-secondary" id="modal-cancel">Close</button>
+                            `}
+                            <button class="btn-icon" id="modal-close"><ion-icon name="close-outline"></ion-icon></button>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <form id="modal-form">
                             ${content}
                         </form>
-                    </div>
-                    <div class="modal-footer">
-                        ${onSave ? `
-                            <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                            <button type="button" class="btn btn-primary" id="modal-save">Save changes</button>
-                        ` : `
-                            <button type="button" class="btn btn-secondary" id="modal-cancel">Close</button>
-                        `}
                     </div>
                 </div>
             </div>
@@ -1965,8 +2331,11 @@ const App = {
 
         saveBtn.addEventListener('click', async () => {
             if (onSave && typeof onSave === 'function') {
-                await onSave(form);
-                close();
+                const result = await onSave(form);
+                // Only close if onSave returns true or undefined (not explicitly false)
+                if (result !== false) {
+                    close();
+                }
             }
         });
 
@@ -2223,11 +2592,35 @@ const App = {
             calculatedStatus === 'Sold Out' ? 'badge-danger' :
                 calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
 
+        // Calculate financial totals from linked sales
+        let totalMrcRevenue = 0;
+        let totalNrcRevenue = 0;
+        linkedSales.forEach(sale => {
+            totalMrcRevenue += (sale.financials?.mrcSales || 0);
+            totalNrcRevenue += (sale.financials?.nrcSales || 0);
+        });
+        const contractTerm = item.financials?.term || 12;
+        const totalContractRevenue = (totalMrcRevenue * contractTerm) + totalNrcRevenue;
+        const remainingCapacity = totalCapacity - totalSoldCapacity;
+
+        // Build clickable linked sales list
         const linkedSalesHtml = linkedSales.length === 0
-            ? '<div style="color:var(--text-muted)">No sales orders linked</div>'
-            : linkedSales.map(s => `<div class="font-mono" style="margin-bottom:0.3rem;">${s.salesOrderId} - ${s.customerName} (${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'})</div>`).join('');
+            ? '<div style="color:var(--text-muted); padding: 0.5rem 0;">No sales orders linked to this resource</div>'
+            : linkedSales.map(s => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+                    <div>
+                        <span class="font-mono" style="color: var(--accent-primary);">${s.salesOrderId}</span>
+                        <span style="margin-left: 0.5rem; font-weight: 600;">${s.customerName}</span>
+                        <span style="margin-left: 0.5rem; color: var(--text-muted);">${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'}</span>
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="App.closeModal(); App.viewSalesDetails('${s.salesOrderId}')">
+                        <ion-icon name="eye-outline"></ion-icon> View
+                    </button>
+                </div>
+            `).join('');
 
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+        const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
         const tdStyle = 'padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;';
 
         // Check if ownership is IRU to show O&M fields
@@ -2236,75 +2629,107 @@ const App = {
         const otc = item.financials?.otc || 0;
         const annualOmCost = (otc * omRate / 100);
 
+        // Usage progress bar color
+        const usageColor = usagePercent >= 100 ? 'var(--accent-danger)' : usagePercent >= 75 ? 'var(--accent-warning)' : 'var(--accent-success)';
+
         const detailsHtml = `
-                                                                                                                            <div class="grid-2" style="gap:1.5rem; align-items: start;">
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <!-- Contract Summary - Highlighted -->
+            <div style="${highlightStyle}">
+                <h4 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <ion-icon name="stats-chart-outline"></ion-icon> Resource Summary
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Capacity</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-primary);">${totalCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Sold</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-warning);">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Available</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">${remainingCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Monthly Revenue</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">$${totalMrcRevenue.toLocaleString()}</div>
+                    </div>
+                </div>
+                <!-- Usage Progress Bar -->
+                <div style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Utilization</span>
+                        <span style="font-size: 0.75rem; font-weight: 600; color: ${usageColor};">${usagePercent}%</span>
+                    </div>
+                    <div style="background: var(--bg-secondary); border-radius: 4px; height: 8px; overflow: hidden;">
+                        <div style="background: ${usageColor}; height: 100%; width: ${Math.min(usagePercent, 100)}%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+            </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Capacity & Usage</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="${tdStyle}">Total Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Sold Capacity</td><td class="font-mono">${totalSoldCapacity} ${item.capacity?.unit || 'Gbps'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Usage</td><td class="font-mono">${usagePercent}%</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                <div>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
+                            <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
+                            <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
+                            <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
+                            <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
+                        <table style="width:100%;">
+                            <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
-                                                                                                                                            <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
-                                                                                                                                            ${isIRU ? `
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
+                        <table style="width:100%;">
+                            ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
+                            <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                            ${isIRU ? `
                             <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
                             <tr><td style="${tdStyle}">Annual O&M Cost</td><td class="font-mono" style="color:var(--accent-warning)">$${annualOmCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
                             ` : ''}
-                                                                                                                                            <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
-                                                                                                                                            <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+                            <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
+                            <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
+                            <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Linked Sales Orders</h4>
-                                                                                                                                        ${linkedSalesHtml}
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
+                            <span>Linked Sales Orders</span>
+                            <span class="badge badge-info" style="font-size: 0.7rem;">${linkedSales.length}</span>
+                        </h4>
+                        ${linkedSalesHtml}
+                    </div>
+                </div>
+            </div>
+        `;
 
         this.openModal(`Resource: ${item.resourceId}`, detailsHtml, null, true);
     },
@@ -2680,6 +3105,16 @@ const App = {
     renderSales(filters = {}) {
         let data = window.Store.getSales();
 
+        // Sort by contract start date (newest first), orders without date go to end
+        data.sort((a, b) => {
+            const dateA = a.dates?.start || '';
+            const dateB = b.dates?.start || '';
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateB.localeCompare(dateA); // Descending (newest first)
+        });
+
         // Get unique salespersons for dropdown
         const salespersons = [...new Set(data.map(s => s.salesperson).filter(Boolean))].sort();
 
@@ -2926,6 +3361,7 @@ const App = {
         const computed = computeOrderFinancials(order);
         const salesModel = order.salesModel || 'Lease';
         const salesType = order.salesType || 'Resale';
+        const term = order.dates?.term || 12;
 
         // Revenue display - handle both Lease and IRU
         const isIru = salesModel === 'IRU';
@@ -2936,7 +3372,7 @@ const App = {
 
         const statusClass = order.status === 'Active' ? 'badge-success' : (order.status === 'Pending' ? 'badge-warning' : 'badge-danger');
 
-        // Calculate costs display
+        // Calculate costs display - MRC
         const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
         const backhaulAMrc = order.costs?.backhaulA?.mrc || order.costs?.backhaul?.aEnd?.monthly || 0;
         const backhaulZMrc = order.costs?.backhaulZ?.mrc || order.costs?.backhaul?.zEnd?.monthly || 0;
@@ -2944,10 +3380,30 @@ const App = {
         const xcZMrc = order.costs?.crossConnectZ?.mrc || order.costs?.crossConnect?.zEnd?.monthly || 0;
         const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc;
 
+        // Calculate costs display - NRC
+        const cableCostNrc = order.costs?.cableCost?.nrc || order.costs?.cable?.nrc || 0;
+        const backhaulANrc = order.costs?.backhaulA?.nrc || 0;
+        const backhaulZNrc = order.costs?.backhaulZ?.nrc || 0;
+        const xcANrc = order.costs?.crossConnectA?.nrc || 0;
+        const xcZNrc = order.costs?.crossConnectZ?.nrc || 0;
+        const totalCostsNrc = cableCostNrc + backhaulANrc + backhaulZNrc + xcANrc + xcZNrc;
+
+        // Contract totals
+        const totalRevenue = (mrrDisplay * term) + nrcDisplay;
+        const totalCost = (totalCostsMrc * term) + totalCostsNrc;
+        const totalProfit = totalRevenue - totalCost;
+        const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100).toFixed(1) : 0;
+
+        // Annual figures
+        const annualRevenue = mrrDisplay * 12;
+        const annualCost = totalCostsMrc * 12;
+        const annualProfit = annualRevenue - annualCost;
+
         // Use computed values for margin
         const grossMargin = computed.monthlyProfit;
         const marginPercent = computed.marginPercent.toFixed(1);
         const marginColor = grossMargin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        const totalProfitColor = totalProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
 
         // Build profitability section - different for IRU Resale
         let profitabilityHtml = '';
@@ -2956,156 +3412,163 @@ const App = {
             const recurringMargin = computed.recurringMargin?.toFixed(1) || '0.0';
             const firstMonthProfit = computed.firstMonthProfit || 0;
             profitabilityHtml = `
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润</td><td class="font-mono" style="color:${firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; font-weight:600">$${firstMonthProfit.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">首月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${firstMonthMargin}%</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">续月利润率</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${recurringMargin}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">First Month Profit</td><td class="font-mono" style="color:${firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; font-weight:600">$${firstMonthProfit.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">First Month Margin</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${firstMonthMargin}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Recurring Profit</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Recurring Margin</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${recurringMargin}%</td></tr>
             `;
         } else {
             profitabilityHtml = `
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Gross Margin (MRC)</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
-                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Margin %</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Profit</td><td class="font-mono" style="color:${marginColor}; font-weight:600">$${grossMargin.toLocaleString()}</td></tr>
+                <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Monthly Margin</td><td class="font-mono" style="color:${marginColor}; font-weight:600">${marginPercent}%</td></tr>
             `;
         }
 
+        // Location info
+        const aEndCity = order.locationAEnd?.city || order.aEndCity || '-';
+        const aEndPop = order.locationAEnd?.pop || order.aEndPop || '-';
+        const zEndCity = order.locationZEnd?.city || order.zEndCity || '-';
+        const zEndPop = order.locationZEnd?.pop || order.zEndPop || '-';
+
         const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+        const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
 
         const detailsHtml = `
-                                                                                                                            <div class="grid-2" style="gap:1.5rem; align-items: start;">
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${order.salesModel || 'Lease'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${order.salesType || 'Resale'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td>${order.dates?.term || '-'} months</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                                <div>
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <!-- Contract Summary - Highlighted -->
+            <div style="${highlightStyle}">
+                <h4 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <ion-icon name="briefcase-outline"></ion-icon> Contract Summary
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Revenue</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">$${totalRevenue.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Cost</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-danger);">$${totalCost.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Profit</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: ${totalProfitColor};">$${totalProfit.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Contract Margin</div>
+                        <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: ${totalProfitColor};">${totalMargin}%</div>
+                    </div>
+                </div>
+            </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Cost Breakdown (MRC)</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                                                                                                                                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total Costs (MRC)</td><td class="font-mono" style="color:var(--accent-danger)">$${totalCostsMrc.toLocaleString()}</td></tr>
-                                                                                                                                        </table>
-                                                                                                                                    </div>
+            <div class="grid-2" style="gap:1.5rem; align-items: start;">
+                <div>
+                    <!-- Order Information -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${salesModel}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${salesType}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                        </table>
+                    </div>
 
-                                                                                                                                    <div style="${sectionStyle}">
-                                                                                                                                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
-                                                                                                                                        <table style="width:100%;">
-                                                                                                                                            ${profitabilityHtml}
-                                                                                                                                        </table>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
+                    <!-- Contract Period -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Contract Period</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td class="font-mono">${term} months</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Route / Location -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Route</h4>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">A-End</div>
+                                <div style="font-weight: 600; margin-top: 0.25rem;">${aEndCity}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${aEndPop}</div>
+                            </div>
+                            <ion-icon name="arrow-forward-outline" style="font-size: 1.5rem; color: var(--text-muted);"></ion-icon>
+                            <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Z-End</div>
+                                <div style="font-weight: 600; margin-top: 0.25rem;">${zEndCity}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${zEndPop}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <!-- Revenue -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; color:var(--text-muted); font-size:0.85rem;">Annual Revenue</td><td class="font-mono" style="font-weight:600">$${annualRevenue.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Cost Breakdown MRC -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Monthly Costs (MRC)</h4>
+                        <table style="width:100%;">
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                            <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total MRC</td><td class="font-mono" style="color:var(--accent-danger); font-weight:600">$${totalCostsMrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+
+                    <!-- Cost Breakdown NRC -->
+                    ${totalCostsNrc > 0 ? `
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">One-time Costs (NRC)</h4>
+                        <table style="width:100%;">
+                            ${cableCostNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable NRC</td><td class="font-mono">$${cableCostNrc.toLocaleString()}</td></tr>` : ''}
+                            ${backhaulANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A NRC</td><td class="font-mono">$${backhaulANrc.toLocaleString()}</td></tr>` : ''}
+                            ${backhaulZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z NRC</td><td class="font-mono">$${backhaulZNrc.toLocaleString()}</td></tr>` : ''}
+                            ${xcANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC A NRC</td><td class="font-mono">$${xcANrc.toLocaleString()}</td></tr>` : ''}
+                            ${xcZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC Z NRC</td><td class="font-mono">$${xcZNrc.toLocaleString()}</td></tr>` : ''}
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total NRC</td><td class="font-mono" style="color:var(--accent-warning); font-weight:600">$${totalCostsNrc.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+                    ` : ''}
+
+                    <!-- Profitability -->
+                    <div style="${sectionStyle}">
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Profitability</h4>
+                        <table style="width:100%;">
+                            ${profitabilityHtml}
+                            <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; color:var(--text-muted); font-size:0.85rem;">Annual Profit</td><td class="font-mono" style="font-weight:600; color: ${annualProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${annualProfit.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            ${order.notes ? `
+            <div style="${sectionStyle}">
+                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.9rem;">Notes</h4>
+                <p style="margin: 0; font-size: 0.9rem; line-height: 1.5;">${order.notes}</p>
+            </div>
+            ` : ''}
+        `;
 
         this.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
     },
 
     editSalesOrder(salesOrderId) {
-        const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
-        if (!order) return;
-
-        const salespersonOptions = ['Janna Dai', 'Miki Chen', 'Wayne Jiang', 'Kristen Gan', 'Becky Hai', 'Wolf Yuan', 'Yifeng Jiang', 'Procurement Team']
-            .map(name => `<option ${order.salesperson === name ? 'selected' : ''}>${name}</option>`).join('');
-
-        const editHtml = `
-                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">Customer Name</label>
-                                                                                                                                    <input type="text" class="form-control" name="customerName" value="${order.customerName}">
-                                                                                                                                </div>
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">Salesperson</label>
-                                                                                                                                    <select class="form-control" name="salesperson">
-                                                                                                                                        <option value="">Select...</option>
-                                                                                                                                        ${salespersonOptions}
-                                                                                                                                    </select>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">Capacity Value</label>
-                                                                                                                                    <input type="number" class="form-control" name="capacity.value" value="${order.capacity?.value || 0}">
-                                                                                                                                </div>
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">Capacity Unit</label>
-                                                                                                                                    <select class="form-control" name="capacity.unit">
-                                                                                                                                        <option ${order.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
-                                                                                                                                        <option ${order.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
-                                                                                                                                        <option ${order.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                                                                                                                                    </select>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">MRC Sales ($)</label>
-                                                                                                                                    <input type="number" class="form-control" name="financials.mrcSales" value="${order.financials?.mrcSales || 0}">
-                                                                                                                                </div>
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">NRC Sales ($)</label>
-                                                                                                                                    <input type="number" class="form-control" name="financials.nrcSales" value="${order.financials?.nrcSales || 0}">
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            <div class="grid-2" style="gap:1.5rem;">
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">Start Date</label>
-                                                                                                                                    <input type="date" class="form-control" name="dates.start" value="${order.dates?.start || ''}">
-                                                                                                                                </div>
-                                                                                                                                <div class="form-group">
-                                                                                                                                    <label class="form-label">End Date</label>
-                                                                                                                                    <input type="date" class="form-control" name="dates.end" value="${order.dates?.end || ''}">
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            `;
-
-        this.openModal(`Edit: ${order.salesOrderId}`, editHtml, (form) => {
-            // Update order data
-            order.customerName = form.querySelector('[name="customerName"]').value;
-            order.salesperson = form.querySelector('[name="salesperson"]').value;
-            order.capacity = {
-                value: Number(form.querySelector('[name="capacity.value"]').value),
-                unit: form.querySelector('[name="capacity.unit"]').value
-            };
-            order.financials.mrcSales = Number(form.querySelector('[name="financials.mrcSales"]').value);
-            order.financials.nrcSales = Number(form.querySelector('[name="financials.nrcSales"]').value);
-            order.dates.start = form.querySelector('[name="dates.start"]').value;
-            order.dates.end = form.querySelector('[name="dates.end"]').value;
-
-            // Recalculate status
-            const today = new Date();
-            const start = new Date(order.dates.start);
-            const end = new Date(order.dates.end);
-            if (today < start) order.status = 'Pending';
-            else if (today > end) order.status = 'Expired';
-            else order.status = 'Active';
-
-            window.Store.save();
-            this.renderView('sales');
-            return true;
-        }, true);
+        // Use the full form modal with edit mode support
+        this.openAddSalesModal(salesOrderId);
     }
 };
 
