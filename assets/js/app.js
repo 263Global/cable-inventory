@@ -400,6 +400,59 @@ const App = {
         });
         const totalSalesCount = salesTypeCount.Resale + salesTypeCount.Inventory + salesTypeCount.Hybrid;
 
+        // Monthly MRR Trend (last 6 months) - Cumulative Active MRR
+        const monthlyMrr = {};
+        const now = new Date();
+
+        // Initialize last 6 months
+        const monthKeys = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthlyMrr[key] = 0;
+            monthKeys.push(key);
+        }
+
+        // For each month, calculate cumulative MRR of all active contracts
+        monthKeys.forEach(monthKey => {
+            const [year, month] = monthKey.split('-').map(Number);
+            // First and last day of this month
+            const monthStart = new Date(year, month - 1, 1);
+            const monthEnd = new Date(year, month, 0); // Last day of month
+
+            sales.forEach(s => {
+                const mrr = s.financials?.mrcSales || s.financials?.totalMrr || 0;
+                if (mrr <= 0) return;
+
+                // Get contract dates
+                const contractStart = s.dates?.start ? new Date(s.dates.start) : null;
+                const contractEnd = s.dates?.end ? new Date(s.dates.end) : null;
+
+                // Check if contract was active during this month
+                // Active if: started before or during this month AND (no end date OR ended after or during this month)
+                const startedBeforeOrDuring = !contractStart || contractStart <= monthEnd;
+                const endedAfterOrDuring = !contractEnd || contractEnd >= monthStart;
+
+                if (startedBeforeOrDuring && endedAfterOrDuring) {
+                    monthlyMrr[monthKey] += mrr;
+                }
+            });
+        });
+
+        const mrrTrendData = Object.entries(monthlyMrr).sort((a, b) => a[0].localeCompare(b[0]));
+        const maxMrrTrend = Math.max(...mrrTrendData.map(d => d[1]), 1);
+
+        // Margin Distribution
+        const marginDist = { high: 0, mid: 0, low: 0 };
+        sales.filter(s => s.status !== 'Swapped Out').forEach(s => {
+            const computed = computeOrderFinancials(s);
+            const m = computed.marginPercent || 0;
+            if (m >= 50) marginDist.high++;
+            else if (m >= 20) marginDist.mid++;
+            else marginDist.low++;
+        });
+        const marginTotal = marginDist.high + marginDist.mid + marginDist.low;
+
         const html = `
             <!-- Top Stats -->
             <div class="grid-4 mb-6 dashboard-grid-metrics">
@@ -557,13 +610,67 @@ const App = {
                         </div>
                     `}
                 </div>
-                <div class="card" style="background: linear-gradient(145deg, rgba(99,91,255,0.05), transparent);">
-                    <h3 class="mb-4">Quick Actions</h3>
-                    <button class="btn btn-secondary" onclick="App.renderView('inventory')">View Inventory</button>
-                    <br><br>
-                        <button class="btn btn-secondary" onclick="App.renderView('sales')">View Sales</button>
+
+                <!-- MRR Trend Chart -->
+                <div class="card" style="border-left: 4px solid var(--accent-success);">
+                    <h3 class="mb-4" style="color: var(--accent-success)"><ion-icon name="trending-up-outline"></ion-icon> MRR Trend (6 Months)</h3>
+                    <div style="display: flex; align-items: flex-end; gap: 0.5rem; height: 120px; padding-bottom: 1.5rem; position: relative;">
+                        ${mrrTrendData.map(([month, mrr]) => {
+                    const height = maxMrrTrend > 0 ? Math.max((mrr / maxMrrTrend) * 100, 2) : 2;
+                    const [year, mon] = month.split('-');
+                    const shortYear = year.slice(2); // e.g., "25" for 2025
+                    const label = `${shortYear}/${mon}`; // e.g., "25/08"
+                    return `
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem;">$${(mrr / 1000).toFixed(0)}k</div>
+                                <div style="width: 100%; height: ${height}%; background: linear-gradient(180deg, var(--accent-success), rgba(0, 212, 170, 0.5)); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s;"></div>
+                                <div style="font-size: 0.6rem; color: var(--text-muted); margin-top: 0.25rem;">${label}</div>
+                            </div>
+                        `;
+                }).join('')}
                     </div>
                 </div>
+
+                <!-- Margin Distribution + Export -->
+                <div class="card" style="background: linear-gradient(145deg, rgba(99,91,255,0.05), transparent);">
+                    <h3 class="mb-4"><ion-icon name="pie-chart-outline"></ion-icon> Margin Distribution</h3>
+                    ${marginTotal === 0 ? '<p style="color:var(--text-muted)">No sales data.</p>' : `
+                        <div style="margin-bottom: 1rem;">
+                            <!-- Stacked bar -->
+                            <div style="display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;">
+                                ${marginDist.high > 0 ? `<div style="flex: ${marginDist.high}; background: var(--accent-success);" title="High Margin (≥50%)"></div>` : ''}
+                                ${marginDist.mid > 0 ? `<div style="flex: ${marginDist.mid}; background: var(--accent-warning);" title="Mid Margin (20-50%)"></div>` : ''}
+                                ${marginDist.low > 0 ? `<div style="flex: ${marginDist.low}; background: var(--accent-danger);" title="Low Margin (<20%)"></div>` : ''}
+                            </div>
+                            <!-- Legend -->
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.8rem;">
+                                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                    <span style="width: 10px; height: 10px; background: var(--accent-success); border-radius: 2px;"></span>
+                                    <span>≥50%: ${marginDist.high}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                    <span style="width: 10px; height: 10px; background: var(--accent-warning); border-radius: 2px;"></span>
+                                    <span>20-50%: ${marginDist.mid}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                    <span style="width: 10px; height: 10px; background: var(--accent-danger); border-radius: 2px;"></span>
+                                    <span><20%: ${marginDist.low}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `}
+                    <hr style="border-color: var(--border-color); margin: 1rem 0;">
+                    <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;"><ion-icon name="download-outline"></ion-icon> Export Data</h4>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="App.exportSalesToCSV()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                            <ion-icon name="document-outline"></ion-icon> Sales CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.exportInventoryToCSV()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                            <ion-icon name="cube-outline"></ion-icon> Inventory CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
                 `;
         this.container.innerHTML = html;
     },
@@ -3569,6 +3676,127 @@ const App = {
     editSalesOrder(salesOrderId) {
         // Use the full form modal with edit mode support
         this.openAddSalesModal(salesOrderId);
+    },
+
+    // ============ CSV Export Functions ============
+
+    exportSalesToCSV() {
+        const sales = window.Store.getSales();
+        if (sales.length === 0) {
+            alert('No sales data to export.');
+            return;
+        }
+
+        // CSV Headers
+        const headers = [
+            'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
+            'Salesperson', 'Capacity', 'Unit', 'Contract Start', 'Contract End', 'Term (Months)',
+            'MRC Sales', 'NRC Sales', 'Monthly Cost', 'Monthly Margin', 'Margin %',
+            'A-End City', 'A-End PoP', 'Z-End City', 'Z-End PoP', 'Notes'
+        ];
+
+        // Generate rows
+        const rows = sales.map(s => {
+            const computed = computeOrderFinancials(s);
+            return [
+                s.salesOrderId || '',
+                s.customerName || '',
+                s.status || '',
+                s.salesModel || '',
+                s.salesType || '',
+                s.salesperson || '',
+                s.capacity?.value || 0,
+                s.capacity?.unit || 'Gbps',
+                s.dates?.start || '',
+                s.dates?.end || '',
+                s.dates?.term || '',
+                s.financials?.mrcSales || s.financials?.totalMrr || 0,
+                s.financials?.nrcSales || 0,
+                computed.monthlyProfit ? (s.financials?.mrcSales || 0) - computed.monthlyProfit : 0,
+                computed.monthlyProfit || 0,
+                computed.marginPercent?.toFixed(1) || 0,
+                s.locationAEnd?.city || '',
+                s.locationAEnd?.pop || '',
+                s.locationZEnd?.city || '',
+                s.locationZEnd?.pop || '',
+                (s.notes || '').replace(/"/g, '""') // Escape quotes
+            ].map(v => `"${v}"`).join(',');
+        });
+
+        // Combine and download
+        const csv = [headers.join(','), ...rows].join('\n');
+        this.downloadCSV(csv, `sales_export_${new Date().toISOString().split('T')[0]}.csv`);
+    },
+
+    exportInventoryToCSV() {
+        const inventory = window.Store.getInventory();
+        if (inventory.length === 0) {
+            alert('No inventory data to export.');
+            return;
+        }
+
+        // CSV Headers
+        const headers = [
+            'Resource ID', 'Status', 'Cable System', 'Segment Type', 'Protection',
+            'Ownership', 'Supplier', 'Capacity', 'Unit',
+            'A-End Country', 'A-End City', 'A-End PoP',
+            'Z-End Country', 'Z-End City', 'Z-End PoP',
+            'MRC', 'OTC', 'Annual O&M', 'Contract Start', 'Contract End', 'Term (Months)'
+        ];
+
+        // Generate rows
+        const rows = inventory.map(i => [
+            i.resourceId || '',
+            i.status || '',
+            i.cableSystem || '',
+            i.segmentType || '',
+            i.protection || '',
+            i.acquisition?.ownership || '',
+            i.acquisition?.supplier || '',
+            i.capacity?.value || 0,
+            i.capacity?.unit || 'Gbps',
+            i.location?.aEnd?.country || '',
+            i.location?.aEnd?.city || '',
+            i.location?.aEnd?.pop || '',
+            i.location?.zEnd?.country || '',
+            i.location?.zEnd?.city || '',
+            i.location?.zEnd?.pop || '',
+            i.financials?.mrc || 0,
+            i.financials?.otc || 0,
+            i.financials?.annualOmCost || 0,
+            i.dates?.start || '',
+            i.dates?.end || '',
+            i.financials?.term || ''
+        ].map(v => `"${v}"`).join(','));
+
+        // Combine and download
+        const csv = [headers.join(','), ...rows].join('\n');
+        this.downloadCSV(csv, `inventory_export_${new Date().toISOString().split('T')[0]}.csv`);
+    },
+
+    downloadCSV(csvContent, filename) {
+        // Use Data URL approach for better browser compatibility
+        const BOM = '\uFEFF';
+        const csvData = BOM + csvContent;
+
+        // Encode as base64 for data URL
+        const base64 = btoa(unescape(encodeURIComponent(csvData)));
+        const dataUrl = 'data:text/csv;charset=utf-8;base64,' + base64;
+
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+
+        // For Safari, we need to open in new window
+        if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+            window.open(dataUrl, '_blank');
+            alert(`文件已在新窗口打开，请手动保存为: ${filename}`);
+        } else {
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert(`已下载: ${filename}`);
+        }
     }
 };
 
