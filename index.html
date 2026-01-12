@@ -167,6 +167,27 @@
                 alert('Error: ' + err.message);
             }
         });
+
+        // Auto logout after 10 minutes of inactivity
+        const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+        let inactivityTimer;
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(async () => {
+                alert('You have been logged out due to inactivity.');
+                await Auth.signOut();
+                window.location.href = 'login.html';
+            }, INACTIVITY_TIMEOUT);
+        }
+
+        // Track user activity
+        ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
+            document.addEventListener(event, resetInactivityTimer, { passive: true });
+        });
+
+        // Start the timer
+        resetInactivityTimer();
     </script>
 </body>
 
