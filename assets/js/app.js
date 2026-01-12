@@ -251,6 +251,8 @@ const App = {
         // Selection state
         this._selectedSales = new Set();
         this._selectedInventory = new Set();
+        this._salesSelectionMode = false;
+        this._inventorySelectionMode = false;
     },
 
     cacheDOM() {
@@ -2543,19 +2545,26 @@ const App = {
                 <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
                 </div>
+                ${!this._inventorySelectionMode ? `
+                    <button class="btn btn-secondary" onclick="App.enterInventorySelectionMode()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                        <ion-icon name="checkbox-outline"></ion-icon> Bulk
+                    </button>
+                ` : ''}
             </div>
-            <div id="inventory-bulk-toolbar" class="bulk-toolbar" style="display: ${this._selectedInventory.size > 0 ? 'flex' : 'none'}; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+            ${this._inventorySelectionMode ? `
+            <div id="inventory-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
                 <span style="font-weight: 600; color: var(--accent-primary);">
                     <ion-icon name="checkbox-outline"></ion-icon>
                     <span id="inventory-selection-count">${this._selectedInventory.size}</span> selected
                 </span>
-                <button class="btn btn-secondary" onclick="App.exportSelectedInventory()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                <button class="btn btn-secondary" onclick="App.exportSelectedInventory()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;" ${this._selectedInventory.size === 0 ? 'disabled' : ''}>
                     <ion-icon name="download-outline"></ion-icon> Export Selected
                 </button>
-                <button class="btn" onclick="App.clearInventorySelection()" style="font-size: 0.8rem; padding: 0.4rem 0.5rem; color: var(--text-muted);">
-                    <ion-icon name="close-outline"></ion-icon> Clear
+                <button class="btn" onclick="App.exitInventorySelectionMode()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem; margin-left: auto;">
+                    <ion-icon name="close-outline"></ion-icon> Exit Bulk Mode
                 </button>
             </div>
+            ` : ''}
             <style>
                 .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
                 .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
@@ -2569,7 +2578,7 @@ const App = {
                 <table class="inventory-table">
                     <thead>
                                                                                                                                         <tr>
-                                                                                                                                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="inventory-select-all" title="Select All"></th>
+                                                                                                                                            ${this._inventorySelectionMode ? '<th style="width: 40px; text-align: center;"><input type="checkbox" id="inventory-select-all" title="Select All"></th>' : ''}
                                                                                                                                             <th>Resource ID</th>
                                                                                                                                             <th>Status</th>
                                                                                                                                             <th class="col-acquisition">Acquisition</th>
@@ -2626,7 +2635,7 @@ const App = {
 
             return `
                             <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}" class="${this._selectedInventory.has(item.resourceId) ? 'row-selected' : ''}">
-                                <td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${item.resourceId}" ${this._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>
+                                ${this._inventorySelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${item.resourceId}" ${this._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>` : ''}
                                 <td class="font-mono" style="color: var(--accent-secondary); white-space: nowrap;">${item.resourceId}</td>
                                 <td>
                                     <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
@@ -3406,25 +3415,32 @@ const App = {
                 <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
                     Showing ${totalItems > 0 ? startIndex + 1 : 0}-${endIndex} of ${totalItems}
                 </div>
+                ${!this._salesSelectionMode ? `
+                    <button class="btn btn-secondary" onclick="App.enterSalesSelectionMode()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                        <ion-icon name="checkbox-outline"></ion-icon> Bulk
+                    </button>
+                ` : ''}
             </div>
-            <div id="sales-bulk-toolbar" class="bulk-toolbar" style="display: ${this._selectedSales.size > 0 ? 'flex' : 'none'}; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+            ${this._salesSelectionMode ? `
+            <div id="sales-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
                 <span style="font-weight: 600; color: var(--accent-primary);">
                     <ion-icon name="checkbox-outline"></ion-icon>
                     <span id="sales-selection-count">${this._selectedSales.size}</span> selected
                 </span>
-                <button class="btn btn-secondary" onclick="App.exportSelectedSales()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                <button class="btn btn-secondary" onclick="App.exportSelectedSales()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;" ${this._selectedSales.size === 0 ? 'disabled' : ''}>
                     <ion-icon name="download-outline"></ion-icon> Export Selected
                 </button>
-                <select id="sales-bulk-status" class="form-control" style="max-width: 140px; font-size: 0.8rem;" onchange="App.bulkUpdateSalesStatus(this.value)">
+                <select id="sales-bulk-status" class="form-control" style="max-width: 140px; font-size: 0.8rem;" onchange="App.bulkUpdateSalesStatus(this.value)" ${this._selectedSales.size === 0 ? 'disabled' : ''}>
                     <option value="">Change Status...</option>
                     <option value="Active">Active</option>
                     <option value="Pending">Pending</option>
                     <option value="Churned">Churned</option>
                 </select>
-                <button class="btn" onclick="App.clearSalesSelection()" style="font-size: 0.8rem; padding: 0.4rem 0.5rem; color: var(--text-muted);">
-                    <ion-icon name="close-outline"></ion-icon> Clear
+                <button class="btn" onclick="App.exitSalesSelectionMode()" style="font-size: 0.8rem; padding: 0.4rem 0.75rem; margin-left: auto;">
+                    <ion-icon name="close-outline"></ion-icon> Exit Bulk Mode
                 </button>
             </div>
+            ` : ''}
             <style>
                 .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
                 .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
@@ -3451,7 +3467,7 @@ const App = {
                 <table class="sales-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="sales-select-all" title="Select All"></th>
+                            ${this._salesSelectionMode ? '<th style="width: 40px; text-align: center;"><input type="checkbox" id="sales-select-all" title="Select All"></th>' : ''}
                             <th>Order ID</th>
                             <th>Customer</th>
                             <th>Type</th>
@@ -3465,7 +3481,7 @@ const App = {
                         </tr>
                     </thead>
                     <tbody>
-                        ${paginatedData.length === 0 ? '<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>' : ''}
+                        ${paginatedData.length === 0 ? `<tr><td colspan="${this._salesSelectionMode ? 11 : 10}" style="text-align:center; color:var(--text-muted); padding:2rem;">No sales orders match your filters.</td></tr>` : ''}
                         ${paginatedData.map(item => {
             // Use unified calculation engine
             const computed = computeOrderFinancials(item);
@@ -3519,7 +3535,7 @@ const App = {
 
             return `
                             <tr class="${this._selectedSales.has(item.salesOrderId) ? 'row-selected' : ''}">
-                                <td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${item.salesOrderId}" ${this._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>
+                                ${this._salesSelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${item.salesOrderId}" ${this._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>` : ''}
                                 <td class="font-mono order-id-cell">${item.salesOrderId}</td>
                                 <td>
                                     <div class="customer-name" style="font-weight:600" title="${item.customerName}">${item.customerName}</div>
@@ -3861,15 +3877,30 @@ const App = {
 
     // ============ Bulk Operations ============
 
+    enterSalesSelectionMode() {
+        this._salesSelectionMode = true;
+        this._selectedSales.clear();
+        this.headerActions.innerHTML = '';
+        this.renderSales();
+    },
+
+    exitSalesSelectionMode() {
+        this._salesSelectionMode = false;
+        this._selectedSales.clear();
+        this.headerActions.innerHTML = '';
+        this.renderSales();
+    },
+
     updateSalesBulkToolbar() {
-        const toolbar = document.getElementById('sales-bulk-toolbar');
         const countEl = document.getElementById('sales-selection-count');
-        if (toolbar) {
-            toolbar.style.display = this._selectedSales.size > 0 ? 'flex' : 'none';
-        }
         if (countEl) {
             countEl.textContent = this._selectedSales.size;
         }
+        // Enable/disable buttons based on selection
+        const exportBtn = document.querySelector('#sales-bulk-toolbar .btn-secondary');
+        const statusSelect = document.getElementById('sales-bulk-status');
+        if (exportBtn) exportBtn.disabled = this._selectedSales.size === 0;
+        if (statusSelect) statusSelect.disabled = this._selectedSales.size === 0;
     },
 
     exportSelectedSales() {
@@ -3951,15 +3982,28 @@ const App = {
 
     // ============ Inventory Bulk Operations ============
 
+    enterInventorySelectionMode() {
+        this._inventorySelectionMode = true;
+        this._selectedInventory.clear();
+        this.headerActions.innerHTML = '';
+        this.renderInventory();
+    },
+
+    exitInventorySelectionMode() {
+        this._inventorySelectionMode = false;
+        this._selectedInventory.clear();
+        this.headerActions.innerHTML = '';
+        this.renderInventory();
+    },
+
     updateInventoryBulkToolbar() {
-        const toolbar = document.getElementById('inventory-bulk-toolbar');
         const countEl = document.getElementById('inventory-selection-count');
-        if (toolbar) {
-            toolbar.style.display = this._selectedInventory.size > 0 ? 'flex' : 'none';
-        }
         if (countEl) {
             countEl.textContent = this._selectedInventory.size;
         }
+        // Enable/disable buttons based on selection
+        const exportBtn = document.querySelector('#inventory-bulk-toolbar .btn-secondary');
+        if (exportBtn) exportBtn.disabled = this._selectedInventory.size === 0;
     },
 
     exportSelectedInventory() {
