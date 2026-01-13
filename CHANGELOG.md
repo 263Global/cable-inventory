@@ -2,6 +2,27 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.2.0] - 2026-01-13
+
+### Added
+- **Modular Architecture** - Extracted core functionality into separate modules for better maintainability
+  - `modules/financials.js` - Financial calculation engine
+  - `modules/validation.js` - Form validation utilities
+  - `modules/csv.js` - CSV export functions
+  - `modules/customers.js` - Customer CRM module
+  - `modules/suppliers.js` - Supplier CRM module
+  - `modules/bulkOps.js` - Bulk selection and export operations
+- **Code Region Comments** - Added `//#region` markers for IDE code folding support
+
+### Changed
+- **Code Organization** - Main `app.js` reduced from 4662 to 3945 lines (~15% reduction)
+- **Delete Behavior** - Customer and Supplier delete buttons now work like Sales/Inventory (no confirmation popup)
+
+### Fixed
+- **Duplicate Buttons** - Fixed issue where re-rendering Customers/Suppliers page would duplicate the "Add" button
+
+---
+
 ## [1.1.0] - 2026-01-12
 
 ### Added
