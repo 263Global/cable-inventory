@@ -1296,6 +1296,12 @@ const App = {
     },
 
     attachSalesFormListeners() {
+        // Generate supplier options for cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+        ).join('');
+
         // ===== Cost Card Templates =====
         const costCardTemplates = {
             cable: `
