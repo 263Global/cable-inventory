@@ -4475,7 +4475,6 @@ const App = {
         const data = {
             shortName: form.querySelector('[name="shortName"]').value.trim(),
             fullName: form.querySelector('[name="fullName"]').value.trim(),
-            serviceType: form.querySelector('[name="serviceType"]').value,
             contactName: form.querySelector('[name="contactName"]').value.trim(),
             contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
             contactPhone: form.querySelector('[name="contactPhone"]').value.trim(),
