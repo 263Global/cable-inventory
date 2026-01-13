@@ -804,7 +804,8 @@ const App = {
                 <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
                 <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
                     
-                <!-- COLUMN 1: Profitability Analysis -->
+                    <!-- COLUMN 1: Profitability Analysis -->
+                    <div>
                         <div id="profitability-widget" style="
                             background: var(--bg-secondary);
                             border-radius: 12px;
@@ -879,6 +880,7 @@ const App = {
                                 <span id="cost-date-warning-text">成本开始日期早于销售合同</span>
                             </div>
                         </div>
+                    </div>
 
                     <!-- COLUMN 2: Sales Information -->
                     <div class="section-card">
