@@ -192,8 +192,8 @@ function validateSalesForm(form) {
     const getNum = (name) => Number(form.querySelector(`[name="${name}"]`)?.value || 0);
 
     // Required field validation
-    if (!getVal('customerName')) {
-        showError('customerName', 'Customer Name is required');
+    if (!getVal('customerId')) {
+        showError('customerId', 'Customer is required');
     }
 
     if (!getVal('salesperson')) {
@@ -787,6 +787,13 @@ const App = {
             return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
         }).join('');
 
+        // Generate customer options from Store
+        const customers = window.Store.getCustomers();
+        const customerOptions = customers.map(c => {
+            const isSelected = existingOrder?.customerId === c.id ? 'selected' : '';
+            return `<option value="${c.id}" ${isSelected}>${c.short_name}${c.full_name ? ' (' + c.full_name + ')' : ''}</option>`;
+        }).join('');
+
         const modalContent = `
                 <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
                 <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
@@ -879,8 +886,12 @@ const App = {
                                 <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001" value="${existingOrder?.salesOrderId || ''}" ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Customer Name <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                                <input type="text" class="form-control" name="customerName" required value="${existingOrder?.customerName || ''}">
+                                <label class="form-label">Customer <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                                <select class="form-control" name="customerId" required>
+                                    <option value="">Select Customer...</option>
+                                    ${customerOptions}
+                                </select>
+                                ${customers.length === 0 ? '<small style="color:var(--text-muted)">No customers yet. <a href="#" onclick="App.renderView(\'customers\'); App.closeModal(); return false;">Add one first</a>.</small>' : ''}
                             </div>
                         </div>
 
@@ -2376,7 +2387,8 @@ const App = {
 
         const orderData = {
             salesOrderId: isEditMode ? this._editingOrderId : (getVal('orderId') || null),
-            customerName: getVal('customerName'),
+            customerId: getVal('customerId'),
+            customerName: window.Store.getCustomerById(getVal('customerId'))?.short_name || '',
             inventoryLink: getVal('inventoryLink'),
             status: status,
             capacity: {
