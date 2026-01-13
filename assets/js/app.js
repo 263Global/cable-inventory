@@ -1305,7 +1305,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.cable.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.cable.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1420,7 +1423,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1495,7 +1501,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1570,7 +1579,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcA.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.xcA.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1620,7 +1632,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.xcZ.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1674,7 +1689,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field-base="costs.other.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field-base="costs.other.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -3046,6 +3064,12 @@ const App = {
                 calculatedStatus = 'Available';
             }
         }
+
+        // Generate supplier options for all cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+        ).join('');
 
         const formHTML = `
                                                                                                                             ${item.usage?.currentUser ? `
