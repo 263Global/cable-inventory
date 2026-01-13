@@ -794,6 +794,12 @@ const App = {
             return `<option value="${c.id}" ${isSelected}>${c.short_name}${c.full_name ? ' (' + c.full_name + ')' : ''}</option>`;
         }).join('');
 
+        // Generate supplier options for cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+        ).join('');
+
         const modalContent = `
                 <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
                 <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
@@ -3126,7 +3132,10 @@ const App = {
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <input type="text" class="form-control" name="acquisition.supplier" value="${item.acquisition?.supplier || ''}">
+                                                                                                                                    <select class="form-control" name="acquisition.supplier">
+                                                                                                                                        <option value="">Select Supplier...</option>
+                                                                                                                                        ${supplierOptionsHTML}
+                                                                                                                                    </select>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Contract Ref</label>
