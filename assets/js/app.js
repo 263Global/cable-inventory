@@ -4203,8 +4203,8 @@ const App = {
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Full Name</label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name">
+                                <label class="form-label">Full Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
@@ -4255,8 +4255,8 @@ const App = {
             notes: form.querySelector('[name="notes"]').value.trim()
         };
 
-        if (!data.shortName) {
-            alert('Short Name is required');
+        if (!data.shortName || !data.fullName) {
+            alert('Short Name and Full Name are required');
             return;
         }
 
@@ -4287,7 +4287,6 @@ const App = {
 
     renderSuppliers(filters = {}) {
         const searchQuery = filters.search || '';
-        const typeFilter = filters.type || '';
         const currentPage = filters.page || 1;
         const ITEMS_PER_PAGE = 15;
 
@@ -4301,14 +4300,6 @@ const App = {
                 (s.full_name || '').toLowerCase().includes(q)
             );
         }
-
-        // Type filter
-        if (typeFilter) {
-            data = data.filter(s => s.service_type === typeFilter);
-        }
-
-        // Get unique service types for filter dropdown
-        const serviceTypes = [...new Set(window.Store.getSuppliers().map(s => s.service_type).filter(Boolean))];
 
         // Pagination
         const totalItems = data.length;
@@ -4330,10 +4321,6 @@ const App = {
                     <ion-icon name="search-outline"></ion-icon>
                     <input type="text" id="supplier-search" class="form-control" placeholder="Search..." value="${searchQuery}">
                 </div>
-                <select id="supplier-type-filter" class="form-control" style="max-width: 180px;">
-                    <option value="">All Types</option>
-                    ${serviceTypes.map(t => `<option value="${t}" ${t === typeFilter ? 'selected' : ''}>${t}</option>`).join('')}
-                </select>
             </div>
 
             <div class="table-container">
@@ -4342,19 +4329,17 @@ const App = {
                         <tr>
                             <th>Short Name</th>
                             <th class="mobile-hidden">Full Name</th>
-                            <th>Service Type</th>
                             <th class="mobile-hidden">Contact</th>
                             <th style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${paginatedData.length === 0 ? `
-                            <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found. Add your first supplier!</td></tr>
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found. Add your first supplier!</td></tr>
                         ` : paginatedData.map(s => `
                             <tr>
                                 <td><strong>${s.short_name || ''}</strong></td>
                                 <td class="mobile-hidden">${s.full_name || '-'}</td>
-                                <td><span class="badge badge-primary">${s.service_type || '-'}</span></td>
                                 <td class="mobile-hidden">${s.contact_name || '-'}</td>
                                 <td>
                                     <div class="flex gap-2">
@@ -4374,11 +4359,11 @@ const App = {
 
             ${totalPages > 1 ? `
                 <div class="pagination mt-4">
-                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',type:'${typeFilter}',page:${page - 1}})">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page - 1}})">
                         <ion-icon name="chevron-back-outline"></ion-icon>
                     </button>
                     <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
-                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',type:'${typeFilter}',page:${page + 1}})">
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page + 1}})">
                         <ion-icon name="chevron-forward-outline"></ion-icon>
                     </button>
                 </div>
@@ -4386,20 +4371,15 @@ const App = {
         `;
         this.container.innerHTML = html;
 
-        // Bind filters
+        // Bind search
         document.getElementById('supplier-search')?.addEventListener('input', (e) => {
-            this.renderSuppliers({ search: e.target.value, type: typeFilter, page: 1 });
-        });
-        document.getElementById('supplier-type-filter')?.addEventListener('change', (e) => {
-            this.renderSuppliers({ search: searchQuery, type: e.target.value, page: 1 });
+            this.renderSuppliers({ search: e.target.value, page: 1 });
         });
     },
 
     openSupplierModal(supplierId = null) {
         const existing = supplierId ? window.Store.getSupplierById(supplierId) : null;
         const isEdit = !!existing;
-
-        const serviceTypes = ['Cable', 'Colocation', 'Backhaul', 'Cross-Connect', 'Other'];
 
         const modalHtml = `
             <div class="modal-backdrop" onclick="App.closeModal(event)">
@@ -4410,22 +4390,13 @@ const App = {
                     </div>
                     <div class="modal-body">
                         <form id="supplier-form">
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                    <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Service Type</label>
-                                    <select name="serviceType" class="form-control">
-                                        <option value="">Select Type</option>
-                                        ${serviceTypes.map(t => `<option value="${t}" ${existing?.service_type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                                    </select>
-                                </div>
+                            <div class="form-group">
+                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Full Name</label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name">
+                                <label class="form-label">Full Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
@@ -4476,8 +4447,8 @@ const App = {
             notes: form.querySelector('[name="notes"]').value.trim()
         };
 
-        if (!data.shortName) {
-            alert('Short Name is required');
+        if (!data.shortName || !data.fullName) {
+            alert('Short Name and Full Name are required');
             return;
         }
 
