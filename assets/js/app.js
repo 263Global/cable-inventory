@@ -347,6 +347,14 @@ const App = {
                 this.pageTitle.textContent = 'Sales & Revenue';
                 this.renderSales();
                 break;
+            case 'customers':
+                this.pageTitle.textContent = 'Customers';
+                this.renderCustomers();
+                break;
+            case 'suppliers':
+                this.pageTitle.textContent = 'Suppliers';
+                this.renderSuppliers();
+                break;
             default:
                 this.pageTitle.textContent = 'Operational Dashboard';
                 this.renderDashboard();
@@ -362,19 +370,32 @@ const App = {
             fab.remove();
         }
 
-        // Only show FAB for inventory and sales views
-        if (viewName === 'inventory' || viewName === 'sales') {
+        // Views that should show FAB
+        const fabViews = ['inventory', 'sales', 'customers', 'suppliers'];
+
+        if (fabViews.includes(viewName)) {
             fab = document.createElement('button');
             fab.id = 'mobile-fab';
             fab.className = 'fab show';
             fab.innerHTML = '<ion-icon name="add-outline"></ion-icon>';
 
-            if (viewName === 'inventory') {
-                fab.onclick = () => this.openInventoryModal();
-                fab.title = 'Add Resource';
-            } else {
-                fab.onclick = () => this.openAddSalesModal();
-                fab.title = 'New Sale';
+            switch (viewName) {
+                case 'inventory':
+                    fab.onclick = () => this.openInventoryModal();
+                    fab.title = 'Add Resource';
+                    break;
+                case 'sales':
+                    fab.onclick = () => this.openAddSalesModal();
+                    fab.title = 'New Sale';
+                    break;
+                case 'customers':
+                    fab.onclick = () => this.openCustomerModal();
+                    fab.title = 'Add Customer';
+                    break;
+                case 'suppliers':
+                    fab.onclick = () => this.openSupplierModal();
+                    fab.title = 'Add Supplier';
+                    break;
             }
 
             document.body.appendChild(fab);
@@ -4054,6 +4075,388 @@ const App = {
         const selectAll = document.getElementById('inventory-select-all');
         if (selectAll) selectAll.checked = false;
         this.updateInventoryBulkToolbar();
+    },
+
+    // ============ Customers View ============
+
+    renderCustomers(filters = {}) {
+        const searchQuery = filters.search || '';
+        const currentPage = filters.page || 1;
+        const ITEMS_PER_PAGE = 15;
+
+        let data = window.Store.getCustomers();
+
+        // Search filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            data = data.filter(c =>
+                (c.short_name || '').toLowerCase().includes(q) ||
+                (c.full_name || '').toLowerCase().includes(q) ||
+                (c.contact_email || '').toLowerCase().includes(q)
+            );
+        }
+
+        // Pagination
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const page = Math.min(Math.max(1, currentPage), totalPages || 1);
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        // Add button to header
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-primary';
+        addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Customer';
+        addBtn.onclick = () => this.openCustomerModal();
+        this.headerActions.appendChild(addBtn);
+
+        const html = `
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="customer-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="customers-table">
+                    <thead>
+                        <tr>
+                            <th>Short Name</th>
+                            <th class="mobile-hidden">Full Name</th>
+                            <th class="mobile-hidden">Contact</th>
+                            <th class="mobile-hidden">Email</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.length === 0 ? `
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No customers found. Add your first customer!</td></tr>
+                        ` : paginatedData.map(c => `
+                            <tr>
+                                <td><strong>${c.short_name || ''}</strong></td>
+                                <td class="mobile-hidden">${c.full_name || '-'}</td>
+                                <td class="mobile-hidden">${c.contact_name || '-'}</td>
+                                <td class="mobile-hidden">${c.contact_email || '-'}</td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-icon" onclick="App.openCustomerModal('${c.id}')" title="Edit">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-icon" onclick="App.deleteCustomer('${c.id}')" title="Delete">
+                                            <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${totalPages > 1 ? `
+                <div class="pagination mt-4">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page - 1}})">
+                        <ion-icon name="chevron-back-outline"></ion-icon>
+                    </button>
+                    <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page + 1}})">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        this.container.innerHTML = html;
+
+        // Bind search
+        document.getElementById('customer-search')?.addEventListener('input', (e) => {
+            this.renderCustomers({ search: e.target.value, page: 1 });
+        });
+    },
+
+    openCustomerModal(customerId = null) {
+        const existing = customerId ? window.Store.getCustomerById(customerId) : null;
+        const isEdit = !!existing;
+
+        const modalHtml = `
+            <div class="modal-backdrop" onclick="App.closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Customer' : 'Add Customer'}</h3>
+                        <button class="btn btn-icon" onclick="App.closeModal()"><ion-icon name="close-outline"></ion-icon></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="customer-form">
+                            <div class="form-group">
+                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}">
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Name</label>
+                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact Email</label>
+                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="3">${existing?.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveCustomer('${customerId || ''}')">${isEdit ? 'Save Changes' : 'Add Customer'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.modalContainer.innerHTML = modalHtml;
+    },
+
+    async saveCustomer(customerId) {
+        const form = document.getElementById('customer-form');
+        const data = {
+            shortName: form.querySelector('[name="shortName"]').value.trim(),
+            fullName: form.querySelector('[name="fullName"]').value.trim(),
+            contactName: form.querySelector('[name="contactName"]').value.trim(),
+            contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
+            notes: form.querySelector('[name="notes"]').value.trim()
+        };
+
+        if (!data.shortName) {
+            alert('Short Name is required');
+            return;
+        }
+
+        try {
+            if (customerId) {
+                await window.Store.updateCustomer(customerId, data);
+            } else {
+                await window.Store.addCustomer(data);
+            }
+            this.closeModal();
+            this.renderCustomers();
+        } catch (err) {
+            alert('Error saving customer: ' + err.message);
+        }
+    },
+
+    async deleteCustomer(customerId) {
+        if (!confirm('Are you sure you want to delete this customer?')) return;
+        try {
+            await window.Store.deleteCustomer(customerId);
+            this.renderCustomers();
+        } catch (err) {
+            alert('Error deleting customer: ' + err.message);
+        }
+    },
+
+    // ============ Suppliers View ============
+
+    renderSuppliers(filters = {}) {
+        const searchQuery = filters.search || '';
+        const typeFilter = filters.type || '';
+        const currentPage = filters.page || 1;
+        const ITEMS_PER_PAGE = 15;
+
+        let data = window.Store.getSuppliers();
+
+        // Search filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            data = data.filter(s =>
+                (s.short_name || '').toLowerCase().includes(q) ||
+                (s.full_name || '').toLowerCase().includes(q)
+            );
+        }
+
+        // Type filter
+        if (typeFilter) {
+            data = data.filter(s => s.service_type === typeFilter);
+        }
+
+        // Get unique service types for filter dropdown
+        const serviceTypes = [...new Set(window.Store.getSuppliers().map(s => s.service_type).filter(Boolean))];
+
+        // Pagination
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const page = Math.min(Math.max(1, currentPage), totalPages || 1);
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        // Add button to header
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-primary';
+        addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Supplier';
+        addBtn.onclick = () => this.openSupplierModal();
+        this.headerActions.appendChild(addBtn);
+
+        const html = `
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="supplier-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                </div>
+                <select id="supplier-type-filter" class="form-control" style="max-width: 180px;">
+                    <option value="">All Types</option>
+                    ${serviceTypes.map(t => `<option value="${t}" ${t === typeFilter ? 'selected' : ''}>${t}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table class="suppliers-table">
+                    <thead>
+                        <tr>
+                            <th>Short Name</th>
+                            <th class="mobile-hidden">Full Name</th>
+                            <th>Service Type</th>
+                            <th class="mobile-hidden">Contact Info</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.length === 0 ? `
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found. Add your first supplier!</td></tr>
+                        ` : paginatedData.map(s => `
+                            <tr>
+                                <td><strong>${s.short_name || ''}</strong></td>
+                                <td class="mobile-hidden">${s.full_name || '-'}</td>
+                                <td><span class="badge badge-primary">${s.service_type || '-'}</span></td>
+                                <td class="mobile-hidden">${s.contact_info || '-'}</td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-icon" onclick="App.openSupplierModal('${s.id}')" title="Edit">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-icon" onclick="App.deleteSupplier('${s.id}')" title="Delete">
+                                            <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${totalPages > 1 ? `
+                <div class="pagination mt-4">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',type:'${typeFilter}',page:${page - 1}})">
+                        <ion-icon name="chevron-back-outline"></ion-icon>
+                    </button>
+                    <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',type:'${typeFilter}',page:${page + 1}})">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        this.container.innerHTML = html;
+
+        // Bind filters
+        document.getElementById('supplier-search')?.addEventListener('input', (e) => {
+            this.renderSuppliers({ search: e.target.value, type: typeFilter, page: 1 });
+        });
+        document.getElementById('supplier-type-filter')?.addEventListener('change', (e) => {
+            this.renderSuppliers({ search: searchQuery, type: e.target.value, page: 1 });
+        });
+    },
+
+    openSupplierModal(supplierId = null) {
+        const existing = supplierId ? window.Store.getSupplierById(supplierId) : null;
+        const isEdit = !!existing;
+
+        const serviceTypes = ['Cable', 'Colocation', 'Backhaul', 'Cross-Connect', 'Other'];
+
+        const modalHtml = `
+            <div class="modal-backdrop" onclick="App.closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Supplier' : 'Add Supplier'}</h3>
+                        <button class="btn btn-icon" onclick="App.closeModal()"><ion-icon name="close-outline"></ion-icon></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="supplier-form">
+                            <div class="form-group">
+                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Service Type</label>
+                                <select name="serviceType" class="form-control">
+                                    <option value="">Select Type</option>
+                                    ${serviceTypes.map(t => `<option value="${t}" ${existing?.service_type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Contact Info</label>
+                                <textarea name="contactInfo" class="form-control" rows="2" placeholder="Contact person, email, portal link, etc.">${existing?.contact_info || ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="3">${existing?.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveSupplier('${supplierId || ''}')">${isEdit ? 'Save Changes' : 'Add Supplier'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.modalContainer.innerHTML = modalHtml;
+    },
+
+    async saveSupplier(supplierId) {
+        const form = document.getElementById('supplier-form');
+        const data = {
+            shortName: form.querySelector('[name="shortName"]').value.trim(),
+            fullName: form.querySelector('[name="fullName"]').value.trim(),
+            serviceType: form.querySelector('[name="serviceType"]').value,
+            contactInfo: form.querySelector('[name="contactInfo"]').value.trim(),
+            notes: form.querySelector('[name="notes"]').value.trim()
+        };
+
+        if (!data.shortName) {
+            alert('Short Name is required');
+            return;
+        }
+
+        try {
+            if (supplierId) {
+                await window.Store.updateSupplier(supplierId, data);
+            } else {
+                await window.Store.addSupplier(data);
+            }
+            this.closeModal();
+            this.renderSuppliers();
+        } catch (err) {
+            alert('Error saving supplier: ' + err.message);
+        }
+    },
+
+    async deleteSupplier(supplierId) {
+        if (!confirm('Are you sure you want to delete this supplier?')) return;
+        try {
+            await window.Store.deleteSupplier(supplierId);
+            this.renderSuppliers();
+        } catch (err) {
+            alert('Error deleting supplier: ' + err.message);
+        }
     },
 
     // ============ CSV Export Functions ============

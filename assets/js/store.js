@@ -9,6 +9,8 @@ class Store {
     constructor() {
         this.inventory = [];
         this.salesOrders = [];
+        this.customers = [];
+        this.suppliers = [];
         this.initialized = false;
     }
 
@@ -19,17 +21,24 @@ class Store {
 
         try {
             // Fetch all data from Supabase
-            const [invResult, salesResult] = await Promise.all([
+            const [invResult, salesResult, custResult, suppResult] = await Promise.all([
                 window.SupabaseClient.from('inventory').select('*').order('created_at', { ascending: false }),
-                window.SupabaseClient.from('sales_orders').select('*').order('created_at', { ascending: false })
+                window.SupabaseClient.from('sales_orders').select('*').order('created_at', { ascending: false }),
+                window.SupabaseClient.from('customers').select('*').order('short_name', { ascending: true }),
+                window.SupabaseClient.from('suppliers').select('*').order('short_name', { ascending: true })
             ]);
 
             if (invResult.error) throw invResult.error;
             if (salesResult.error) throw salesResult.error;
+            // Customers/Suppliers tables may not exist yet - handle gracefully
+            if (custResult.error && !custResult.error.message.includes('does not exist')) throw custResult.error;
+            if (suppResult.error && !suppResult.error.message.includes('does not exist')) throw suppResult.error;
 
             // Transform flat DB rows to nested JS objects
             this.inventory = (invResult.data || []).map(row => this.dbToInventory(row));
             this.salesOrders = (salesResult.data || []).map(row => this.dbToSalesOrder(row));
+            this.customers = custResult.data || [];
+            this.suppliers = suppResult.data || [];
 
             this.initialized = true;
             console.log('Store initialized with Supabase data');
@@ -37,6 +46,8 @@ class Store {
             console.error('Failed to initialize store:', err);
             this.inventory = [];
             this.salesOrders = [];
+            this.customers = [];
+            this.suppliers = [];
         }
     }
 
@@ -392,6 +403,157 @@ class Store {
                 latestOrderId: latestSale?.salesOrderId || null
             });
         }
+    }
+
+    // ============ Customer Methods ============
+
+    getCustomers() {
+        return this.customers;
+    }
+
+    getCustomerById(id) {
+        return this.customers.find(c => c.id === id);
+    }
+
+    async addCustomer(customer) {
+        const { data, error } = await window.SupabaseClient
+            .from('customers')
+            .insert({
+                short_name: customer.shortName,
+                full_name: customer.fullName || null,
+                contact_name: customer.contactName || null,
+                contact_email: customer.contactEmail || null,
+                notes: customer.notes || null
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to add customer:', error);
+            throw error;
+        }
+
+        this.customers.unshift(data);
+        // Re-sort by short_name
+        this.customers.sort((a, b) => (a.short_name || '').localeCompare(b.short_name || ''));
+        return data;
+    }
+
+    async updateCustomer(id, updates) {
+        const dbUpdates = {};
+        if (updates.shortName !== undefined) dbUpdates.short_name = updates.shortName;
+        if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+        if (updates.contactName !== undefined) dbUpdates.contact_name = updates.contactName;
+        if (updates.contactEmail !== undefined) dbUpdates.contact_email = updates.contactEmail;
+        if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+
+        const { data, error } = await window.SupabaseClient
+            .from('customers')
+            .update(dbUpdates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to update customer:', error);
+            throw error;
+        }
+
+        const index = this.customers.findIndex(c => c.id === id);
+        if (index !== -1) {
+            this.customers[index] = data;
+            this.customers.sort((a, b) => (a.short_name || '').localeCompare(b.short_name || ''));
+        }
+        return data;
+    }
+
+    async deleteCustomer(id) {
+        const { error } = await window.SupabaseClient
+            .from('customers')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Failed to delete customer:', error);
+            throw error;
+        }
+
+        this.customers = this.customers.filter(c => c.id !== id);
+    }
+
+    // ============ Supplier Methods ============
+
+    getSuppliers() {
+        return this.suppliers;
+    }
+
+    getSupplierById(id) {
+        return this.suppliers.find(s => s.id === id);
+    }
+
+    async addSupplier(supplier) {
+        const { data, error } = await window.SupabaseClient
+            .from('suppliers')
+            .insert({
+                short_name: supplier.shortName,
+                full_name: supplier.fullName || null,
+                service_type: supplier.serviceType || null,
+                contact_info: supplier.contactInfo || null,
+                notes: supplier.notes || null
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to add supplier:', error);
+            throw error;
+        }
+
+        this.suppliers.unshift(data);
+        this.suppliers.sort((a, b) => (a.short_name || '').localeCompare(b.short_name || ''));
+        return data;
+    }
+
+    async updateSupplier(id, updates) {
+        const dbUpdates = {};
+        if (updates.shortName !== undefined) dbUpdates.short_name = updates.shortName;
+        if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+        if (updates.serviceType !== undefined) dbUpdates.service_type = updates.serviceType;
+        if (updates.contactInfo !== undefined) dbUpdates.contact_info = updates.contactInfo;
+        if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+
+        const { data, error } = await window.SupabaseClient
+            .from('suppliers')
+            .update(dbUpdates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Failed to update supplier:', error);
+            throw error;
+        }
+
+        const index = this.suppliers.findIndex(s => s.id === id);
+        if (index !== -1) {
+            this.suppliers[index] = data;
+            this.suppliers.sort((a, b) => (a.short_name || '').localeCompare(b.short_name || ''));
+        }
+        return data;
+    }
+
+    async deleteSupplier(id) {
+        const { error } = await window.SupabaseClient
+            .from('suppliers')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Failed to delete supplier:', error);
+            throw error;
+        }
+
+        this.suppliers = this.suppliers.filter(s => s.id !== id);
     }
 }
 
