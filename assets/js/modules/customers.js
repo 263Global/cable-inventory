@@ -204,7 +204,6 @@ function initCustomersModule(App) {
     };
 
     App.deleteCustomer = async function (customerId) {
-        if (!confirm('Are you sure you want to delete this customer?')) return;
         try {
             await window.Store.deleteCustomer(customerId);
             this.renderCustomers();
