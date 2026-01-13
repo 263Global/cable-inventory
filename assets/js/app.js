@@ -791,7 +791,7 @@ const App = {
         const customers = window.Store.getCustomers();
         const customerOptions = customers.map(c => {
             const isSelected = existingOrder?.customerId === c.id ? 'selected' : '';
-            return `<option value="${c.id}" ${isSelected}>${c.short_name}${c.full_name ? ' (' + c.full_name + ')' : ''}</option>`;
+            return `<option value="${c.id}" ${isSelected}>${c.short_name}</option>`;
         }).join('');
 
         // Generate supplier options for cost card dropdowns
@@ -3080,7 +3080,7 @@ const App = {
         // Generate supplier options for all cost card dropdowns
         const suppliers = window.Store.getSuppliers();
         const supplierOptionsHTML = suppliers.map(s =>
-            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+            `<option value="${s.id}">${s.short_name}</option>`
         ).join('');
 
         const formHTML = `
