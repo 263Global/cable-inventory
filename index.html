@@ -80,6 +80,10 @@
                     </button>
                     <div class="mobile-user-dropdown" id="mobile-user-dropdown">
                         <div class="mobile-user-email" id="mobile-user-email"></div>
+                        <button class="mobile-user-item" id="mobile-theme-toggle">
+                            <ion-icon name="moon-outline" id="mobile-theme-icon"></ion-icon>
+                            <span id="mobile-theme-label">Dark Mode</span>
+                        </button>
                         <button class="mobile-user-item" id="mobile-change-password">
                             <ion-icon name="key-outline"></ion-icon> Change Password
                         </button>
@@ -167,6 +171,15 @@
             document.getElementById('mobile-user-dropdown')?.classList.remove('open');
             // Reuse existing change password logic
             document.getElementById('change-password-btn')?.click();
+        });
+
+        // Mobile theme toggle handler
+        document.getElementById('mobile-theme-toggle')?.addEventListener('click', () => {
+            document.getElementById('mobile-user-dropdown')?.classList.remove('open');
+            // Reuse App's theme toggle
+            if (typeof App !== 'undefined' && App.toggleTheme) {
+                App.toggleTheme();
+            }
         });
 
         // Logout handler

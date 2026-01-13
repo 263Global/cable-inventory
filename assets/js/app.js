@@ -298,13 +298,19 @@ const App = {
     },
 
     updateThemeUI(theme) {
-        if (theme === 'dark') {
-            this.themeLabel.textContent = 'Dark Mode';
-            this.themeIcon.setAttribute('name', 'moon-outline');
-        } else {
-            this.themeLabel.textContent = 'Light Mode';
-            this.themeIcon.setAttribute('name', 'sunny-outline');
-        }
+        const isDark = theme === 'dark';
+        const iconName = isDark ? 'moon-outline' : 'sunny-outline';
+        const labelText = isDark ? 'Dark Mode' : 'Light Mode';
+
+        // Update desktop sidebar theme toggle
+        if (this.themeLabel) this.themeLabel.textContent = labelText;
+        if (this.themeIcon) this.themeIcon.setAttribute('name', iconName);
+
+        // Update mobile theme toggle in user menu
+        const mobileThemeIcon = document.getElementById('mobile-theme-icon');
+        const mobileThemeLabel = document.getElementById('mobile-theme-label');
+        if (mobileThemeIcon) mobileThemeIcon.setAttribute('name', iconName);
+        if (mobileThemeLabel) mobileThemeLabel.textContent = labelText;
     },
 
     async deleteInventoryItem(id) {
@@ -325,6 +331,9 @@ const App = {
         this.container.innerHTML = ''; // Clear container
         this.headerActions.innerHTML = ''; // Clear actions
 
+        // Manage FAB based on view
+        this.updateFAB(viewName);
+
         switch (viewName) {
             case 'dashboard':
                 this.pageTitle.textContent = 'Operational Dashboard';
@@ -341,6 +350,34 @@ const App = {
             default:
                 this.pageTitle.textContent = 'Operational Dashboard';
                 this.renderDashboard();
+        }
+    },
+
+    // Floating Action Button management
+    updateFAB(viewName) {
+        let fab = document.getElementById('mobile-fab');
+
+        // Remove existing FAB if present
+        if (fab) {
+            fab.remove();
+        }
+
+        // Only show FAB for inventory and sales views
+        if (viewName === 'inventory' || viewName === 'sales') {
+            fab = document.createElement('button');
+            fab.id = 'mobile-fab';
+            fab.className = 'fab show';
+            fab.innerHTML = '<ion-icon name="add-outline"></ion-icon>';
+
+            if (viewName === 'inventory') {
+                fab.onclick = () => this.openInventoryModal();
+                fab.title = 'Add Resource';
+            } else {
+                fab.onclick = () => this.openAddSalesModal();
+                fab.title = 'New Sale';
+            }
+
+            document.body.appendChild(fab);
         }
     },
 

@@ -1441,6 +1441,81 @@ textarea.is-invalid:focus {
     margin-left: 2px;
 }
 
+/* ===== Floating Action Button (FAB) ===== */
+.fab {
+    display: none;
+    position: fixed;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px) + 1rem);
+    right: 1rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(99, 91, 255, 0.4);
+    cursor: pointer;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.fab ion-icon {
+    font-size: 1.75rem;
+}
+
+.fab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(99, 91, 255, 0.5);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+/* FAB animation on appear */
+@keyframes fabIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.fab.show {
+    animation: fabIn 0.25s ease forwards;
+}
+
+/* Show FAB only on mobile/tablet */
+@media (max-width: 1024px) {
+    .fab {
+        display: flex;
+    }
+
+    /* Hide header action buttons on mobile when FAB is used */
+    .header .actions .btn-primary {
+        display: none;
+    }
+}
+
+/* Small Mobile adjustments */
+@media (max-width: 480px) {
+    .fab {
+        width: 52px;
+        height: 52px;
+        right: 0.75rem;
+    }
+
+    .fab ion-icon {
+        font-size: 1.5rem;
+    }
+}
+
 /* ===== Mobile User Menu ===== */
 .mobile-user-menu {
     display: none;
@@ -1543,13 +1618,13 @@ textarea.is-invalid:focus {
     color: var(--accent-danger);
 }
 
-/* Show mobile user menu only on mobile */
-@media (max-width: 768px) {
+/* Show mobile user menu on tablets and mobile (when sidebar is collapsed) */
+@media (max-width: 1024px) {
     .mobile-user-menu {
         display: block;
     }
 
-    /* Hide sidebar user section on mobile */
+    /* Hide sidebar user section on tablets and mobile */
     #user-section {
         display: none !important;
     }
