@@ -30,7 +30,7 @@ const App = {
         // Initialize external modules
         if (window.initCustomersModule) window.initCustomersModule(this);
         if (window.initSuppliersModule) window.initSuppliersModule(this);
-
+        if (window.initBulkOpsModule) window.initBulkOpsModule(this);
         this.cacheDOM();
         this.bindEvents();
         this.initTheme();
@@ -3800,161 +3800,10 @@ const App = {
     //#endregion Sales
 
     // ========================================================================
-    // REGION: Bulk Operations
+    // Bulk Operations - Loaded from external module:
+    // - modules/bulkOps.js
+    // Initialized in App.init() via window.initBulkOpsModule()
     // ========================================================================
-    //#region Bulk Operations
-
-    // ============ Bulk Operations ============
-
-    enterSalesSelectionMode() {
-        this._salesSelectionMode = true;
-        this._selectedSales.clear();
-        this.headerActions.innerHTML = '';
-        this.renderSales();
-    },
-
-    exitSalesSelectionMode() {
-        this._salesSelectionMode = false;
-        this._selectedSales.clear();
-        this.headerActions.innerHTML = '';
-        this.renderSales();
-    },
-
-    updateSalesBulkToolbar() {
-        const countEl = document.getElementById('sales-selection-count');
-        if (countEl) {
-            countEl.textContent = this._selectedSales.size;
-        }
-        // Enable/disable buttons based on selection
-        const exportBtn = document.querySelector('#sales-bulk-toolbar .btn-secondary');
-        if (exportBtn) exportBtn.disabled = this._selectedSales.size === 0;
-    },
-
-    exportSelectedSales() {
-        if (this._selectedSales.size === 0) {
-            alert('No items selected. Please select at least one order.');
-            return;
-        }
-
-        const sales = window.Store.getSales().filter(s => this._selectedSales.has(s.salesOrderId));
-
-        const headers = [
-            'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
-            'Capacity', 'Unit', 'MRC Sales', 'NRC Sales', 'Salesperson',
-            'Start Date', 'End Date', 'Term (Months)'
-        ];
-
-        const rows = sales.map(s => [
-            s.salesOrderId,
-            s.customerName || '',
-            s.status || '',
-            s.salesModel || '',
-            s.salesType || '',
-            s.capacity?.value || '',
-            s.capacity?.unit || 'Gbps',
-            s.financials?.mrcSales || 0,
-            s.financials?.nrcSales || 0,
-            s.salesperson || '',
-            s.dates?.start || '',
-            s.dates?.end || '',
-            s.dates?.term || ''
-        ]);
-
-        const csvContent = [headers, ...rows]
-            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-
-        this.downloadCSV(csvContent, `sales_selected_${new Date().toISOString().slice(0, 10)}.csv`);
-        alert(`Exported ${sales.length} selected orders.`);
-    },
-
-    clearSalesSelection() {
-        this._selectedSales.clear();
-        document.querySelectorAll('.sales-row-checkbox').forEach(cb => {
-            cb.checked = false;
-            cb.closest('tr')?.classList.remove('row-selected');
-        });
-        const selectAll = document.getElementById('sales-select-all');
-        if (selectAll) selectAll.checked = false;
-        this.updateSalesBulkToolbar();
-    },
-
-    // ============ Inventory Bulk Operations ============
-
-    enterInventorySelectionMode() {
-        this._inventorySelectionMode = true;
-        this._selectedInventory.clear();
-        this.headerActions.innerHTML = '';
-        this.renderInventory();
-    },
-
-    exitInventorySelectionMode() {
-        this._inventorySelectionMode = false;
-        this._selectedInventory.clear();
-        this.headerActions.innerHTML = '';
-        this.renderInventory();
-    },
-
-    updateInventoryBulkToolbar() {
-        const countEl = document.getElementById('inventory-selection-count');
-        if (countEl) {
-            countEl.textContent = this._selectedInventory.size;
-        }
-        // Enable/disable buttons based on selection
-        const exportBtn = document.querySelector('#inventory-bulk-toolbar .btn-secondary');
-        if (exportBtn) exportBtn.disabled = this._selectedInventory.size === 0;
-    },
-
-    exportSelectedInventory() {
-        if (this._selectedInventory.size === 0) {
-            alert('No items selected. Please select at least one resource.');
-            return;
-        }
-
-        const inventory = window.Store.getInventory().filter(i => this._selectedInventory.has(i.resourceId));
-
-        const headers = [
-            'Resource ID', 'Cable System', 'Status', 'Acquisition Type', 'Ownership',
-            'Capacity', 'Unit', 'MRC', 'NRC', 'A-End City', 'Z-End City',
-            'Start Date', 'End Date'
-        ];
-
-        const rows = inventory.map(i => [
-            i.resourceId,
-            i.cableSystem || '',
-            i.status || '',
-            i.acquisition?.type || '',
-            i.acquisition?.ownership || '',
-            i.capacity?.value || '',
-            i.capacity?.unit || 'Gbps',
-            i.financials?.mrc || 0,
-            i.financials?.nrc || 0,
-            i.location?.aEnd?.city || '',
-            i.location?.zEnd?.city || '',
-            i.dates?.start || '',
-            i.dates?.end || ''
-        ]);
-
-        const csvContent = [headers, ...rows]
-            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-
-        this.downloadCSV(csvContent, `inventory_selected_${new Date().toISOString().slice(0, 10)}.csv`);
-        alert(`Exported ${inventory.length} selected resources.`);
-    },
-
-    clearInventorySelection() {
-        this._selectedInventory.clear();
-        document.querySelectorAll('.inventory-row-checkbox').forEach(cb => {
-            cb.checked = false;
-            cb.closest('tr')?.classList.remove('row-selected');
-        });
-        const selectAll = document.getElementById('inventory-select-all');
-        if (selectAll) selectAll.checked = false;
-        this.updateInventoryBulkToolbar();
-    },
-
-    //#endregion Bulk Operations
 
     // ========================================================================
     // CRM Modules (Customers & Suppliers) - Loaded from external modules:
