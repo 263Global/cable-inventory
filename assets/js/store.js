@@ -421,8 +421,11 @@ class Store {
             .insert({
                 short_name: customer.shortName,
                 full_name: customer.fullName || null,
+                company_type: customer.companyType || null,
                 contact_name: customer.contactName || null,
                 contact_email: customer.contactEmail || null,
+                contact_phone: customer.contactPhone || null,
+                website: customer.website || null,
                 notes: customer.notes || null
             })
             .select()
@@ -443,8 +446,11 @@ class Store {
         const dbUpdates = {};
         if (updates.shortName !== undefined) dbUpdates.short_name = updates.shortName;
         if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+        if (updates.companyType !== undefined) dbUpdates.company_type = updates.companyType;
         if (updates.contactName !== undefined) dbUpdates.contact_name = updates.contactName;
         if (updates.contactEmail !== undefined) dbUpdates.contact_email = updates.contactEmail;
+        if (updates.contactPhone !== undefined) dbUpdates.contact_phone = updates.contactPhone;
+        if (updates.website !== undefined) dbUpdates.website = updates.website;
         if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
         const { data, error } = await window.SupabaseClient
@@ -498,7 +504,10 @@ class Store {
                 short_name: supplier.shortName,
                 full_name: supplier.fullName || null,
                 service_type: supplier.serviceType || null,
-                contact_info: supplier.contactInfo || null,
+                contact_name: supplier.contactName || null,
+                contact_email: supplier.contactEmail || null,
+                contact_phone: supplier.contactPhone || null,
+                portal_url: supplier.portalUrl || null,
                 notes: supplier.notes || null
             })
             .select()
@@ -519,7 +528,10 @@ class Store {
         if (updates.shortName !== undefined) dbUpdates.short_name = updates.shortName;
         if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
         if (updates.serviceType !== undefined) dbUpdates.service_type = updates.serviceType;
-        if (updates.contactInfo !== undefined) dbUpdates.contact_info = updates.contactInfo;
+        if (updates.contactName !== undefined) dbUpdates.contact_name = updates.contactName;
+        if (updates.contactEmail !== undefined) dbUpdates.contact_email = updates.contactEmail;
+        if (updates.contactPhone !== undefined) dbUpdates.contact_phone = updates.contactPhone;
+        if (updates.portalUrl !== undefined) dbUpdates.portal_url = updates.portalUrl;
         if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
         const { data, error } = await window.SupabaseClient

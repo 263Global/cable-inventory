@@ -4178,6 +4178,8 @@ const App = {
         const existing = customerId ? window.Store.getCustomerById(customerId) : null;
         const isEdit = !!existing;
 
+        const companyTypes = ['Enterprise', 'Carrier', 'OTT', 'Other'];
+
         const modalHtml = `
             <div class="modal-backdrop" onclick="App.closeModal(event)">
                 <div class="modal" onclick="event.stopPropagation()">
@@ -4187,13 +4189,22 @@ const App = {
                     </div>
                     <div class="modal-body">
                         <form id="customer-form">
-                            <div class="form-group">
-                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                    <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Company Type</label>
+                                    <select name="companyType" class="form-control">
+                                        <option value="">Select Type</option>
+                                        ${companyTypes.map(t => `<option value="${t}" ${existing?.company_type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Full Name</label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}">
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name">
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
@@ -4205,9 +4216,19 @@ const App = {
                                     <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
                                 </div>
                             </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Phone</label>
+                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Website</label>
+                                    <input type="url" name="website" class="form-control" value="${existing?.website || ''}" placeholder="https://...">
+                                </div>
+                            </div>
                             <div class="form-group">
                                 <label class="form-label">Notes</label>
-                                <textarea name="notes" class="form-control" rows="3">${existing?.notes || ''}</textarea>
+                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
                             </div>
                         </form>
                     </div>
@@ -4226,8 +4247,11 @@ const App = {
         const data = {
             shortName: form.querySelector('[name="shortName"]').value.trim(),
             fullName: form.querySelector('[name="fullName"]').value.trim(),
+            companyType: form.querySelector('[name="companyType"]').value,
             contactName: form.querySelector('[name="contactName"]').value.trim(),
             contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
+            contactPhone: form.querySelector('[name="contactPhone"]').value.trim(),
+            website: form.querySelector('[name="website"]').value.trim(),
             notes: form.querySelector('[name="notes"]').value.trim()
         };
 
@@ -4319,7 +4343,7 @@ const App = {
                             <th>Short Name</th>
                             <th class="mobile-hidden">Full Name</th>
                             <th>Service Type</th>
-                            <th class="mobile-hidden">Contact Info</th>
+                            <th class="mobile-hidden">Contact</th>
                             <th style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
@@ -4331,7 +4355,7 @@ const App = {
                                 <td><strong>${s.short_name || ''}</strong></td>
                                 <td class="mobile-hidden">${s.full_name || '-'}</td>
                                 <td><span class="badge badge-primary">${s.service_type || '-'}</span></td>
-                                <td class="mobile-hidden">${s.contact_info || '-'}</td>
+                                <td class="mobile-hidden">${s.contact_name || '-'}</td>
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-icon" onclick="App.openSupplierModal('${s.id}')" title="Edit">
@@ -4386,28 +4410,46 @@ const App = {
                     </div>
                     <div class="modal-body">
                         <form id="supplier-form">
-                            <div class="form-group">
-                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                    <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Service Type</label>
+                                    <select name="serviceType" class="form-control">
+                                        <option value="">Select Type</option>
+                                        ${serviceTypes.map(t => `<option value="${t}" ${existing?.service_type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Full Name</label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}">
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name">
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Service Type</label>
-                                <select name="serviceType" class="form-control">
-                                    <option value="">Select Type</option>
-                                    ${serviceTypes.map(t => `<option value="${t}" ${existing?.service_type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                                </select>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Name</label>
+                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact Email</label>
+                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Contact Info</label>
-                                <textarea name="contactInfo" class="form-control" rows="2" placeholder="Contact person, email, portal link, etc.">${existing?.contact_info || ''}</textarea>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Phone</label>
+                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Portal URL</label>
+                                    <input type="url" name="portalUrl" class="form-control" value="${existing?.portal_url || ''}" placeholder="https://...">
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Notes</label>
-                                <textarea name="notes" class="form-control" rows="3">${existing?.notes || ''}</textarea>
+                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
                             </div>
                         </form>
                     </div>
@@ -4427,7 +4469,10 @@ const App = {
             shortName: form.querySelector('[name="shortName"]').value.trim(),
             fullName: form.querySelector('[name="fullName"]').value.trim(),
             serviceType: form.querySelector('[name="serviceType"]').value,
-            contactInfo: form.querySelector('[name="contactInfo"]').value.trim(),
+            contactName: form.querySelector('[name="contactName"]').value.trim(),
+            contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
+            contactPhone: form.querySelector('[name="contactPhone"]').value.trim(),
+            portalUrl: form.querySelector('[name="portalUrl"]').value.trim(),
             notes: form.querySelector('[name="notes"]').value.trim()
         };
 
