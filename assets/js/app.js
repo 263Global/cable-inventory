@@ -801,8 +801,8 @@ const App = {
         ).join('');
 
         const modalContent = `
-                <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
-                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
+                <!-- 2-Column Layout: Profitability (sticky) | Right Container -->
+                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;">
                     
                     <!-- COLUMN 1: Profitability Analysis (Sticky) -->
                     <div style="position: sticky; top: 0; z-index: 10;">
@@ -885,8 +885,12 @@ const App = {
                         </div>
                     </div>
 
-                    <!-- COLUMN 2: Sales Information -->
-                    <div class="section-card">
+                    <!-- RIGHT CONTAINER: Sales Info + Cost Structure + Order Notes -->
+                    <div>
+                        <!-- Nested 2-Column Grid for Sales Info & Cost Structure -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                            <!-- Sales Information -->
+                            <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
                         <div class="grid-2">
@@ -1045,10 +1049,10 @@ const App = {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                            </div>
 
-                    <!-- COLUMN 3: Cost Structure -->
-                    <div class="section-card">
+                            <!-- Cost Structure -->
+                            <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
                         ${isEditMode && existingOrder?.costs ? `
@@ -1172,18 +1176,21 @@ const App = {
                         <input type="hidden" name="costs.otherCosts.description" value="${existingOrder?.costs?.otherCosts?.description || ''}">
                         <input type="hidden" name="costs.otherCosts.oneOff" value="${existingOrder?.costs?.otherCosts?.oneOff || 0}">
                         <input type="hidden" name="costs.otherCosts.monthly" value="${existingOrder?.costs?.otherCosts?.monthly || 0}">
-                    </div>
-                    <!-- Close Cost Structure Column -->
+                            </div>
+                        </div>
+                        <!-- Close nested 2-column grid -->
                     
-                    <!-- Order Notes - Spans all 3 columns -->
-                    <div class="section-card" style="grid-column: 1 / -1; margin-top: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
-                        <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <ion-icon name="document-text-outline"></ion-icon> Order Notes
-                        </h4>
-                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                        <!-- Order Notes - Inside right container, spans full width -->
+                        <div class="section-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                            <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <ion-icon name="document-text-outline"></ion-icon> Order Notes
+                            </h4>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                        </div>
                     </div>
+                    <!-- Close Right Container -->
                 </div>
-                <!-- Close 3-Column Grid -->
+                <!-- Close 2-Column Grid -->
                 `;
 
         this.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
