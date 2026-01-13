@@ -804,14 +804,17 @@ const App = {
                 <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
                 <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
                     
-                    <!-- COLUMN 1: Profitability Analysis -->
-                    <div>
+                    <!-- COLUMN 1: Profitability Analysis (Sticky) -->
+                    <div style="position: sticky; top: 0; z-index: 10;">
                         <div id="profitability-widget" style="
                             background: var(--bg-secondary);
                             border-radius: 12px;
                             border: 1px solid var(--border-color);
-                            padding: 1.25rem;
+                            padding: 1rem;
                             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                            overflow: hidden;
+                            max-width: 100%;
+                            box-sizing: border-box;
                         ">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
                                 <ion-icon name="analytics-outline" style="font-size: 1.2rem; color: var(--accent-primary);"></ion-icon>
@@ -819,18 +822,18 @@ const App = {
                             </div>
                             
                             <!-- Cost & Margin Summary -->
-                            <div id="profit-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <div id="profit-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <div style="background: var(--bg-card); border-radius: 6px; padding: 0.5rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.3px;">
                                         Monthly Cost
                                     </div>
-                                    <div class="font-mono" id="disp-total-cost" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">$0</div>
+                                    <div class="font-mono" id="disp-total-cost" style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">$0</div>
                                 </div>
-                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <div style="background: var(--bg-card); border-radius: 6px; padding: 0.5rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.3px;">
                                         Gross Margin
                                     </div>
-                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-success);">$0</div>
+                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 0.95rem; font-weight: 700; color: var(--accent-success);">$0</div>
                                 </div>
                             </div>
                             
