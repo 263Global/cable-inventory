@@ -1,246 +1,29 @@
 /**
  * App.js
- * Main application logic
+ * Main application logic for Cable Inventory Manager
+ * 
+ * Structure:
+ * - Core (init, DOM caching, events, theme)
+ * - Navigation & Views
+ * - Dashboard
+ * - Modal System
+ * - Sales Order Form & Financials
+ * - Inventory Management
+ * - Sales Management
+ * - Bulk Operations
+ * - CRM (Customers & Suppliers)
+ * - CSV Export (delegated to modules/csv.js)
+ * 
+ * External Dependencies:
+ * - modules/financials.js: computeOrderFinancials()
+ * - modules/validation.js: validateSalesForm()
+ * - modules/csv.js: CsvExport.exportSalesToCSV(), CsvExport.exportInventoryToCSV()
  */
 
-/**
- * Unified profit calculation engine
- * Computes financial metrics for a sales order based on Mixed Recognition Model
- * @param {object} order - Sales order object
- * @returns {object} Financial metrics
- */
-function computeOrderFinancials(order) {
-    const salesModel = order.salesModel || 'Lease';
-    const salesType = order.salesType || 'Resale';
-    const salesTerm = order.dates?.term || 12;
-    const salesCapacity = order.capacity?.value || 1;
-
-    // Get linked inventory for Inventory/Hybrid types
-    const inventoryLink = order.inventoryLink;
-    const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
-    const inventoryCapacity = linkedResource?.capacity?.value || 1;
-    const capacityRatio = salesCapacity / inventoryCapacity;
-
-    // Calculate Inventory Monthly Cost (if applicable)
-    let inventoryMonthlyCost = 0;
-    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid')) {
-        const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
-        if (invOwnership === 'IRU') {
-            const invOtc = linkedResource.financials?.otc || 0;
-            const invTerm = linkedResource.financials?.term || 1;
-            const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
-            inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
-        } else {
-            inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
-        }
-    }
-
-    // Get Operating Costs (Backhaul, XC, Other)
-    const costs = order.costs || {};
-    const backhaulMRC = (costs.backhaul?.aEnd?.monthly || 0) + (costs.backhaul?.zEnd?.monthly || 0);
-    const xcMRC = (costs.crossConnect?.aEnd?.monthly || 0) + (costs.crossConnect?.zEnd?.monthly || 0);
-    const otherMonthly = costs.otherCosts?.monthly || 0;
-    const operatingCosts = backhaulMRC + xcMRC + otherMonthly;
-
-    // Initialize results
-    let monthlyRevenue = 0;
-    let monthlyProfit = 0;
-    let firstMonthProfit = 0;
-    let firstMonthMargin = 0;
-    let recurringMonthlyProfit = 0;
-    let recurringMargin = 0;
-    let isIruResale = false;
-
-    if (salesModel === 'Lease') {
-        // ========== LEASE MODEL ==========
-        const mrcSales = order.financials?.mrcSales || 0;
-        monthlyRevenue = mrcSales;
-
-        // Get Cable MRC (for Resale and Hybrid)
-        let cableMRC = 0;
-        if (salesType === 'Resale' || salesType === 'Hybrid') {
-            const cableModel = costs.cable?.model || 'Lease';
-            if (cableModel === 'Lease') {
-                cableMRC = costs.cable?.mrc || 0;
-            } else {
-                cableMRC = (costs.cable?.annualOm || 0) / 12;
-            }
-        }
-
-        switch (salesType) {
-            case 'Resale':
-                monthlyProfit = mrcSales - cableMRC - operatingCosts;
-                break;
-            case 'Inventory':
-                monthlyProfit = mrcSales - inventoryMonthlyCost - operatingCosts;
-                break;
-            case 'Hybrid':
-                monthlyProfit = mrcSales - inventoryMonthlyCost - cableMRC - operatingCosts;
-                break;
-            default:
-                monthlyProfit = mrcSales - operatingCosts;
-        }
-
-    } else if (salesModel === 'IRU') {
-        // ========== IRU MODEL ==========
-        const otcRevenue = order.financials?.otc || 0;
-        const annualOmRevenue = order.financials?.annualOm || 0;
-        const monthlyOmRevenue = annualOmRevenue / 12;
-
-        // Get Cable costs (for Resale and Hybrid)
-        const cableOtc = costs.cable?.otc || 0;
-        const cableAnnualOm = costs.cable?.annualOm || 0;
-        const cableTerm = costs.cable?.termMonths || salesTerm;
-        const cableMonthlyOtc = cableOtc / cableTerm;
-        const cableMonthlyOm = cableAnnualOm / 12;
-
-        switch (salesType) {
-            case 'Resale':
-                // IRU Resale: OTC profit captured in first month
-                isIruResale = true;
-                const otcProfit = otcRevenue - cableOtc;
-                const monthlyOmProfit = monthlyOmRevenue - cableMonthlyOm;
-
-                // First month: OTC profit + monthly O&M profit - operating costs
-                firstMonthProfit = otcProfit + monthlyOmProfit - operatingCosts;
-                // First month margin: based on total first month value (OTC + O&M)
-                const firstMonthRevenue = otcRevenue + monthlyOmRevenue;
-                firstMonthMargin = firstMonthRevenue > 0 ? (firstMonthProfit / firstMonthRevenue) * 100 : 0;
-
-                // Recurring months: just O&M profit - operating costs
-                recurringMonthlyProfit = monthlyOmProfit - operatingCosts;
-                recurringMargin = monthlyOmRevenue > 0 ? (recurringMonthlyProfit / monthlyOmRevenue) * 100 : 0;
-
-                // For general display, use recurring values
-                monthlyRevenue = monthlyOmRevenue;
-                monthlyProfit = recurringMonthlyProfit;
-                break;
-
-            case 'Inventory':
-                // IRU Inventory: OTC revenue amortized monthly
-                const monthlyOtcRevenue = otcRevenue / salesTerm;
-                monthlyRevenue = monthlyOtcRevenue + monthlyOmRevenue;
-                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - operatingCosts;
-                break;
-
-            case 'Hybrid':
-                // IRU Hybrid: OTC revenue amortized, both inventory and cable costs
-                const monthlyOtcRev = otcRevenue / salesTerm;
-                monthlyRevenue = monthlyOtcRev + monthlyOmRevenue;
-                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - cableMonthlyOtc - cableMonthlyOm - operatingCosts;
-                break;
-
-            case 'Swapped Out':
-                // Swapped Out: No profit
-                monthlyRevenue = 0;
-                monthlyProfit = 0;
-                break;
-
-            default:
-                monthlyProfit = 0;
-        }
-    }
-
-    // Calculate general margin
-    const marginPercent = monthlyRevenue > 0 ? (monthlyProfit / monthlyRevenue) * 100 : 0;
-
-    return {
-        monthlyRevenue,
-        monthlyProfit,
-        marginPercent,
-        isIruResale,
-        firstMonthProfit,
-        firstMonthMargin,
-        recurringMonthlyProfit,
-        recurringMargin
-    };
-}
-
-/**
- * Form Validation Utility
- * Validates sales order form and displays errors
- * @param {HTMLFormElement} form - The form to validate
- * @returns {boolean} - True if valid, false otherwise
- */
-function validateSalesForm(form) {
-    // Clear previous errors
-    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid', 'shake'));
-    form.querySelectorAll('.validation-error').forEach(el => el.remove());
-
-    let isValid = true;
-    const errors = [];
-
-    // Helper to show error
-    const showError = (fieldName, message) => {
-        const field = form.querySelector(`[name="${fieldName}"]`);
-        if (field) {
-            field.classList.add('is-invalid', 'shake');
-            // Remove shake after animation
-            setTimeout(() => field.classList.remove('shake'), 400);
-            // Add error message
-            const errorEl = document.createElement('div');
-            errorEl.className = 'validation-error';
-            errorEl.innerHTML = `<ion-icon name="alert-circle-outline"></ion-icon> ${message}`;
-            field.parentNode.appendChild(errorEl);
-        }
-        errors.push(message);
-        isValid = false;
-    };
-
-    // Helper to get field value
-    const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value?.trim();
-    const getNum = (name) => Number(form.querySelector(`[name="${name}"]`)?.value || 0);
-
-    // Required field validation
-    if (!getVal('customerId')) {
-        showError('customerId', 'Customer is required');
-    }
-
-    if (!getVal('salesperson')) {
-        showError('salesperson', 'Salesperson is required');
-    }
-
-    if (!getVal('inventoryLink')) {
-        showError('inventoryLink', 'Linked Resource is required');
-    }
-
-    if (!getVal('dates.start')) {
-        showError('dates.start', 'Contract Start date is required');
-    }
-
-    // Number validation (non-negative)
-    const capacityValue = getNum('capacity.value');
-    if (capacityValue <= 0) {
-        showError('capacity.value', 'Capacity must be greater than 0');
-    }
-
-    const term = getNum('dates.term');
-    if (term <= 0) {
-        showError('dates.term', 'Term must be greater than 0');
-    }
-
-    // Date logic validation
-    const startDate = getVal('dates.start');
-    const endDate = getVal('dates.end');
-    if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (end < start) {
-            showError('dates.end', 'End date must be after start date');
-        }
-    }
-
-    // Scroll to first error if any
-    if (!isValid) {
-        const firstError = form.querySelector('.is-invalid');
-        if (firstError) {
-            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            firstError.focus();
-        }
-    }
-
-    return isValid;
-}
+// ============================================================================
+// REGION: App Object Definition
+// ============================================================================
+//#region App Core
 
 const App = {
     init() {
@@ -418,7 +201,12 @@ const App = {
         this.renderView(viewName);
     },
 
-    /* ================= Views ================= */
+    //#endregion Core
+
+    // ========================================================================
+    // REGION: Dashboard
+    // ========================================================================
+    //#region Dashboard
 
     renderDashboard() {
         const inventory = window.Store.getInventory();
@@ -752,6 +540,12 @@ const App = {
                 `;
         this.container.innerHTML = html;
     },
+    //#endregion Dashboard
+
+    // ========================================================================
+    // REGION: Modal System
+    // ========================================================================
+    //#region Modal System
 
     /* ================= Modal System ================= */
 
@@ -2587,6 +2381,12 @@ const App = {
         this.modalContainer.innerHTML = '';
         this.renderView('inventory'); // Re-render to show updates
     },
+    //#endregion Modal System
+
+    // ========================================================================
+    // REGION: Inventory Management
+    // ========================================================================
+    //#region Inventory
 
     /* ================= Inventory Logic ================= */
 
@@ -3441,6 +3241,12 @@ const App = {
             omRateInput.addEventListener('input', calculateOmCost);
         }
     },
+    //#endregion Inventory
+
+    // ========================================================================
+    // REGION: Sales Management
+    // ========================================================================
+    //#region Sales
 
     renderSales(filters = {}) {
         // Check if coming from Dashboard with an expiring filter
@@ -3987,6 +3793,12 @@ const App = {
         // Use the full form modal with edit mode support
         this.openAddSalesModal(salesOrderId);
     },
+    //#endregion Sales
+
+    // ========================================================================
+    // REGION: Bulk Operations
+    // ========================================================================
+    //#region Bulk Operations
 
     // ============ Bulk Operations ============
 
@@ -4138,7 +3950,12 @@ const App = {
         this.updateInventoryBulkToolbar();
     },
 
-    // ============ Customers View ============
+    //#endregion Bulk Operations
+
+    // ========================================================================
+    // REGION: CRM - Customers
+    // ========================================================================
+    //#region Customers
 
     renderCustomers(filters = {}) {
         const searchQuery = filters.search || '';
@@ -4344,7 +4161,12 @@ const App = {
         }
     },
 
-    // ============ Suppliers View ============
+    //#endregion Customers
+
+    // ========================================================================
+    // REGION: CRM - Suppliers
+    // ========================================================================
+    //#region Suppliers
 
     renderSuppliers(filters = {}) {
         const searchQuery = filters.search || '';
@@ -4535,6 +4357,13 @@ const App = {
         }
     },
 
+    //#endregion Suppliers
+
+    // ========================================================================
+    // REGION: CSV Export
+    // ========================================================================
+    //#region CSV Export
+
     // ============ CSV Export Functions ============
 
     exportSalesToCSV() {
@@ -4653,6 +4482,7 @@ const App = {
             URL.revokeObjectURL(url);
         }, 100);
     }
+    //#endregion CSV Export
 };
 
 // CRITICAL: Make App globally accessible for onclick handlers
