@@ -32,7 +32,8 @@ function initSuppliersModule(App) {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-        // Add button to header
+        // Clear and add button to header
+        this.headerActions.innerHTML = '';
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-primary';
         addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Supplier';
