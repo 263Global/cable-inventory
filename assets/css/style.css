@@ -1341,6 +1341,12 @@ h6 {
     #disp-gross-margin {
         font-size: 0.95rem !important;
     }
+
+    /* Nested grid (Sales Info + Cost Structure) - stack on mobile */
+    .sales-form-grid > div:nth-child(2) > div:first-child {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
 }
 
 /* Small mobile - even more compact */

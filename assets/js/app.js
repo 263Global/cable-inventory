@@ -192,8 +192,8 @@ function validateSalesForm(form) {
     const getNum = (name) => Number(form.querySelector(`[name="${name}"]`)?.value || 0);
 
     // Required field validation
-    if (!getVal('customerName')) {
-        showError('customerName', 'Customer Name is required');
+    if (!getVal('customerId')) {
+        showError('customerId', 'Customer is required');
     }
 
     if (!getVal('salesperson')) {
@@ -347,6 +347,14 @@ const App = {
                 this.pageTitle.textContent = 'Sales & Revenue';
                 this.renderSales();
                 break;
+            case 'customers':
+                this.pageTitle.textContent = 'Customers';
+                this.renderCustomers();
+                break;
+            case 'suppliers':
+                this.pageTitle.textContent = 'Suppliers';
+                this.renderSuppliers();
+                break;
             default:
                 this.pageTitle.textContent = 'Operational Dashboard';
                 this.renderDashboard();
@@ -362,19 +370,32 @@ const App = {
             fab.remove();
         }
 
-        // Only show FAB for inventory and sales views
-        if (viewName === 'inventory' || viewName === 'sales') {
+        // Views that should show FAB
+        const fabViews = ['inventory', 'sales', 'customers', 'suppliers'];
+
+        if (fabViews.includes(viewName)) {
             fab = document.createElement('button');
             fab.id = 'mobile-fab';
             fab.className = 'fab show';
             fab.innerHTML = '<ion-icon name="add-outline"></ion-icon>';
 
-            if (viewName === 'inventory') {
-                fab.onclick = () => this.openInventoryModal();
-                fab.title = 'Add Resource';
-            } else {
-                fab.onclick = () => this.openAddSalesModal();
-                fab.title = 'New Sale';
+            switch (viewName) {
+                case 'inventory':
+                    fab.onclick = () => this.openInventoryModal();
+                    fab.title = 'Add Resource';
+                    break;
+                case 'sales':
+                    fab.onclick = () => this.openAddSalesModal();
+                    fab.title = 'New Sale';
+                    break;
+                case 'customers':
+                    fab.onclick = () => this.openCustomerModal();
+                    fab.title = 'Add Customer';
+                    break;
+                case 'suppliers':
+                    fab.onclick = () => this.openSupplierModal();
+                    fab.title = 'Add Supplier';
+                    break;
             }
 
             document.body.appendChild(fab);
@@ -766,9 +787,22 @@ const App = {
             return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
         }).join('');
 
+        // Generate customer options from Store
+        const customers = window.Store.getCustomers();
+        const customerOptions = customers.map(c => {
+            const isSelected = existingOrder?.customerId === c.id ? 'selected' : '';
+            return `<option value="${c.id}" ${isSelected}>${c.short_name}</option>`;
+        }).join('');
+
+        // Generate supplier options for cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+        ).join('');
+
         const modalContent = `
-                <!-- 3-Column Layout: Profitability | Sales Info | Cost Structure -->
-                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.5rem; align-items: start;">
+                <!-- 2-Column Layout: Profitability (sticky) | Right Container -->
+                <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;">
                     
                     <!-- COLUMN 1: Profitability Analysis (Sticky) -->
                     <div style="position: sticky; top: 0; z-index: 10;">
@@ -776,8 +810,11 @@ const App = {
                             background: var(--bg-secondary);
                             border-radius: 12px;
                             border: 1px solid var(--border-color);
-                            padding: 1.25rem;
+                            padding: 1rem;
                             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                            overflow: hidden;
+                            max-width: 100%;
+                            box-sizing: border-box;
                         ">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
                                 <ion-icon name="analytics-outline" style="font-size: 1.2rem; color: var(--accent-primary);"></ion-icon>
@@ -785,18 +822,18 @@ const App = {
                             </div>
                             
                             <!-- Cost & Margin Summary -->
-                            <div id="profit-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <div id="profit-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <div style="background: var(--bg-card); border-radius: 6px; padding: 0.5rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.3px;">
                                         Monthly Cost
                                     </div>
-                                    <div class="font-mono" id="disp-total-cost" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">$0</div>
+                                    <div class="font-mono" id="disp-total-cost" style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">$0</div>
                                 </div>
-                                <div style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <div style="background: var(--bg-card); border-radius: 6px; padding: 0.5rem; text-align: center; border: 1px solid var(--border-color);">
+                                    <div style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.3px;">
                                         Gross Margin
                                     </div>
-                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-success);">$0</div>
+                                    <div class="font-mono" id="disp-gross-margin" style="font-size: 0.95rem; font-weight: 700; color: var(--accent-success);">$0</div>
                                 </div>
                             </div>
                             
@@ -848,8 +885,12 @@ const App = {
                         </div>
                     </div>
 
-                    <!-- COLUMN 2: Sales Information -->
-                    <div class="section-card">
+                    <!-- RIGHT CONTAINER: Sales Info + Cost Structure + Order Notes -->
+                    <div>
+                        <!-- Nested 2-Column Grid for Sales Info & Cost Structure -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                            <!-- Sales Information -->
+                            <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
                         <div class="grid-2">
@@ -858,8 +899,12 @@ const App = {
                                 <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001" value="${existingOrder?.salesOrderId || ''}" ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Customer Name <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                                <input type="text" class="form-control" name="customerName" required value="${existingOrder?.customerName || ''}">
+                                <label class="form-label">Customer <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                                <select class="form-control" name="customerId" required>
+                                    <option value="">Select Customer...</option>
+                                    ${customerOptions}
+                                </select>
+                                ${customers.length === 0 ? '<small style="color:var(--text-muted)">No customers yet. <a href="#" onclick="App.renderView(\'customers\'); App.closeModal(); return false;">Add one first</a>.</small>' : ''}
                             </div>
                         </div>
 
@@ -1004,10 +1049,10 @@ const App = {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                            </div>
 
-                    <!-- COLUMN 3: Cost Structure -->
-                    <div class="section-card">
+                            <!-- Cost Structure -->
+                            <div class="section-card">
                         <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
 
                         ${isEditMode && existingOrder?.costs ? `
@@ -1131,18 +1176,21 @@ const App = {
                         <input type="hidden" name="costs.otherCosts.description" value="${existingOrder?.costs?.otherCosts?.description || ''}">
                         <input type="hidden" name="costs.otherCosts.oneOff" value="${existingOrder?.costs?.otherCosts?.oneOff || 0}">
                         <input type="hidden" name="costs.otherCosts.monthly" value="${existingOrder?.costs?.otherCosts?.monthly || 0}">
-                    </div>
-                    <!-- Close Cost Structure Column -->
+                            </div>
+                        </div>
+                        <!-- Close nested 2-column grid -->
                     
-                    <!-- Order Notes - Spans all 3 columns -->
-                    <div class="section-card" style="grid-column: 1 / -1; margin-top: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
-                        <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <ion-icon name="document-text-outline"></ion-icon> Order Notes
-                        </h4>
-                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                        <!-- Order Notes - Inside right container, spans full width -->
+                        <div class="section-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                            <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <ion-icon name="document-text-outline"></ion-icon> Order Notes
+                            </h4>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                        </div>
                     </div>
+                    <!-- Close Right Container -->
                 </div>
-                <!-- Close 3-Column Grid -->
+                <!-- Close 2-Column Grid -->
                 `;
 
         this.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => this.handleSalesSubmit(form), true); // true for large modal
@@ -1258,6 +1306,12 @@ const App = {
     },
 
     attachSalesFormListeners() {
+        // Generate supplier options for cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
+        ).join('');
+
         // ===== Cost Card Templates =====
         const costCardTemplates = {
             cable: `
@@ -1273,7 +1327,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.cable.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.cable.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1388,7 +1445,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.backhaulA.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1463,7 +1523,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.backhaulZ.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1538,7 +1601,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcA.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.xcA.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1588,7 +1654,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field="costs.xcZ.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field="costs.xcZ.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -1642,7 +1711,10 @@ const App = {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Supplier</label>
-                                                                                                                                        <input type="text" class="form-control cost-input" data-field-base="costs.other.supplier">
+                                                                                                                                        <select class="form-control cost-input" data-field-base="costs.other.supplier">
+                                                                                                                                            <option value="">Select Supplier...</option>
+                                                                                                                                            ${supplierOptionsHTML}
+                                                                                                                                        </select>
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Order No.</label>
@@ -2355,7 +2427,8 @@ const App = {
 
         const orderData = {
             salesOrderId: isEditMode ? this._editingOrderId : (getVal('orderId') || null),
-            customerName: getVal('customerName'),
+            customerId: getVal('customerId'),
+            customerName: window.Store.getCustomerById(getVal('customerId'))?.short_name || '',
             inventoryLink: getVal('inventoryLink'),
             status: status,
             capacity: {
@@ -3014,6 +3087,12 @@ const App = {
             }
         }
 
+        // Generate supplier options for all cost card dropdowns
+        const suppliers = window.Store.getSuppliers();
+        const supplierOptionsHTML = suppliers.map(s =>
+            `<option value="${s.id}">${s.short_name}</option>`
+        ).join('');
+
         const formHTML = `
                                                                                                                             ${item.usage?.currentUser ? `
                 <!-- Usage Information -->
@@ -3069,7 +3148,10 @@ const App = {
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <input type="text" class="form-control" name="acquisition.supplier" value="${item.acquisition?.supplier || ''}">
+                                                                                                                                    <select class="form-control" name="acquisition.supplier">
+                                                                                                                                        <option value="">Select Supplier...</option>
+                                                                                                                                        ${supplierOptionsHTML}
+                                                                                                                                    </select>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Contract Ref</label>
@@ -4054,6 +4136,403 @@ const App = {
         const selectAll = document.getElementById('inventory-select-all');
         if (selectAll) selectAll.checked = false;
         this.updateInventoryBulkToolbar();
+    },
+
+    // ============ Customers View ============
+
+    renderCustomers(filters = {}) {
+        const searchQuery = filters.search || '';
+        const currentPage = filters.page || 1;
+        const ITEMS_PER_PAGE = 15;
+
+        let data = window.Store.getCustomers();
+
+        // Search filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            data = data.filter(c =>
+                (c.short_name || '').toLowerCase().includes(q) ||
+                (c.full_name || '').toLowerCase().includes(q) ||
+                (c.contact_email || '').toLowerCase().includes(q)
+            );
+        }
+
+        // Pagination
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const page = Math.min(Math.max(1, currentPage), totalPages || 1);
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        // Add button to header
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-primary';
+        addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Customer';
+        addBtn.onclick = () => this.openCustomerModal();
+        this.headerActions.appendChild(addBtn);
+
+        const html = `
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="customer-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="customers-table">
+                    <thead>
+                        <tr>
+                            <th>Short Name</th>
+                            <th class="mobile-hidden">Full Name</th>
+                            <th class="mobile-hidden">Contact</th>
+                            <th class="mobile-hidden">Email</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.length === 0 ? `
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No customers found. Add your first customer!</td></tr>
+                        ` : paginatedData.map(c => `
+                            <tr>
+                                <td><strong>${c.short_name || ''}</strong></td>
+                                <td class="mobile-hidden">${c.full_name || '-'}</td>
+                                <td class="mobile-hidden">${c.contact_name || '-'}</td>
+                                <td class="mobile-hidden">${c.contact_email || '-'}</td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-icon" onclick="App.openCustomerModal('${c.id}')" title="Edit">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-icon" onclick="App.deleteCustomer('${c.id}')" title="Delete">
+                                            <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${totalPages > 1 ? `
+                <div class="pagination mt-4">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page - 1}})">
+                        <ion-icon name="chevron-back-outline"></ion-icon>
+                    </button>
+                    <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page + 1}})">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        this.container.innerHTML = html;
+
+        // Bind search
+        document.getElementById('customer-search')?.addEventListener('input', (e) => {
+            this.renderCustomers({ search: e.target.value, page: 1 });
+        });
+    },
+
+    openCustomerModal(customerId = null) {
+        const existing = customerId ? window.Store.getCustomerById(customerId) : null;
+        const isEdit = !!existing;
+
+        const companyTypes = ['Enterprise', 'Carrier', 'OTT', 'Other'];
+
+        const modalHtml = `
+            <div class="modal-backdrop" onclick="App.closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Customer' : 'Add Customer'}</h3>
+                        <button class="btn btn-icon" onclick="App.closeModal()"><ion-icon name="close-outline"></ion-icon></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="customer-form">
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                    <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Company Type</label>
+                                    <select name="companyType" class="form-control">
+                                        <option value="">Select Type</option>
+                                        ${companyTypes.map(t => `<option value="${t}" ${existing?.company_type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Name</label>
+                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact Email</label>
+                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                </div>
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Phone</label>
+                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Website</label>
+                                    <input type="url" name="website" class="form-control" value="${existing?.website || ''}" placeholder="https://...">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveCustomer('${customerId || ''}')">${isEdit ? 'Save Changes' : 'Add Customer'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.modalContainer.innerHTML = modalHtml;
+    },
+
+    async saveCustomer(customerId) {
+        const form = document.getElementById('customer-form');
+        const data = {
+            shortName: form.querySelector('[name="shortName"]').value.trim(),
+            fullName: form.querySelector('[name="fullName"]').value.trim(),
+            companyType: form.querySelector('[name="companyType"]').value,
+            contactName: form.querySelector('[name="contactName"]').value.trim(),
+            contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
+            contactPhone: form.querySelector('[name="contactPhone"]').value.trim(),
+            website: form.querySelector('[name="website"]').value.trim(),
+            notes: form.querySelector('[name="notes"]').value.trim()
+        };
+
+        if (!data.shortName || !data.fullName) {
+            alert('Short Name and Full Name are required');
+            return;
+        }
+
+        try {
+            if (customerId) {
+                await window.Store.updateCustomer(customerId, data);
+            } else {
+                await window.Store.addCustomer(data);
+            }
+            this.closeModal();
+            this.renderCustomers();
+        } catch (err) {
+            alert('Error saving customer: ' + err.message);
+        }
+    },
+
+    async deleteCustomer(customerId) {
+        if (!confirm('Are you sure you want to delete this customer?')) return;
+        try {
+            await window.Store.deleteCustomer(customerId);
+            this.renderCustomers();
+        } catch (err) {
+            alert('Error deleting customer: ' + err.message);
+        }
+    },
+
+    // ============ Suppliers View ============
+
+    renderSuppliers(filters = {}) {
+        const searchQuery = filters.search || '';
+        const currentPage = filters.page || 1;
+        const ITEMS_PER_PAGE = 15;
+
+        let data = window.Store.getSuppliers();
+
+        // Search filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            data = data.filter(s =>
+                (s.short_name || '').toLowerCase().includes(q) ||
+                (s.full_name || '').toLowerCase().includes(q)
+            );
+        }
+
+        // Pagination
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const page = Math.min(Math.max(1, currentPage), totalPages || 1);
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        // Add button to header
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-primary';
+        addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Supplier';
+        addBtn.onclick = () => this.openSupplierModal();
+        this.headerActions.appendChild(addBtn);
+
+        const html = `
+            <div class="filter-bar mb-4">
+                <div class="search-box">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="supplier-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="suppliers-table">
+                    <thead>
+                        <tr>
+                            <th>Short Name</th>
+                            <th class="mobile-hidden">Full Name</th>
+                            <th class="mobile-hidden">Contact</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.length === 0 ? `
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found. Add your first supplier!</td></tr>
+                        ` : paginatedData.map(s => `
+                            <tr>
+                                <td><strong>${s.short_name || ''}</strong></td>
+                                <td class="mobile-hidden">${s.full_name || '-'}</td>
+                                <td class="mobile-hidden">${s.contact_name || '-'}</td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-icon" onclick="App.openSupplierModal('${s.id}')" title="Edit">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-icon" onclick="App.deleteSupplier('${s.id}')" title="Delete">
+                                            <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${totalPages > 1 ? `
+                <div class="pagination mt-4">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page - 1}})">
+                        <ion-icon name="chevron-back-outline"></ion-icon>
+                    </button>
+                    <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page + 1}})">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        this.container.innerHTML = html;
+
+        // Bind search
+        document.getElementById('supplier-search')?.addEventListener('input', (e) => {
+            this.renderSuppliers({ search: e.target.value, page: 1 });
+        });
+    },
+
+    openSupplierModal(supplierId = null) {
+        const existing = supplierId ? window.Store.getSupplierById(supplierId) : null;
+        const isEdit = !!existing;
+
+        const modalHtml = `
+            <div class="modal-backdrop" onclick="App.closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Supplier' : 'Add Supplier'}</h3>
+                        <button class="btn btn-icon" onclick="App.closeModal()"><ion-icon name="close-outline"></ion-icon></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="supplier-form">
+                            <div class="form-group">
+                                <label class="form-label">Short Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name <span class="required-indicator">*</span></label>
+                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Name</label>
+                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact Email</label>
+                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                </div>
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Contact Phone</label>
+                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Portal URL</label>
+                                    <input type="url" name="portalUrl" class="form-control" value="${existing?.portal_url || ''}" placeholder="https://...">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveSupplier('${supplierId || ''}')">${isEdit ? 'Save Changes' : 'Add Supplier'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.modalContainer.innerHTML = modalHtml;
+    },
+
+    async saveSupplier(supplierId) {
+        const form = document.getElementById('supplier-form');
+        const data = {
+            shortName: form.querySelector('[name="shortName"]').value.trim(),
+            fullName: form.querySelector('[name="fullName"]').value.trim(),
+            contactName: form.querySelector('[name="contactName"]').value.trim(),
+            contactEmail: form.querySelector('[name="contactEmail"]').value.trim(),
+            contactPhone: form.querySelector('[name="contactPhone"]').value.trim(),
+            portalUrl: form.querySelector('[name="portalUrl"]').value.trim(),
+            notes: form.querySelector('[name="notes"]').value.trim()
+        };
+
+        if (!data.shortName || !data.fullName) {
+            alert('Short Name and Full Name are required');
+            return;
+        }
+
+        try {
+            if (supplierId) {
+                await window.Store.updateSupplier(supplierId, data);
+            } else {
+                await window.Store.addSupplier(data);
+            }
+            this.closeModal();
+            this.renderSuppliers();
+        } catch (err) {
+            alert('Error saving supplier: ' + err.message);
+        }
+    },
+
+    async deleteSupplier(supplierId) {
+        if (!confirm('Are you sure you want to delete this supplier?')) return;
+        try {
+            await window.Store.deleteSupplier(supplierId);
+            this.renderSuppliers();
+        } catch (err) {
+            alert('Error deleting supplier: ' + err.message);
+        }
     },
 
     // ============ CSV Export Functions ============

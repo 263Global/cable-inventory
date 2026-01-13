@@ -14,10 +14,16 @@ A professional Telecom Resource and P&L Management System for managing submarine
 - **📤 CSV Export** - Export Sales and Inventory data for offline analysis
 
 ### Sales Order Form
-- **3-Column Layout** - Profitability Analysis | Sales Info | Cost Structure
+- **2-Column Layout** - Sticky Profitability sidebar | Right container (Sales Info + Cost Structure + Notes)
 - **Real-time Profitability** - Sticky sidebar shows live margin calculations
 - **Multiple Cost Cards** - Cable, Backhaul (A/Z-End), Cross Connect, Other Costs
 - **Dual-Margin Analysis** - First-month and recurring margin for IRU Resale orders
+
+### CRM/SRM (Customer & Supplier Management)
+- **👥 Customer Management** - Add and manage customers with short/full names and contact info
+- **🏢 Supplier Management** - Track suppliers for cost cards and acquisitions
+- **📋 Smart Dropdowns** - Customer and Supplier dropdowns auto-populated from database
+- **🔗 Relational Data** - Sales orders linked to customers, cost cards linked to suppliers
 
 ### Data Persistence
 - **☁️ Supabase Backend** - Cloud database with PostgreSQL for multi-device sync
@@ -80,6 +86,8 @@ cable-inventory/
 - **Dashboard**: View key metrics, capacity utilization, and sales performance
 - **Inventory Tab**: Add, edit, and manage cable resources
 - **Sales Tab**: Create and track sales orders with cost breakdowns
+- **Customers Tab**: Manage customer records for sales orders
+- **Suppliers Tab**: Manage supplier records for cost cards and acquisitions
 
 ## Deployment
 
