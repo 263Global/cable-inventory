@@ -17,7 +17,9 @@ A professional Telecom Resource and P&L Management System for managing submarine
 - **2-Column Layout** - Sticky Profitability sidebar | Right container (Sales Info + Cost Structure + Notes)
 - **Sales Model & Type First** - Key classification fields at top for smart form behavior
 - **Real-time Profitability** - Sticky sidebar shows live margin calculations
-- **Order Renewal** - Quick renewal button updates contract dates while preserving Order ID
+- **Order Renewal** - Quick renewal with price adjustment option
+  - Update MRC/NRC during renewal (for discounts or increases)
+  - Preserves Order ID while updating contract dates
 - **Multiple Cost Cards** - Cable, Backhaul (A/Z-End), Cross Connect, Other Costs
 - **Dual-Margin Analysis** - First-month and recurring margin for IRU Resale orders
 - **Smart Field Logic** - Linked Resource hidden for Resale, optional for Swapped Out

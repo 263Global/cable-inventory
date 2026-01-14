@@ -11,6 +11,10 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
   - Blue border connects input and options list as unified component
   - Hover state highlights option text in blue for better visibility
   - Mobile responsive design
+- **Renewal Price Adjustment** - Update pricing during contract renewal
+  - Shows current MRC and NRC with original price labels
+  - Allows editing prices for discounts or increases
+  - Toast notification shows price changes when saved
 
 ### Changed
 - **Customer Dropdown** - Sales form now uses searchable dropdown (same as Supplier)
