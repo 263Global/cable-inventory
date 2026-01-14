@@ -46,7 +46,9 @@ function validateSalesForm(form) {
         showError('salesperson', 'Salesperson is required');
     }
 
-    if (!getVal('inventoryLink')) {
+    // Only validate inventoryLink for non-Resale types
+    const salesType = getVal('salesType');
+    if (salesType !== 'Resale' && !getVal('inventoryLink')) {
         showError('inventoryLink', 'Linked Resource is required');
     }
 
