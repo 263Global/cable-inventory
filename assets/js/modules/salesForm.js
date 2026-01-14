@@ -6,7 +6,7 @@
  * to access shared state and utilities.
  */
 
-import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown, initSimpleDropdown } from './searchableDropdown.js';
 
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
@@ -152,19 +152,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Model <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="salesModel" id="sales-model-select">
-                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
-                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
-                            </select>
+                            <div id="sales-model-dropdown-placeholder" data-selected="${existingOrder?.salesModel || 'Lease'}"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sales Type <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
-                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
-                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
-                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
-                            </select>
+                            <div id="sales-type-dropdown-placeholder" data-selected="${existingOrder?.salesType || 'Resale'}"></div>
                         </div>
                     </div>
 
@@ -453,6 +445,42 @@ export function openAddSalesModal(context, existingOrderId = null) {
             `;
 
     context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
+
+    // Initialize Sales Model simple dropdown
+    const salesModelPlaceholder = document.getElementById('sales-model-dropdown-placeholder');
+    if (salesModelPlaceholder) {
+        const selectedModel = salesModelPlaceholder.dataset.selected || 'Lease';
+        salesModelPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesModel',
+            id: 'sales-model-select',
+            options: [
+                { value: 'Lease', label: 'Lease (月租模式)' },
+                { value: 'IRU', label: 'IRU (买断模式)' }
+            ],
+            selectedValue: selectedModel,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('sales-model-select-container');
+    }
+
+    // Initialize Sales Type simple dropdown
+    const salesTypePlaceholder = document.getElementById('sales-type-dropdown-placeholder');
+    if (salesTypePlaceholder) {
+        const selectedType = salesTypePlaceholder.dataset.selected || 'Resale';
+        salesTypePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesType',
+            id: 'sales-type-select',
+            options: [
+                { value: 'Resale', label: 'Resale (外部资源)' },
+                { value: 'Hybrid', label: 'Hybrid (混合资源)' },
+                { value: 'Inventory', label: 'Inventory (自有资源)' },
+                { value: 'Swapped Out', label: 'Swapped Out (置换出去)' }
+            ],
+            selectedValue: selectedType,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('sales-type-select-container');
+    }
 
     // Initialize Customer searchable dropdown
     const customerPlaceholder = document.getElementById('customer-dropdown-placeholder');
