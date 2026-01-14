@@ -2,6 +2,34 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.4.0] - 2026-01-14
+
+### Added
+- **Sales Order Renewal** - New "Renew" button on sales list and order details view
+  - Opens compact modal to configure new contract dates
+  - Preserves original Order ID during renewal
+  - Auto-calculates new end date based on start date + term
+  - Status auto-updates based on new contract period
+- **Smart Field Logic** - Linked Resource field visibility based on Sales Type:
+  - Hidden for Resale (external resource, no inventory link needed)
+  - Optional for Swapped Out
+  - Required for Inventory and Hybrid
+
+### Changed
+- **Form Layout Optimization** - Sales Model & Type moved to top of Sales Information section
+  - These fields now appear first since they control other field behaviors
+  - Improved logical flow: classification → details → financials
+- **Contract Period Calculation** - Fixed end date calculation for all forms
+  - Now correctly calculates last day of term (e.g., 2025/1/1 + 12 months = 2025/12/31)
+  - Previously incorrectly showed first day of next period (2026/1/1)
+
+### Fixed
+- Contract end date calculation in Sales Form (3 locations)
+- Contract end date calculation in Inventory Form
+- Contract end date calculation in Renewal Modal
+
+---
+
 ## [1.3.0] - 2026-01-14
 
 ### Added

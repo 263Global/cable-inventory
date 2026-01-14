@@ -144,6 +144,27 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         <div class="section-card">
                     <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
+                    <!-- Sales Model & Type (FIRST - determines other field behavior) -->
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Sales Model <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                            <select class="form-control" name="salesModel" id="sales-model-select">
+                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
+                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Sales Type <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
+                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
+                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
+                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
+                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Order ID + Customer -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Order ID <small style="color:var(--text-muted)">${isEditMode ? '(Read-only)' : '(Auto if blank)'}</small></label>
@@ -159,15 +180,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Linked Resource (Available)</label>
-                        <select class="form-control" name="inventoryLink" required>
-                            <option value="">Select Resource...</option>
-                            ${resourceOptions}
-                        </select>
-                        ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
-                    </div>
-
+                    <!-- Capacity Sold -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Capacity Sold</label>
@@ -183,6 +196,17 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Linked Resource (visibility controlled by Sales Type) -->
+                    <div class="form-group" id="linked-resource-group">
+                        <label class="form-label">Linked Resource (Available)</label>
+                        <select class="form-control" name="inventoryLink" id="inventory-link-select">
+                            <option value="">Select Resource...</option>
+                            ${resourceOptions}
+                        </select>
+                        ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
+                    </div>
+
+                    <!-- Contract Period -->
                     <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Contract Start</label>
@@ -198,6 +222,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Status + Salesperson -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Status</label>
@@ -219,6 +244,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Delivery Location -->
                     <h5 class="mt-4 mb-2">Delivery Location</h5>
                     <!-- A-End -->
                     <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
@@ -249,26 +275,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
-                    <h5 class="mt-4 mb-2">Sales Model & Type</h5>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Sales Model</label>
-                            <select class="form-control" name="salesModel" id="sales-model-select">
-                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
-                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Sales Type</label>
-                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
-                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
-                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
-                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
-                            </select>
-                        </div>
-                    </div>
-
+                    <!-- Revenue / Price -->
                     <h5 class="mt-4 mb-2">Revenue / Price</h5>
                     <!-- Lease Revenue Fields -->
                     <div id="lease-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? 'display:none;' : ''}">
@@ -1111,6 +1118,7 @@ export function attachSalesFormListeners(context) {
                     const months = parseInt(termMonthsInput.value) || 0;
                     const end = new Date(start);
                     end.setMonth(end.getMonth() + months);
+                    end.setDate(end.getDate() - 1); // End date is the last day of the term
                     endDateInput.value = end.toISOString().split('T')[0];
                     syncCostInputs();
                 }
@@ -1334,11 +1342,32 @@ export function attachSalesFormListeners(context) {
     // ===== Sales Type Smart Hints =====
     const salesTypeSelect = document.getElementById('sales-type-select');
     const addCableBtn = document.getElementById('add-cable-btn');
+    const linkedResourceGroup = document.getElementById('linked-resource-group');
+    const inventoryLinkSelect = document.getElementById('inventory-link-select');
 
     const updateSmartHints = () => {
         const type = salesTypeSelect?.value;
         const isInventoryOrSwap = (type === 'Inventory' || type === 'Swapped Out');
 
+        // ===== Linked Resource Visibility =====
+        if (linkedResourceGroup && inventoryLinkSelect) {
+            if (type === 'Resale') {
+                // Hide for Resale - not needed
+                linkedResourceGroup.style.display = 'none';
+                inventoryLinkSelect.removeAttribute('required');
+                inventoryLinkSelect.value = ''; // Clear selection
+            } else if (type === 'Swapped Out') {
+                // Show but optional for Swapped Out
+                linkedResourceGroup.style.display = '';
+                inventoryLinkSelect.removeAttribute('required');
+            } else {
+                // Required for Inventory and Hybrid
+                linkedResourceGroup.style.display = '';
+                inventoryLinkSelect.setAttribute('required', 'required');
+            }
+        }
+
+        // ===== Cable Cost Card Logic =====
         if (addCableBtn) {
             if (isInventoryOrSwap) {
                 // Hide 3rd Party Cable button for Inventory/Swapped Out
@@ -1386,6 +1415,7 @@ export function attachSalesFormListeners(context) {
         const months = parseInt(termInput.value) || 0;
         const end = new Date(start);
         end.setMonth(end.getMonth() + months);
+        end.setDate(end.getDate() - 1); // End date is the last day of the term
         endDateInput.value = end.toISOString().split('T')[0];
         updateStatus();
     };
@@ -1886,6 +1916,7 @@ export function openRenewModal(context, salesOrderId) {
             const months = parseInt(termInput.value) || 0;
             const end = new Date(start);
             end.setMonth(end.getMonth() + months);
+            end.setDate(end.getDate() - 1); // End date is the last day of the term
             endInput.value = end.toISOString().split('T')[0];
         };
 

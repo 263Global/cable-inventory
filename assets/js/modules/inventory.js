@@ -822,6 +822,7 @@ export function attachInventoryFormListeners(context) {
         if (startVal && termVal > 0) {
             const startDate = new Date(startVal);
             startDate.setMonth(startDate.getMonth() + termVal);
+            startDate.setDate(startDate.getDate() - 1); // End date is the last day of the term
             // Format as YYYY-MM-DD
             const year = startDate.getFullYear();
             const month = String(startDate.getMonth() + 1).padStart(2, '0');
