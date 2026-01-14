@@ -1,6 +1,7 @@
 /**
  * Searchable Dropdown Component
  * A reusable dropdown with search/filter functionality
+ * Design: Input-style trigger, click to show options with search
  */
 
 /**
@@ -23,7 +24,7 @@ export function renderSearchableDropdown(config) {
     } = config;
 
     const selectedOption = options.find(opt => opt.value === selectedValue);
-    const displayText = selectedOption ? selectedOption.label : placeholder;
+    const displayText = selectedOption ? selectedOption.label : '';
     const isPlaceholder = !selectedOption;
 
     const optionsHtml = options.map(opt => `
@@ -31,26 +32,24 @@ export function renderSearchableDropdown(config) {
              data-value="${opt.value}" 
              data-label="${opt.label}"
              data-search="${(opt.label + ' ' + (opt.subtitle || '')).toLowerCase()}">
-            <span class="option-text">
-                ${opt.label}
-                ${opt.subtitle ? `<span class="option-subtitle">${opt.subtitle}</span>` : ''}
-            </span>
+            <span class="option-label">${opt.label}</span>
+            ${opt.subtitle ? `<span class="option-subtitle">${opt.subtitle}</span>` : ''}
         </div>
     `).join('');
 
-    // Using inline style to ensure hidden by default
     return `
         <div class="searchable-dropdown" id="${id}-container">
             <input type="hidden" name="${name}" id="${id}" value="${selectedValue}">
-            <div class="searchable-dropdown-trigger" data-dropdown-id="${id}">
-                <span class="selected-text ${isPlaceholder ? 'placeholder' : ''}">${displayText}</span>
-                <ion-icon name="chevron-down-outline"></ion-icon>
+            <div class="searchable-dropdown-input-wrapper">
+                <input type="text" 
+                       class="form-control searchable-dropdown-input" 
+                       placeholder="${placeholder}"
+                       value="${displayText}"
+                       data-selected-value="${selectedValue}"
+                       autocomplete="off">
+                <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
             </div>
             <div class="searchable-dropdown-menu" style="display: none;">
-                <div class="searchable-dropdown-search">
-                    <ion-icon name="search-outline"></ion-icon>
-                    <input type="text" placeholder="搜索..." data-search-input="${id}">
-                </div>
                 <div class="searchable-dropdown-options">
                     ${optionsHtml || '<div class="searchable-dropdown-empty">No options available</div>'}
                 </div>
@@ -61,25 +60,39 @@ export function renderSearchableDropdown(config) {
 
 /**
  * Initialize searchable dropdown functionality
- * Call this after the dropdown HTML is rendered in the DOM
  * @param {string} containerId - The container ID (e.g., 'supplier-dropdown-container')
  */
 export function initSearchableDropdown(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const trigger = container.querySelector('.searchable-dropdown-trigger');
+    const inputWrapper = container.querySelector('.searchable-dropdown-input-wrapper');
+    const input = container.querySelector('.searchable-dropdown-input');
     const menu = container.querySelector('.searchable-dropdown-menu');
-    const searchInput = container.querySelector('.searchable-dropdown-search input');
     const hiddenInput = container.querySelector('input[type="hidden"]');
     const options = container.querySelectorAll('.searchable-dropdown-option');
+    const arrow = container.querySelector('.dropdown-arrow');
 
-    if (!trigger || !menu) return;
+    if (!input || !menu) return;
+
+    let originalValue = input.value;
 
     // Helper to close dropdown
     const closeDropdown = () => {
         menu.style.display = 'none';
-        trigger.classList.remove('active');
+        inputWrapper.classList.remove('active');
+        // Restore display text if nothing was selected
+        const currentHiddenVal = hiddenInput?.value || '';
+        if (currentHiddenVal) {
+            const selectedOpt = Array.from(options).find(o => o.dataset.value === currentHiddenVal);
+            if (selectedOpt) {
+                input.value = selectedOpt.dataset.label;
+            }
+        } else {
+            input.value = '';
+        }
+        // Reset filter
+        options.forEach(o => o.style.display = '');
     };
 
     // Helper to open dropdown
@@ -88,56 +101,65 @@ export function initSearchableDropdown(containerId) {
         document.querySelectorAll('.searchable-dropdown-menu').forEach(m => {
             if (m !== menu) {
                 m.style.display = 'none';
-                m.closest('.searchable-dropdown')?.querySelector('.searchable-dropdown-trigger')?.classList.remove('active');
+                m.closest('.searchable-dropdown')?.querySelector('.searchable-dropdown-input-wrapper')?.classList.remove('active');
             }
         });
 
         menu.style.display = 'block';
-        trigger.classList.add('active');
-        setTimeout(() => searchInput?.focus(), 50);
+        inputWrapper.classList.add('active');
+        originalValue = input.value;
+        input.select(); // Select all text for easy replacement
     };
 
-    // Toggle dropdown on trigger click
-    trigger.addEventListener('click', (e) => {
+    // Open on input click
+    input.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (menu.style.display === 'none' || menu.style.display === '') {
+        if (menu.style.display === 'none') {
+            openDropdown();
+        }
+    });
+
+    // Also open when clicking the arrow
+    arrow?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (menu.style.display === 'none') {
             openDropdown();
         } else {
             closeDropdown();
         }
     });
 
-    // Search functionality
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-            let visibleCount = 0;
+    // Search/filter on input
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        let visibleCount = 0;
 
-            options.forEach(opt => {
-                const searchText = opt.dataset.search || '';
-                const matches = !query || searchText.includes(query);
-                opt.style.display = matches ? '' : 'none';
-                if (matches) visibleCount++;
-            });
-
-            // Show empty message if no results
-            let emptyMsg = container.querySelector('.searchable-dropdown-empty');
-            if (visibleCount === 0) {
-                if (!emptyMsg) {
-                    emptyMsg = document.createElement('div');
-                    emptyMsg.className = 'searchable-dropdown-empty';
-                    emptyMsg.textContent = '未找到匹配项';
-                    container.querySelector('.searchable-dropdown-options').appendChild(emptyMsg);
-                }
-                emptyMsg.style.display = 'block';
-            } else if (emptyMsg) {
-                emptyMsg.style.display = 'none';
-            }
+        options.forEach(opt => {
+            const searchText = opt.dataset.search || '';
+            const matches = !query || searchText.includes(query);
+            opt.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
         });
 
-        // Prevent dropdown close when clicking search
-        searchInput.addEventListener('click', (e) => e.stopPropagation());
-    }
+        // Make sure dropdown is open when typing
+        if (menu.style.display === 'none') {
+            openDropdown();
+        }
+
+        // Show empty message if no results
+        let emptyMsg = container.querySelector('.searchable-dropdown-empty');
+        if (visibleCount === 0) {
+            if (!emptyMsg) {
+                emptyMsg = document.createElement('div');
+                emptyMsg.className = 'searchable-dropdown-empty';
+                emptyMsg.textContent = '未找到匹配项';
+                container.querySelector('.searchable-dropdown-options').appendChild(emptyMsg);
+            }
+            emptyMsg.style.display = 'block';
+        } else if (emptyMsg) {
+            emptyMsg.style.display = 'none';
+        }
+    });
 
     // Option selection
     options.forEach(opt => {
@@ -149,16 +171,12 @@ export function initSearchableDropdown(containerId) {
             // Update hidden input
             if (hiddenInput) {
                 hiddenInput.value = value;
-                // Trigger change event for any listeners
                 hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
             // Update display text
-            const selectedText = trigger.querySelector('.selected-text');
-            if (selectedText) {
-                selectedText.textContent = label;
-                selectedText.classList.remove('placeholder');
-            }
+            input.value = label;
+            input.dataset.selectedValue = value;
 
             // Update selected state
             options.forEach(o => o.classList.remove('selected'));
@@ -166,12 +184,6 @@ export function initSearchableDropdown(containerId) {
 
             // Close dropdown
             closeDropdown();
-
-            // Clear search and reset options visibility
-            if (searchInput) {
-                searchInput.value = '';
-                options.forEach(o => o.style.display = '');
-            }
         });
     });
 
@@ -182,6 +194,14 @@ export function initSearchableDropdown(containerId) {
         }
     };
     document.addEventListener('click', closeHandler);
+
+    // Handle escape key
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeDropdown();
+            input.blur();
+        }
+    });
 
     // Store cleanup function
     container._cleanupDropdown = () => {
