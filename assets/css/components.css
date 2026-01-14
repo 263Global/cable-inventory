@@ -320,10 +320,25 @@ select.form-control {
     min-height: 38px;
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 512 512'%3E%3Cpath fill='%236b7280' d='M256 294.1L383 167c9.4-9.4 24.6-9.4 33.9 0s9.3 24.6 0 34L273 345c-9.1 9.1-23.7 9.3-33.1.7L95 167.1c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.3 34 0l127 126.9z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
-    padding-right: 2rem;
+    background-size: 12px;
+    padding-right: 2.5rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select.form-control:hover {
+    border-color: var(--text-muted);
+}
+
+select.form-control:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    border-width: 2px;
+    padding: calc(0.5rem - 1px) calc(0.75rem - 1px);
+    padding-right: calc(2.5rem - 1px);
+    box-shadow: none;
 }
 
 /* ===== Section Card ===== */
