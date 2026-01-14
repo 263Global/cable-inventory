@@ -73,13 +73,26 @@ cable-inventory/
 │   │   ├── style.css       # Main styles + responsive
 │   │   └── components.css  # UI components
 │   └── js/
-│       ├── app.js          # Main application logic
+│       ├── app.js          # Core routing & modal (~500 lines)
 │       ├── store.js        # Data layer (Supabase + localStorage)
-│       └── config.js       # Supabase configuration
+│       ├── auth.js         # Authentication logic
+│       ├── supabase.js     # Supabase client configuration
+│       └── modules/        # ES6 Feature Modules
+│           ├── dashboard.js    # Dashboard view (~290 lines)
+│           ├── inventory.js    # Inventory management (~860 lines)
+│           ├── sales.js        # Sales list view (~550 lines)
+│           ├── salesForm.js    # Sales form + financials (~1,780 lines)
+│           ├── financials.js   # Financial calculations
+│           ├── validation.js   # Form validation utilities
+│           ├── csv.js          # CSV export functions
+│           ├── customers.js    # Customer CRM module
+│           ├── suppliers.js    # Supplier CRM module
+│           └── bulkOps.js      # Bulk selection & export
 └── docs/
     ├── supabase_schema.sql # Database schema
     └── test_data.sql       # Sample data for testing
 ```
+
 
 ## Usage
 

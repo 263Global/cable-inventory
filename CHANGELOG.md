@@ -2,6 +2,48 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.3.0] - 2026-01-14
+
+### Added
+- **ES6 Module Architecture** - Migrated view logic to ES6 modules with `import/export` syntax
+  - `modules/dashboard.js` - Dashboard rendering (~290 lines)
+  - `modules/inventory.js` - Inventory management (~860 lines)
+  - `modules/sales.js` - Sales list view (~553 lines)
+  - `modules/salesForm.js` - Sales form + financial calculations (~1,780 lines)
+
+### Changed
+- **Massive Code Reduction** - Main `app.js` reduced from 3,633 to 514 lines (**-86%**)
+- **Context Parameter Pattern** - All ES6 module functions receive `context` (App object) for shared state access
+- **Module Script Loading** - Updated `index.html` to use `type="module"` for proper ES6 module support
+
+### Technical
+- Global bridge pattern (`window.App = App`) maintained for HTML onclick handler compatibility
+- Thin delegation methods in `app.js` route to ES6 module functions
+- All modules pass Node.js syntax validation
+
+---
+
+## [1.2.0] - 2026-01-13
+
+### Added
+- **Modular Architecture** - Extracted core functionality into separate modules for better maintainability
+  - `modules/financials.js` - Financial calculation engine
+  - `modules/validation.js` - Form validation utilities
+  - `modules/csv.js` - CSV export functions
+  - `modules/customers.js` - Customer CRM module
+  - `modules/suppliers.js` - Supplier CRM module
+  - `modules/bulkOps.js` - Bulk selection and export operations
+- **Code Region Comments** - Added `//#region` markers for IDE code folding support
+
+### Changed
+- **Code Organization** - Main `app.js` reduced from 4662 to 3945 lines (~15% reduction)
+- **Delete Behavior** - Customer and Supplier delete buttons now work like Sales/Inventory (no confirmation popup)
+
+### Fixed
+- **Duplicate Buttons** - Fixed issue where re-rendering Customers/Suppliers page would duplicate the "Add" button
+
+---
+
 ## [1.1.0] - 2026-01-12
 
 ### Added
