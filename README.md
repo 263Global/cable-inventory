@@ -25,7 +25,10 @@ A professional Telecom Resource and P&L Management System for managing submarine
 ### CRM/SRM (Customer & Supplier Management)
 - **👥 Customer Management** - Add and manage customers with short/full names and contact info
 - **🏢 Supplier Management** - Track suppliers for cost cards and acquisitions
-- **📋 Smart Dropdowns** - Customer and Supplier dropdowns auto-populated from database
+- **🔍 Searchable Dropdowns** - Customer and Supplier fields with real-time search filtering
+  - Input-style trigger becomes search box on click
+  - Type to filter options instantly
+  - Blue border and hover effects for clear visual feedback
 - **🔗 Relational Data** - Sales orders linked to customers, cost cards linked to suppliers
 
 ### Data Persistence
@@ -90,7 +93,8 @@ cable-inventory/
 │           ├── csv.js          # CSV export functions
 │           ├── customers.js    # Customer CRM module
 │           ├── suppliers.js    # Supplier CRM module
-│           └── bulkOps.js      # Bulk selection & export
+│           ├── bulkOps.js      # Bulk selection & export
+│           └── searchableDropdown.js  # Searchable dropdown component
 └── docs/
     ├── supabase_schema.sql # Database schema
     └── test_data.sql       # Sample data for testing

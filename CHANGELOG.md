@@ -2,6 +2,24 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.5.0] - 2026-01-14
+
+### Added
+- **Searchable Dropdown Component** - New reusable dropdown with search/filter functionality
+  - Input-style trigger that becomes search box when clicked
+  - Type to filter options in real-time
+  - Blue border connects input and options list as unified component
+  - Hover state highlights option text in blue for better visibility
+  - Mobile responsive design
+
+### Changed
+- **Customer Dropdown** - Sales form now uses searchable dropdown (same as Supplier)
+- **Supplier Dropdown** - Updated all cost card supplier fields with new component
+  - Works in Inventory form and all Sales form cost cards
+  - Show label and subtitle (short name + full name)
+
+---
+
 ## [1.4.0] - 2026-01-14
 
 ### Added

@@ -657,8 +657,11 @@ select.form-control {
 
 .searchable-dropdown-input-wrapper.active .searchable-dropdown-input {
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+    border-width: 2px;
+    border-bottom: none;
     border-radius: 6px 6px 0 0;
+    padding-top: calc(0.5rem - 1px);
+    padding-bottom: calc(0.5rem + 1px);
 }
 
 /* Dropdown menu */
@@ -699,7 +702,11 @@ select.form-control {
 }
 
 .searchable-dropdown-option:hover {
-    background: var(--bg-card-hover);
+    background: rgba(99, 91, 255, 0.05);
+}
+
+.searchable-dropdown-option:hover .option-label {
+    color: var(--accent-primary);
 }
 
 .searchable-dropdown-option.selected {
@@ -734,7 +741,7 @@ select.form-control {
     .searchable-dropdown-option {
         padding: 1rem 1.25rem;
     }
-    
+
     .searchable-dropdown-option .option-label {
         font-size: 1rem;
     }

@@ -40,12 +40,14 @@ export function openAddSalesModal(context, existingOrderId = null) {
         return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
     }).join('');
 
-    // Generate customer options from Store
+    // Generate customer options for searchable dropdown
     const customers = window.Store.getCustomers();
-    const customerOptions = customers.map(c => {
-        const isSelected = existingOrder?.customerId === c.id ? 'selected' : '';
-        return `<option value="${c.id}" ${isSelected}>${c.short_name}</option>`;
-    }).join('');
+    const customerDropdownOptions = customers.map(c => ({
+        value: c.id,
+        label: c.short_name,
+        subtitle: c.full_name || ''
+    }));
+    const existingCustomerId = existingOrder?.customerId || '';
 
     // Generate supplier options for cost card dropdowns
     const suppliers = window.Store.getSuppliers();
@@ -174,10 +176,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Customer <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="customerId" required>
-                                <option value="">Select Customer...</option>
-                                ${customerOptions}
-                            </select>
+                            <div id="customer-dropdown-placeholder" data-field="customerId" data-selected="${existingCustomerId}"></div>
                             ${customers.length === 0 ? '<small style="color:var(--text-muted)">No customers yet. <a href="#" onclick="App.renderView(\'customers\'); App.closeModal(); return false;">Add one first</a>.</small>' : ''}
                         </div>
                     </div>
@@ -454,6 +453,21 @@ export function openAddSalesModal(context, existingOrderId = null) {
             `;
 
     context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
+
+    // Initialize Customer searchable dropdown
+    const customerPlaceholder = document.getElementById('customer-dropdown-placeholder');
+    if (customerPlaceholder) {
+        const selectedCustomerId = customerPlaceholder.dataset.selected || '';
+        const dropdownId = 'sales-customer-dropdown';
+        customerPlaceholder.outerHTML = renderSearchableDropdown({
+            name: 'customerId',
+            id: dropdownId,
+            options: customerDropdownOptions,
+            selectedValue: selectedCustomerId,
+            placeholder: '搜索客户...'
+        });
+        initSearchableDropdown(`${dropdownId}-container`);
+    }
 
     // Attach Event Listeners for Dynamic Logic
     context.attachSalesFormListeners();
