@@ -78,8 +78,22 @@ cable-inventory/
 ├── index.html              # Main entry point
 ├── assets/
 │   ├── css/
-│   │   ├── style.css       # Main styles + responsive
-│   │   └── components.css  # UI components
+│   │   ├── base/           # Foundation styles
+│   │   │   ├── variables.css   # Theme colors & CSS variables
+│   │   │   ├── reset.css       # CSS reset & base styles
+│   │   │   └── typography.css  # Font styles
+│   │   ├── layout/         # Layout components
+│   │   │   ├── grid.css        # Grid system
+│   │   │   ├── sidebar.css     # Sidebar navigation
+│   │   │   └── header.css      # Header bar
+│   │   ├── pages/          # Page-specific styles
+│   │   │   ├── login.css       # Login page
+│   │   │   ├── reset-password.css
+│   │   │   └── dashboard.css   # Dashboard components
+│   │   ├── components.css  # UI components (buttons, cards, modals)
+│   │   ├── utilities.css   # Utility classes
+│   │   ├── responsive.css  # All media queries
+│   │   └── main.css        # Entry point (@imports all modules)
 │   └── js/
 │       ├── app.js          # Core routing & modal (~500 lines)
 │       ├── store.js        # Data layer (Supabase + localStorage)
