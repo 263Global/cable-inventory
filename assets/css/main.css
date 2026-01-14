@@ -1,0 +1,29 @@
+/* 
+ * Main CSS Entry Point
+ * Cable Inventory System - Stripe-Inspired Design
+ * 
+ * This file imports all modular CSS files in the correct order.
+ * Load order matters: base → layout → components → utilities → pages → responsive
+ */
+
+/* ===== Base Styles ===== */
+@import url('base/variables.css');
+@import url('base/reset.css');
+@import url('base/typography.css');
+
+/* ===== Layout ===== */
+@import url('layout/grid.css');
+@import url('layout/sidebar.css');
+@import url('layout/header.css');
+
+/* ===== Components ===== */
+@import url('components.css');
+
+/* ===== Utilities ===== */
+@import url('utilities.css');
+
+/* ===== Pages ===== */
+@import url('pages/dashboard.css');
+
+/* ===== Responsive (must be last) ===== */
+@import url('responsive.css');
