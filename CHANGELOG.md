@@ -2,6 +2,32 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.6.0] - 2026-01-14
+
+### Added
+- **Simple Dropdown Component** - Non-searchable custom dropdown for static option lists
+  - Consistent styling with searchable dropdowns (blue border, hover states)
+  - Eliminates native macOS dropdown appearance for unified UI
+  - Reusable `renderSimpleDropdown` and `initSimpleDropdown` functions
+
+### Changed
+- **Sales Form Dropdowns** - All native selects converted to custom dropdowns:
+  - Sales Model (Lease / IRU)
+  - Sales Type (Resale / Hybrid / Inventory / Swapped Out)
+  - Capacity Unit (Gbps / Wavelength / Fiber Pair)
+  - Linked Resource (dynamic resource list)
+  - Salesperson (team member list)
+- **Inventory Form Dropdowns** - All native selects converted to custom dropdowns:
+  - Status (Draft / Available / Sold Out / Expired)
+  - Acquisition Type (Purchased / Swapped In)
+  - Ownership (Leased / IRU)
+  - Segment Type (Capacity / Fiber Pair / Spectrum / Backhaul)
+  - Handoff Type (OTU-4 / 100GE / 400GE / Other)
+  - Capacity Unit (Gbps / Tbps / Fiber Pair / Half Fiber Pair / GHz)
+  - Protection (Unprotected / Protected)
+
+---
+
 ## [1.5.0] - 2026-01-14
 
 ### Added
