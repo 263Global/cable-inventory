@@ -26,70 +26,86 @@ body {
 
 .login-card {
     width: 100%;
-    max-width: 420px;
+    max-width: 380px;
+    /* Reduced from 420px */
     background: var(--bg-card);
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    /* Reduced from 16px */
+    padding: 2rem;
+    /* Reduced from 2.5rem */
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-color);
 }
 
 .login-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    /* Reduced from 2rem */
 }
 
 .login-logo {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    gap: 0.5rem;
+    /* Reduced from 0.75rem */
+    margin-bottom: 0.5rem;
+    /* Reduced from 1rem */
 }
 
 .login-logo ion-icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
+    /* Reduced from 2.5rem */
     color: var(--accent-primary);
 }
 
 .login-logo span {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    /* Reduced from 1.5rem */
     font-weight: 700;
     color: var(--text-main);
 }
 
 .login-subtitle {
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 0.875rem;
+    /* Reduced from 0.95rem */
 }
 
 .login-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
+    /* Reduced from 1.25rem */
 }
 
 .login-form .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.35rem;
+    /* Reduced from 0.5rem */
 }
 
 .login-form .form-label {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+    /* Reduced from 0.875rem */
     font-weight: 500;
     color: var(--text-muted);
 }
 
 .login-form .form-input {
     width: 100%;
-    padding: 0.875rem 1rem;
+    padding: 0.65rem 0.875rem;
+    /* Reduced from 0.875rem 1rem */
     background: var(--bg-input);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 6px;
+    /* Reduced from 8px */
     color: var(--text-main);
-    font-size: 1rem;
+    font-size: 0.9rem;
+    /* Reduced from 1rem */
     transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
 }
 
 .login-form .form-input:focus {
@@ -104,12 +120,15 @@ body {
 
 .login-btn {
     width: 100%;
-    padding: 1rem;
+    padding: 0.75rem;
+    /* Reduced from 1rem */
     background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
+    /* Reduced from 8px */
     color: white;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    /* Reduced from 1rem */
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -117,11 +136,12 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .login-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(99, 91, 255, 0.4);
+    box-shadow: 0 8px 20px -5px rgba(99, 91, 255, 0.4);
 }
 
 .login-btn:disabled {
@@ -144,8 +164,9 @@ body {
 }
 
 .spinner {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    /* Reduced from 18px */
+    height: 16px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: white;
     border-radius: 50%;
@@ -161,10 +182,12 @@ body {
 .error-message {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 8px;
-    padding: 0.875rem 1rem;
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
+    /* Reduced */
     color: #ef4444;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+    /* Reduced */
     display: none;
     align-items: center;
     gap: 0.5rem;
@@ -175,17 +198,18 @@ body {
 }
 
 .error-message ion-icon {
-    font-size: 1.25rem;
+    font-size: 1rem;
+    /* Reduced */
     flex-shrink: 0;
 }
 
 .success-message {
     background: rgba(34, 197, 94, 0.1);
     border: 1px solid rgba(34, 197, 94, 0.3);
-    border-radius: 8px;
-    padding: 0.875rem 1rem;
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
     color: #22c55e;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     display: none;
     align-items: center;
     gap: 0.5rem;
@@ -196,19 +220,21 @@ body {
 }
 
 .success-message ion-icon {
-    font-size: 1.25rem;
+    font-size: 1rem;
     flex-shrink: 0;
 }
 
 .forgot-password {
     text-align: right;
-    margin-top: -0.5rem;
+    margin-top: -0.35rem;
+    /* Adjusted */
 }
 
 .forgot-password a {
     color: var(--accent-primary);
     text-decoration: none;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    /* Reduced */
 }
 
 .forgot-password a:hover {
@@ -218,10 +244,10 @@ body {
 .divider {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin: 1rem 0;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
 .divider::before,
@@ -234,9 +260,11 @@ body {
 
 .login-footer {
     text-align: center;
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
+    /* Reduced from 1.5rem */
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    /* Reduced from 0.85rem */
 }
 
 .login-footer a {
@@ -248,17 +276,71 @@ body {
     text-decoration: underline;
 }
 
-/* Responsive */
+/* ===== Responsive - Mobile ===== */
 @media (max-width: 480px) {
+    .login-container {
+        padding: 0.75rem;
+    }
+
     .login-card {
-        padding: 1.75rem;
+        max-width: 100%;
+        padding: 1.5rem;
+        border-radius: 10px;
+    }
+
+    .login-header {
+        margin-bottom: 1.25rem;
+    }
+
+    .login-logo {
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
     }
 
     .login-logo ion-icon {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
 
     .login-logo span {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
+    }
+
+    .login-subtitle {
+        font-size: 0.8rem;
+    }
+
+    .login-form {
+        gap: 0.875rem;
+    }
+
+    .login-form .form-input {
+        padding: 0.6rem 0.75rem;
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+    }
+
+    .login-btn {
+        padding: 0.7rem;
+        font-size: 0.875rem;
+    }
+
+    .login-footer {
+        margin-top: 1rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* ===== Responsive - Very Small Screens ===== */
+@media (max-width: 360px) {
+    .login-card {
+        padding: 1.25rem;
+    }
+
+    .login-logo ion-icon {
+        font-size: 1.5rem;
+    }
+
+    .login-logo span {
+        font-size: 1rem;
     }
 }
