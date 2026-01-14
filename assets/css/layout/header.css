@@ -1,0 +1,128 @@
+/* 
+ * Header Styles
+ * Top navigation bar and actions
+ */
+
+.header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.view-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-highlight);
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ===== Mobile User Menu ===== */
+.mobile-user-menu {
+    display: none;
+    position: relative;
+}
+
+.mobile-user-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.mobile-user-btn ion-icon {
+    font-size: 1.75rem;
+    color: var(--accent-primary);
+}
+
+.mobile-user-btn:hover,
+.mobile-user-btn:active {
+    background: rgba(99, 91, 255, 0.1);
+}
+
+.mobile-user-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    min-width: 220px;
+    z-index: 1000;
+    padding: 0.5rem;
+    animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-user-dropdown.open {
+    display: block;
+}
+
+.mobile-user-email {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.25rem;
+    word-break: break-all;
+}
+
+.mobile-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.mobile-user-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.mobile-user-item ion-icon {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+}
+
+.mobile-user-logout {
+    color: var(--accent-danger);
+}
+
+.mobile-user-logout ion-icon {
+    color: var(--accent-danger);
+}

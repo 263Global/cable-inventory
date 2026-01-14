@@ -1,0 +1,326 @@
+/* 
+ * Dashboard Page Styles
+ * Dashboard-specific components and layouts
+ */
+
+/* ===== Dashboard Alert Cards ===== */
+.alert-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.alert-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.alert-title-short {
+    display: none;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+
+.alert-item-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-main);
+}
+
+.alert-item-name {
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.alert-item-days {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.alert-more {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ===== Simple Metric Cards ===== */
+.simple-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ===== Metric Card Icons ===== */
+.metric-icon {
+    margin-right: 0.25rem;
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+/* ===== Leaderboard Styles ===== */
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.leaderboard-item:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-rank {
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.leaderboard-info {
+    min-width: 0;
+}
+
+.leaderboard-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-main);
+}
+
+.leaderboard-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.leaderboard-item.top-1 .leaderboard-name {
+    font-weight: 600;
+    color: var(--accent-warning);
+}
+
+.leaderboard-item.top-2 .leaderboard-name {
+    font-weight: 600;
+    color: #c0c0c0;
+}
+
+.leaderboard-item.top-3 .leaderboard-name {
+    font-weight: 600;
+    color: #cd7f32;
+}
+
+/* Dashboard bottom section - desktop */
+.dashboard-grid-bottom {
+    gap: 1rem;
+}
+
+/* ===== Filter Bar & Search Box ===== */
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.search-box ion-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+}
+
+.search-box input::placeholder {
+    color: var(--text-muted);
+}
+
+/* ===== Form Validation Styles ===== */
+
+/* Error state for form inputs */
+.form-control.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid {
+    border-color: var(--accent-danger) !important;
+    box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.15) !important;
+}
+
+.form-control.is-invalid:focus,
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+    border-color: var(--accent-danger) !important;
+    box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.25) !important;
+}
+
+/* Error message styling */
+.validation-error {
+    color: var(--accent-danger);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.validation-error ion-icon {
+    font-size: 0.875rem;
+}
+
+/* Shake animation for invalid fields */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-4px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+.form-control.shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Success state */
+.form-control.is-valid {
+    border-color: var(--accent-success) !important;
+}
+
+/* Required field indicator */
+.required-indicator {
+    color: var(--accent-danger);
+    margin-left: 2px;
+}
+
+/* ===== Floating Action Button (FAB) ===== */
+.fab {
+    display: none;
+    position: fixed;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px) + 1rem);
+    right: 1rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(99, 91, 255, 0.4);
+    cursor: pointer;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.fab ion-icon {
+    font-size: 1.75rem;
+}
+
+.fab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(99, 91, 255, 0.5);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+/* FAB animation on appear */
+@keyframes fabIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.fab.show {
+    animation: fabIn 0.25s ease forwards;
+}

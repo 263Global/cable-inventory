@@ -2,6 +2,29 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.7.0] - 2026-01-14
+
+### Changed
+- **CSS Modular Architecture** - Refactored monolithic CSS (2500+ lines) into 12 modular files
+  - `base/` - Variables, reset, typography
+  - `layout/` - Grid, sidebar, header
+  - `pages/` - Login, reset-password, dashboard
+  - `utilities.css` - Utility classes
+  - `responsive.css` - All media queries consolidated
+  - `main.css` - Single entry point with `@import`
+
+### Improved
+- **Login Page Design** - Optimized proportions for desktop and mobile
+  - More compact card layout (420px → 380px)
+  - Reduced padding and font sizes
+  - Better responsive breakpoints (480px, 360px)
+- **Mobile Search Box** - Smaller font size on mobile (900px and below)
+
+### Removed
+- **Deleted `style.css`** - 1684 lines removed (fully replaced by modular structure)
+
+---
+
 ## [1.6.0] - 2026-01-14
 
 ### Added

@@ -1,0 +1,70 @@
+/* 
+ * Sidebar Navigation Styles
+ * Left sidebar with navigation menu
+ */
+
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100%;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 0.75rem;
+    z-index: 10;
+}
+
+.brand {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    margin-bottom: 1.5rem;
+    padding: 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.brand ion-icon {
+    font-size: 1.4rem;
+}
+
+.nav-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nav-item {
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.nav-item ion-icon {
+    font-size: 1.1rem;
+}
+
+.nav-item:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-main);
+}
+
+.nav-item.active {
+    background: rgba(99, 91, 255, 0.12);
+    color: var(--accent-primary);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
