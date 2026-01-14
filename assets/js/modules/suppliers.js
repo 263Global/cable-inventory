@@ -44,7 +44,7 @@ function initSuppliersModule(App) {
             <div class="filter-bar mb-4">
                 <div class="search-box">
                     <ion-icon name="search-outline"></ion-icon>
-                    <input type="text" id="supplier-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                    <input type="text" id="supplier-search" placeholder="Search by name..." value="${searchQuery}">
                 </div>
             </div>
 

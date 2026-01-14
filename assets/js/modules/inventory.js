@@ -60,7 +60,7 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
         <div class="filter-bar mb-4">
             <div class="search-box">
                 <ion-icon name="search-outline"></ion-icon>
-                <input type="text" id="inventory-search" class="form-control" placeholder="Search Resource ID or Cable..." value="${searchQuery}">
+                <input type="text" id="inventory-search" placeholder="Search Resource ID or Cable..." value="${searchQuery}">
             </div>
             <select id="inventory-status-filter" class="form-control" style="max-width: 160px;">
                 <option value="">All Status</option>
@@ -93,10 +93,6 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
         ` : ''}
         <style>
             .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
-            .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-            .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
-            .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-            .search-box input { padding-left: 2.25rem; }
             .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
             .inventory-row-checkbox, #inventory-select-all { cursor: pointer; width: 16px; height: 16px; }
         </style>

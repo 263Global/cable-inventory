@@ -45,7 +45,7 @@ function initCustomersModule(App) {
             <div class="filter-bar mb-4">
                 <div class="search-box">
                     <ion-icon name="search-outline"></ion-icon>
-                    <input type="text" id="customer-search" class="form-control" placeholder="Search..." value="${searchQuery}">
+                    <input type="text" id="customer-search" placeholder="Search by name or email..." value="${searchQuery}">
                 </div>
             </div>
 

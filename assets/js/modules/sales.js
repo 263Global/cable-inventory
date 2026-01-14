@@ -82,7 +82,7 @@ export function renderSales(context, filters = {}) {
         <div class="filter-bar mb-4">
             <div class="search-box">
                 <ion-icon name="search-outline"></ion-icon>
-                <input type="text" id="sales-search" class="form-control" placeholder="Search Order ID or Customer..." value="${searchQuery}">
+                <input type="text" id="sales-search" placeholder="Search Order ID or Customer..." value="${searchQuery}">
             </div>
             <select id="sales-salesperson-filter" class="form-control" style="max-width: 180px;">
                 <option value="">All Salespersons</option>
@@ -133,10 +133,6 @@ export function renderSales(context, filters = {}) {
             .customer-name { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
             .col-revenue, .col-margin, .col-margin-percent { text-align: right; }
             .inventory-link { font-size: 0.7rem; color: #999 !important; margin-top: 2px; }
-            .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-            .search-box { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
-            .search-box ion-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-            .search-box input { padding-left: 2.25rem; }
             .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
             .sales-row-checkbox, #sales-select-all { cursor: pointer; width: 16px; height: 16px; }
         </style>

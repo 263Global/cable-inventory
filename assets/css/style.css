@@ -1310,6 +1310,53 @@ h6 {
     color: #cd7f32;
 }
 
+/* ===== Filter Bar & Search Box ===== */
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.search-box ion-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+}
+
+.search-box input::placeholder {
+    color: var(--text-muted);
+}
+
 /* ===== Sales Order Form - 3-Column Layout Responsive ===== */
 
 /* Mobile/Tablet: Single column stacked layout */
@@ -1343,7 +1390,7 @@ h6 {
     }
 
     /* Nested grid (Sales Info + Cost Structure) - stack on mobile */
-    .sales-form-grid > div:nth-child(2) > div:first-child {
+    .sales-form-grid>div:nth-child(2)>div:first-child {
         grid-template-columns: 1fr !important;
         gap: 1rem !important;
     }
