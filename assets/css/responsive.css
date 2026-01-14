@@ -251,6 +251,16 @@
         max-width: 200px;
     }
 
+    .filter-bar .search-box input {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.875rem 0.6rem 2.25rem;
+    }
+
+    .filter-bar .search-box ion-icon {
+        font-size: 0.95rem;
+        left: 0.75rem;
+    }
+
     .filter-bar select {
         max-width: 120px !important;
         font-size: 0.75rem;
