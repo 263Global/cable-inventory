@@ -6,7 +6,7 @@
  * to access shared state and utilities.
  */
 
-import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown, initSimpleDropdown } from './searchableDropdown.js';
 
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
@@ -35,10 +35,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
         let soldCapacity = 0;
         linkedSales.forEach(s => { soldCapacity += (s.capacity?.value || 0); });
         const availableCapacity = (r.capacity?.value || 0) - soldCapacity;
-        const isSelected = existingOrder?.inventoryLink === r.resourceId ? 'selected' : '';
 
-        return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
-    }).join('');
+        return {
+            value: r.resourceId,
+            label: `${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)`
+        };
+    });
 
     // Generate customer options for searchable dropdown
     const customers = window.Store.getCustomers();
@@ -152,19 +154,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Model <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="salesModel" id="sales-model-select">
-                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
-                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
-                            </select>
+                            <div id="sales-model-dropdown-placeholder" data-selected="${existingOrder?.salesModel || 'Lease'}"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sales Type <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
-                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
-                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
-                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
-                            </select>
+                            <div id="sales-type-dropdown-placeholder" data-selected="${existingOrder?.salesType || 'Resale'}"></div>
                         </div>
                     </div>
 
@@ -189,21 +183,13 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Unit</label>
-                            <select class="form-control" name="capacity.unit">
-                                <option ${existingOrder?.capacity?.unit === 'Gbps' || !existingOrder ? 'selected' : ''}>Gbps</option>
-                                <option ${existingOrder?.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
-                                <option ${existingOrder?.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                            </select>
+                            <div id="capacity-unit-dropdown-placeholder" data-selected="${existingOrder?.capacity?.unit || 'Gbps'}"></div>
                         </div>
                     </div>
 
-                    <!-- Linked Resource (visibility controlled by Sales Type) -->
                     <div class="form-group" id="linked-resource-group">
                         <label class="form-label">Linked Resource (Available)</label>
-                        <select class="form-control" name="inventoryLink" id="inventory-link-select">
-                            <option value="">Select Resource...</option>
-                            ${resourceOptions}
-                        </select>
+                        <div id="linked-resource-dropdown-placeholder" data-selected="${existingOrder?.inventoryLink || ''}"></div>
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 
@@ -231,17 +217,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Salesperson <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="salesperson" required>
-                                <option value="">Select...</option>
-                                <option ${existingOrder?.salesperson === 'Janna Dai' ? 'selected' : ''}>Janna Dai</option>
-                                <option ${existingOrder?.salesperson === 'Miki Chen' ? 'selected' : ''}>Miki Chen</option>
-                                <option ${existingOrder?.salesperson === 'Wayne Jiang' ? 'selected' : ''}>Wayne Jiang</option>
-                                <option ${existingOrder?.salesperson === 'Kristen Gan' ? 'selected' : ''}>Kristen Gan</option>
-                                <option ${existingOrder?.salesperson === 'Becky Hai' ? 'selected' : ''}>Becky Hai</option>
-                                <option ${existingOrder?.salesperson === 'Wolf Yuan' ? 'selected' : ''}>Wolf Yuan</option>
-                                <option ${existingOrder?.salesperson === 'Yifeng Jiang' ? 'selected' : ''}>Yifeng Jiang</option>
-                                <option ${existingOrder?.salesperson === 'Procurement Team' ? 'selected' : ''}>Procurement Team</option>
-                            </select>
+                            <div id="salesperson-dropdown-placeholder" data-selected="${existingOrder?.salesperson || ''}"></div>
                         </div>
                     </div>
 
@@ -454,6 +430,42 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
     context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
 
+    // Initialize Sales Model simple dropdown
+    const salesModelPlaceholder = document.getElementById('sales-model-dropdown-placeholder');
+    if (salesModelPlaceholder) {
+        const selectedModel = salesModelPlaceholder.dataset.selected || 'Lease';
+        salesModelPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesModel',
+            id: 'sales-model-select',
+            options: [
+                { value: 'Lease', label: 'Lease (月租模式)' },
+                { value: 'IRU', label: 'IRU (买断模式)' }
+            ],
+            selectedValue: selectedModel,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('sales-model-select-container');
+    }
+
+    // Initialize Sales Type simple dropdown
+    const salesTypePlaceholder = document.getElementById('sales-type-dropdown-placeholder');
+    if (salesTypePlaceholder) {
+        const selectedType = salesTypePlaceholder.dataset.selected || 'Resale';
+        salesTypePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesType',
+            id: 'sales-type-select',
+            options: [
+                { value: 'Resale', label: 'Resale (外部资源)' },
+                { value: 'Hybrid', label: 'Hybrid (混合资源)' },
+                { value: 'Inventory', label: 'Inventory (自有资源)' },
+                { value: 'Swapped Out', label: 'Swapped Out (置换出去)' }
+            ],
+            selectedValue: selectedType,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('sales-type-select-container');
+    }
+
     // Initialize Customer searchable dropdown
     const customerPlaceholder = document.getElementById('customer-dropdown-placeholder');
     if (customerPlaceholder) {
@@ -467,6 +479,62 @@ export function openAddSalesModal(context, existingOrderId = null) {
             placeholder: '搜索客户...'
         });
         initSearchableDropdown(`${dropdownId}-container`);
+    }
+
+    // Initialize Capacity Unit simple dropdown
+    const capacityUnitPlaceholder = document.getElementById('capacity-unit-dropdown-placeholder');
+    if (capacityUnitPlaceholder) {
+        const selectedUnit = capacityUnitPlaceholder.dataset.selected || 'Gbps';
+        capacityUnitPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'capacity.unit',
+            id: 'capacity-unit-select',
+            options: [
+                { value: 'Gbps', label: 'Gbps' },
+                { value: 'Wavelength', label: 'Wavelength' },
+                { value: 'Fiber Pair', label: 'Fiber Pair' }
+            ],
+            selectedValue: selectedUnit,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('capacity-unit-select-container');
+    }
+
+    // Initialize Linked Resource simple dropdown
+    const linkedResourcePlaceholder = document.getElementById('linked-resource-dropdown-placeholder');
+    if (linkedResourcePlaceholder) {
+        const selectedResource = linkedResourcePlaceholder.dataset.selected || '';
+        linkedResourcePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'inventoryLink',
+            id: 'inventory-link-select',
+            options: [{ value: '', label: 'Select Resource...' }, ...resourceOptions],
+            selectedValue: selectedResource,
+            placeholder: 'Select Resource...'
+        });
+        initSimpleDropdown('inventory-link-select-container');
+    }
+
+    // Initialize Salesperson simple dropdown
+    const salespersonPlaceholder = document.getElementById('salesperson-dropdown-placeholder');
+    if (salespersonPlaceholder) {
+        const selectedPerson = salespersonPlaceholder.dataset.selected || '';
+        salespersonPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesperson',
+            id: 'salesperson-select',
+            options: [
+                { value: '', label: 'Select...' },
+                { value: 'Janna Dai', label: 'Janna Dai' },
+                { value: 'Miki Chen', label: 'Miki Chen' },
+                { value: 'Wayne Jiang', label: 'Wayne Jiang' },
+                { value: 'Kristen Gan', label: 'Kristen Gan' },
+                { value: 'Becky Hai', label: 'Becky Hai' },
+                { value: 'Wolf Yuan', label: 'Wolf Yuan' },
+                { value: 'Yifeng Jiang', label: 'Yifeng Jiang' },
+                { value: 'Procurement Team', label: 'Procurement Team' }
+            ],
+            selectedValue: selectedPerson,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('salesperson-select-container');
     }
 
     // Attach Event Listeners for Dynamic Logic
