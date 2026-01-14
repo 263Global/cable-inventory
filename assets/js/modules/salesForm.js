@@ -1777,3 +1777,123 @@ export async function handleSalesSubmit(context, form) {
 
     context.renderView('sales');
 }
+
+/**
+ * Open a renewal modal for the given sales order.
+ * Allows user to set new start date and term, keeping the same order ID.
+ */
+export function openRenewModal(context, salesOrderId) {
+    const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
+    if (!order) {
+        alert('Order not found');
+        return;
+    }
+
+    // Calculate default new start date (original end date + 1 day)
+    const originalEndDate = order.dates?.end || '';
+    let newStartDate = '';
+    if (originalEndDate) {
+        const endDate = new Date(originalEndDate);
+        endDate.setDate(endDate.getDate() + 1);
+        newStartDate = endDate.toISOString().split('T')[0];
+    }
+
+    const originalTerm = order.dates?.term || 12;
+
+    const modalContent = `
+        <div style="max-width: 400px; margin: 0 auto;">
+            <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <ion-icon name="refresh-outline" style="font-size: 1.25rem; color: var(--accent-warning);"></ion-icon>
+                    <h4 style="margin: 0; color: var(--text-primary);">续约订单</h4>
+                </div>
+                
+                <div style="background: var(--bg-card); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">订单号 (不变)</div>
+                    <div class="font-mono" style="font-size: 1rem; color: var(--accent-primary); font-weight: 600;">${salesOrderId}</div>
+                </div>
+                
+                <div style="background: var(--bg-card); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">原合同期限</div>
+                    <div style="font-size: 0.9rem; color: var(--text-primary);">${order.dates?.start || '-'} 至 ${originalEndDate || '-'} (${originalTerm} 个月)</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同开始日期</label>
+                <input type="date" class="form-control" name="renewStartDate" id="renew-start-date" value="${newStartDate}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同期限 (月)</label>
+                <input type="number" class="form-control" name="renewTerm" id="renew-term" value="${originalTerm}" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同结束日期 <small style="color: var(--text-muted);">(自动计算)</small></label>
+                <input type="date" class="form-control" name="renewEndDate" id="renew-end-date" readonly style="background: var(--bg-card-hover);">
+            </div>
+        </div>
+    `;
+
+    context.openModal(`续约: ${salesOrderId}`, modalContent, async (form) => {
+        const startDate = form.querySelector('#renew-start-date').value;
+        const term = parseInt(form.querySelector('#renew-term').value) || 12;
+        const endDate = form.querySelector('#renew-end-date').value;
+
+        if (!startDate || !endDate) {
+            alert('请填写完整的日期信息');
+            return false;
+        }
+
+        // Calculate new status based on dates
+        const today = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        let newStatus = 'Active';
+        if (today < start) newStatus = 'Pending';
+        if (today > end) newStatus = 'Expired';
+
+        // Update order with new dates
+        const updatedData = {
+            ...order,
+            dates: {
+                start: startDate,
+                term: term,
+                end: endDate
+            },
+            status: newStatus
+        };
+
+        await window.Store.updateSalesOrder(salesOrderId, updatedData);
+
+        // Show success message
+        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！新合同: ${startDate} - ${endDate}`) : null;
+
+        context.renderView('sales');
+        return true;
+    }, false);
+
+    // Attach event listeners for auto-calculating end date
+    setTimeout(() => {
+        const startInput = document.getElementById('renew-start-date');
+        const termInput = document.getElementById('renew-term');
+        const endInput = document.getElementById('renew-end-date');
+
+        const calculateEndDate = () => {
+            if (!startInput.value || !termInput.value) return;
+            const start = new Date(startInput.value);
+            const months = parseInt(termInput.value) || 0;
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + months);
+            endInput.value = end.toISOString().split('T')[0];
+        };
+
+        if (startInput && termInput) {
+            startInput.addEventListener('change', calculateEndDate);
+            termInput.addEventListener('input', calculateEndDate);
+            // Calculate initial end date
+            calculateEndDate();
+        }
+    }, 100);
+}

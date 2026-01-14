@@ -233,6 +233,9 @@ export function renderSales(context, filters = {}) {
                                     <button class="btn btn-primary" style="padding:0.4rem" onclick="App.editSalesOrder('${item.salesOrderId}')" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
+                                    <button class="btn btn-warning" style="padding:0.4rem" onclick="App.openRenewModal('${item.salesOrderId}')" title="Renew">
+                                        <ion-icon name="refresh-outline"></ion-icon>
+                                    </button>
                                     <button class="btn btn-danger" style="padding:0.4rem" onclick="window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales');" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
@@ -455,7 +458,12 @@ export function viewSalesDetails(context, salesOrderId) {
 
                 <!-- Contract Period -->
                 <div style="${sectionStyle}">
-                    <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Contract Period</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h4 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Contract Period</h4>
+                        <button class="btn btn-warning" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="App.closeModal(); App.openRenewModal('${order.salesOrderId}');">
+                            <ion-icon name="refresh-outline"></ion-icon> Renew
+                        </button>
+                    </div>
                     <table style="width:100%;">
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td class="font-mono">${term} months</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
