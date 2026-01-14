@@ -38,7 +38,8 @@ import {
     openAddSalesModal as openAddSalesModalModule,
     attachSalesFormListeners as attachSalesFormListenersModule,
     calculateSalesFinancials as calculateSalesFinancialsModule,
-    handleSalesSubmit as handleSalesSubmitModule
+    handleSalesSubmit as handleSalesSubmitModule,
+    openRenewModal as openRenewModalModule
 } from './modules/salesForm.js';
 
 // ============================================================================
@@ -365,6 +366,10 @@ const App = {
 
     editSalesOrder(salesOrderId) {
         editSalesOrderModule(this, salesOrderId);
+    },
+
+    openRenewModal(salesOrderId) {
+        openRenewModalModule(this, salesOrderId);
     },
     //#endregion Sales
 

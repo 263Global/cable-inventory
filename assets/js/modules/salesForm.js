@@ -6,6 +6,8 @@
  * to access shared state and utilities.
  */
 
+import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
     const existingOrder = existingOrderId ? window.Store.getSales().find(s => s.salesOrderId === existingOrderId) : null;
@@ -38,12 +40,14 @@ export function openAddSalesModal(context, existingOrderId = null) {
         return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
     }).join('');
 
-    // Generate customer options from Store
+    // Generate customer options for searchable dropdown
     const customers = window.Store.getCustomers();
-    const customerOptions = customers.map(c => {
-        const isSelected = existingOrder?.customerId === c.id ? 'selected' : '';
-        return `<option value="${c.id}" ${isSelected}>${c.short_name}</option>`;
-    }).join('');
+    const customerDropdownOptions = customers.map(c => ({
+        value: c.id,
+        label: c.short_name,
+        subtitle: c.full_name || ''
+    }));
+    const existingCustomerId = existingOrder?.customerId || '';
 
     // Generate supplier options for cost card dropdowns
     const suppliers = window.Store.getSuppliers();
@@ -144,6 +148,27 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         <div class="section-card">
                     <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
 
+                    <!-- Sales Model & Type (FIRST - determines other field behavior) -->
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Sales Model <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                            <select class="form-control" name="salesModel" id="sales-model-select">
+                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
+                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Sales Type <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
+                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
+                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
+                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
+                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
+                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Order ID + Customer -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Order ID <small style="color:var(--text-muted)">${isEditMode ? '(Read-only)' : '(Auto if blank)'}</small></label>
@@ -151,23 +176,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Customer <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="customerId" required>
-                                <option value="">Select Customer...</option>
-                                ${customerOptions}
-                            </select>
+                            <div id="customer-dropdown-placeholder" data-field="customerId" data-selected="${existingCustomerId}"></div>
                             ${customers.length === 0 ? '<small style="color:var(--text-muted)">No customers yet. <a href="#" onclick="App.renderView(\'customers\'); App.closeModal(); return false;">Add one first</a>.</small>' : ''}
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Linked Resource (Available)</label>
-                        <select class="form-control" name="inventoryLink" required>
-                            <option value="">Select Resource...</option>
-                            ${resourceOptions}
-                        </select>
-                        ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
-                    </div>
-
+                    <!-- Capacity Sold -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Capacity Sold</label>
@@ -183,6 +197,17 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Linked Resource (visibility controlled by Sales Type) -->
+                    <div class="form-group" id="linked-resource-group">
+                        <label class="form-label">Linked Resource (Available)</label>
+                        <select class="form-control" name="inventoryLink" id="inventory-link-select">
+                            <option value="">Select Resource...</option>
+                            ${resourceOptions}
+                        </select>
+                        ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
+                    </div>
+
+                    <!-- Contract Period -->
                     <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Contract Start</label>
@@ -198,6 +223,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Status + Salesperson -->
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Status</label>
@@ -219,6 +245,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
+                    <!-- Delivery Location -->
                     <h5 class="mt-4 mb-2">Delivery Location</h5>
                     <!-- A-End -->
                     <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
@@ -249,26 +276,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                     </div>
 
-                    <h5 class="mt-4 mb-2">Sales Model & Type</h5>
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Sales Model</label>
-                            <select class="form-control" name="salesModel" id="sales-model-select">
-                                <option value="Lease" ${existingOrder?.salesModel === 'Lease' || !existingOrder ? 'selected' : ''}>Lease (月租模式)</option>
-                                <option value="IRU" ${existingOrder?.salesModel === 'IRU' ? 'selected' : ''}>IRU (买断模式)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Sales Type</label>
-                            <select class="form-control calc-trigger" name="salesType" id="sales-type-select">
-                                <option value="Resale" ${existingOrder?.salesType === 'Resale' || !existingOrder ? 'selected' : ''}>Resale (外部资源)</option>
-                                <option value="Hybrid" ${existingOrder?.salesType === 'Hybrid' ? 'selected' : ''}>Hybrid (混合资源)</option>
-                                <option value="Inventory" ${existingOrder?.salesType === 'Inventory' ? 'selected' : ''}>Inventory (自有资源)</option>
-                                <option value="Swapped Out" ${existingOrder?.salesType === 'Swapped Out' ? 'selected' : ''}>Swapped Out (置换出去)</option>
-                            </select>
-                        </div>
-                    </div>
-
+                    <!-- Revenue / Price -->
                     <h5 class="mt-4 mb-2">Revenue / Price</h5>
                     <!-- Lease Revenue Fields -->
                     <div id="lease-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? 'display:none;' : ''}">
@@ -446,6 +454,21 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
     context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
 
+    // Initialize Customer searchable dropdown
+    const customerPlaceholder = document.getElementById('customer-dropdown-placeholder');
+    if (customerPlaceholder) {
+        const selectedCustomerId = customerPlaceholder.dataset.selected || '';
+        const dropdownId = 'sales-customer-dropdown';
+        customerPlaceholder.outerHTML = renderSearchableDropdown({
+            name: 'customerId',
+            id: dropdownId,
+            options: customerDropdownOptions,
+            selectedValue: selectedCustomerId,
+            placeholder: '搜索客户...'
+        });
+        initSearchableDropdown(`${dropdownId}-container`);
+    }
+
     // Attach Event Listeners for Dynamic Logic
     context.attachSalesFormListeners();
 
@@ -557,11 +580,25 @@ export function openAddSalesModal(context, existingOrderId = null) {
 }
 
 export function attachSalesFormListeners(context) {
-    // Generate supplier options for cost card dropdowns
+    // Generate supplier options for searchable dropdowns
     const suppliers = window.Store.getSuppliers();
-    const supplierOptionsHTML = suppliers.map(s =>
-        `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
-    ).join('');
+    const supplierOptions = suppliers.map(s => ({
+        value: s.id,
+        label: s.short_name,
+        subtitle: s.full_name || ''
+    }));
+
+    // Helper function to create supplier searchable dropdown HTML
+    const createSupplierDropdown = (fieldName, id) => {
+        return renderSearchableDropdown({
+            name: fieldName,
+            id: id,
+            options: supplierOptions,
+            selectedValue: '',
+            placeholder: '搜索供应商...'
+        });
+    };
+
 
     // ===== Cost Card Templates =====
     const costCardTemplates = {
@@ -578,10 +615,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.cable.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.cable.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -696,10 +730,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.backhaulA.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.backhaulA.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -774,10 +805,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.backhaulZ.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.backhaulZ.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -852,10 +880,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.xcA.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.xcA.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -905,10 +930,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.xcZ.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.xcZ.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -962,10 +984,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field-base="costs.other.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field-base="costs.other.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -1032,6 +1051,17 @@ export function attachSalesFormListeners(context) {
         }
 
         cardsContainer.appendChild(card);
+
+        // Initialize supplier searchable dropdown
+        const supplierPlaceholder = card.querySelector('.supplier-dropdown-placeholder');
+        if (supplierPlaceholder) {
+            const fieldName = supplierPlaceholder.dataset.field || supplierPlaceholder.dataset.fieldBase;
+            const dropdownId = `supplier-${type}-${Date.now()}`;
+            supplierPlaceholder.outerHTML = createSupplierDropdown(fieldName, dropdownId);
+            // Initialize the dropdown after it's in the DOM
+            setTimeout(() => initSearchableDropdown(`${dropdownId}-container`), 10);
+        }
+
 
         // Update button state (only for non-multi types)
         if (!isMulti) {
@@ -1111,6 +1141,7 @@ export function attachSalesFormListeners(context) {
                     const months = parseInt(termMonthsInput.value) || 0;
                     const end = new Date(start);
                     end.setMonth(end.getMonth() + months);
+                    end.setDate(end.getDate() - 1); // End date is the last day of the term
                     endDateInput.value = end.toISOString().split('T')[0];
                     syncCostInputs();
                 }
@@ -1334,11 +1365,32 @@ export function attachSalesFormListeners(context) {
     // ===== Sales Type Smart Hints =====
     const salesTypeSelect = document.getElementById('sales-type-select');
     const addCableBtn = document.getElementById('add-cable-btn');
+    const linkedResourceGroup = document.getElementById('linked-resource-group');
+    const inventoryLinkSelect = document.getElementById('inventory-link-select');
 
     const updateSmartHints = () => {
         const type = salesTypeSelect?.value;
         const isInventoryOrSwap = (type === 'Inventory' || type === 'Swapped Out');
 
+        // ===== Linked Resource Visibility =====
+        if (linkedResourceGroup && inventoryLinkSelect) {
+            if (type === 'Resale') {
+                // Hide for Resale - not needed
+                linkedResourceGroup.style.display = 'none';
+                inventoryLinkSelect.removeAttribute('required');
+                inventoryLinkSelect.value = ''; // Clear selection
+            } else if (type === 'Swapped Out') {
+                // Show but optional for Swapped Out
+                linkedResourceGroup.style.display = '';
+                inventoryLinkSelect.removeAttribute('required');
+            } else {
+                // Required for Inventory and Hybrid
+                linkedResourceGroup.style.display = '';
+                inventoryLinkSelect.setAttribute('required', 'required');
+            }
+        }
+
+        // ===== Cable Cost Card Logic =====
         if (addCableBtn) {
             if (isInventoryOrSwap) {
                 // Hide 3rd Party Cable button for Inventory/Swapped Out
@@ -1386,6 +1438,7 @@ export function attachSalesFormListeners(context) {
         const months = parseInt(termInput.value) || 0;
         const end = new Date(start);
         end.setMonth(end.getMonth() + months);
+        end.setDate(end.getDate() - 1); // End date is the last day of the term
         endDateInput.value = end.toISOString().split('T')[0];
         updateStatus();
     };
@@ -1776,4 +1829,169 @@ export async function handleSalesSubmit(context, form) {
     context._editingOrderId = null;
 
     context.renderView('sales');
+}
+
+/**
+ * Open a renewal modal for the given sales order.
+ * Allows user to set new start date and term, keeping the same order ID.
+ */
+export function openRenewModal(context, salesOrderId) {
+    const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
+    if (!order) {
+        alert('Order not found');
+        return;
+    }
+
+    // Calculate default new start date (original end date + 1 day)
+    const originalEndDate = order.dates?.end || '';
+    let newStartDate = '';
+    if (originalEndDate) {
+        const endDate = new Date(originalEndDate);
+        endDate.setDate(endDate.getDate() + 1);
+        newStartDate = endDate.toISOString().split('T')[0];
+    }
+
+    const originalTerm = order.dates?.term || 12;
+
+    // Get current pricing info
+    const currentMRC = order.financials?.mrcSales || 0;
+    const currentNRC = order.financials?.nrcSales || 0;
+
+    const modalContent = `
+        <div style="max-width: 400px; margin: 0 auto;">
+            <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <ion-icon name="refresh-outline" style="font-size: 1.25rem; color: var(--accent-warning);"></ion-icon>
+                    <h4 style="margin: 0; color: var(--text-primary);">续约订单</h4>
+                </div>
+                
+                <div style="background: var(--bg-card); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">订单号 (不变)</div>
+                    <div class="font-mono" style="font-size: 1rem; color: var(--accent-primary); font-weight: 600;">${salesOrderId}</div>
+                </div>
+                
+                <div style="background: var(--bg-card); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">原合同期限</div>
+                    <div style="font-size: 0.9rem; color: var(--text-primary);">${order.dates?.start || '-'} 至 ${originalEndDate || '-'} (${originalTerm} 个月)</div>
+                </div>
+            </div>
+            
+            <!-- 价格信息区域 -->
+            <div style="background: linear-gradient(135deg, rgba(99, 91, 255, 0.08), rgba(99, 91, 255, 0.02)); border: 1px solid rgba(99, 91, 255, 0.2); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <ion-icon name="pricetag-outline" style="font-size: 1.25rem; color: var(--accent-primary);"></ion-icon>
+                    <h4 style="margin: 0; color: var(--text-primary);">续约价格</h4>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 0.8rem;">
+                            月费 MRC ($)
+                            <small style="color: var(--text-muted); display: block;">原: $${currentMRC.toLocaleString()}</small>
+                        </label>
+                        <input type="number" class="form-control" name="renewMRC" id="renew-mrc" value="${currentMRC}" min="0" step="0.01">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 0.8rem;">
+                            一次性费用 NRC ($)
+                            <small style="color: var(--text-muted); display: block;">原: $${currentNRC.toLocaleString()}</small>
+                        </label>
+                        <input type="number" class="form-control" name="renewNRC" id="renew-nrc" value="${currentNRC}" min="0" step="0.01">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同开始日期</label>
+                <input type="date" class="form-control" name="renewStartDate" id="renew-start-date" value="${newStartDate}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同期限 (月)</label>
+                <input type="number" class="form-control" name="renewTerm" id="renew-term" value="${originalTerm}" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">新合同结束日期 <small style="color: var(--text-muted);">(自动计算)</small></label>
+                <input type="date" class="form-control" name="renewEndDate" id="renew-end-date" readonly style="background: var(--bg-card-hover);">
+            </div>
+        </div>
+    `;
+
+    context.openModal(`续约: ${salesOrderId}`, modalContent, async (form) => {
+        const startDate = form.querySelector('#renew-start-date').value;
+        const term = parseInt(form.querySelector('#renew-term').value) || 12;
+        const endDate = form.querySelector('#renew-end-date').value;
+        const newMRC = parseFloat(form.querySelector('#renew-mrc').value) || 0;
+        const newNRC = parseFloat(form.querySelector('#renew-nrc').value) || 0;
+
+        if (!startDate || !endDate) {
+            alert('请填写完整的日期信息');
+            return false;
+        }
+
+        // Calculate new status based on dates
+        const today = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        let newStatus = 'Active';
+        if (today < start) newStatus = 'Pending';
+        if (today > end) newStatus = 'Expired';
+
+        // Update order with new dates and prices
+        const updatedData = {
+            ...order,
+            dates: {
+                start: startDate,
+                term: term,
+                end: endDate
+            },
+            financials: {
+                ...order.financials,
+                mrcSales: newMRC,
+                nrcSales: newNRC
+            },
+            status: newStatus
+        };
+
+        await window.Store.updateSalesOrder(salesOrderId, updatedData);
+
+        // Build success message
+        let priceChangeMsg = '';
+        if (newMRC !== currentMRC) {
+            priceChangeMsg += ` MRC: $${currentMRC} → $${newMRC}`;
+        }
+        if (newNRC !== currentNRC) {
+            priceChangeMsg += ` NRC: $${currentNRC} → $${newNRC}`;
+        }
+
+        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！${priceChangeMsg ? '价格已更新:' + priceChangeMsg : ''}`) : null;
+
+        context.renderView('sales');
+        return true;
+    }, false);
+
+    // Attach event listeners for auto-calculating end date
+    setTimeout(() => {
+        const startInput = document.getElementById('renew-start-date');
+        const termInput = document.getElementById('renew-term');
+        const endInput = document.getElementById('renew-end-date');
+
+        const calculateEndDate = () => {
+            if (!startInput.value || !termInput.value) return;
+            const start = new Date(startInput.value);
+            const months = parseInt(termInput.value) || 0;
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + months);
+            end.setDate(end.getDate() - 1); // End date is the last day of the term
+            endInput.value = end.toISOString().split('T')[0];
+        };
+
+        if (startInput && termInput) {
+            startInput.addEventListener('change', calculateEndDate);
+            termInput.addEventListener('input', calculateEndDate);
+            // Calculate initial end date
+            calculateEndDate();
+        }
+    }, 100);
 }

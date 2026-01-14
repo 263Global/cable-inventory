@@ -622,3 +622,127 @@ select.form-control {
         white-space: nowrap;
     }
 }
+
+/* ===== Searchable Dropdown ===== */
+.searchable-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+/* Input wrapper acts like a form-control */
+.searchable-dropdown-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchable-dropdown-input-wrapper .searchable-dropdown-input {
+    width: 100%;
+    padding-right: 2rem;
+    cursor: pointer;
+}
+
+.searchable-dropdown-input-wrapper .dropdown-arrow {
+    position: absolute;
+    right: 0.75rem;
+    color: var(--text-muted);
+    font-size: 1rem;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+}
+
+.searchable-dropdown-input-wrapper.active .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.searchable-dropdown-input-wrapper.active .searchable-dropdown-input {
+    border-color: var(--accent-primary);
+    border-width: 2px;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding-top: calc(0.5rem - 1px);
+    padding-bottom: calc(0.5rem + 1px);
+}
+
+/* Dropdown menu */
+.searchable-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 2px solid var(--accent-primary);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 240px;
+    overflow: hidden;
+}
+
+/* Options container */
+.searchable-dropdown-options {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+/* Individual option */
+.searchable-dropdown-option {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    transition: background 0.1s ease, color 0.1s ease;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.searchable-dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.searchable-dropdown-option:hover {
+    background: rgba(99, 91, 255, 0.05);
+}
+
+.searchable-dropdown-option:hover .option-label {
+    color: var(--accent-primary);
+}
+
+.searchable-dropdown-option.selected {
+    color: var(--accent-primary);
+    background: rgba(99, 91, 255, 0.05);
+}
+
+.searchable-dropdown-option .option-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.searchable-dropdown-option .option-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.searchable-dropdown-option.selected .option-label {
+    color: var(--accent-primary);
+}
+
+/* Empty message */
+.searchable-dropdown-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .searchable-dropdown-option {
+        padding: 1rem 1.25rem;
+    }
+
+    .searchable-dropdown-option .option-label {
+        font-size: 1rem;
+    }
+}

@@ -6,6 +6,8 @@
  * to access shared state and utilities.
  */
 
+import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+
 export function renderInventory(context, searchQuery = '', page = 1, statusFilter = '') {
     // Check if coming from Dashboard with an expiring filter
     if (context._pendingFilter === 'expiring' && !statusFilter) {
@@ -499,11 +501,15 @@ export function openInventoryModal(context, resourceId = null) {
         }
     }
 
-    // Generate supplier options for all cost card dropdowns
+    // Generate supplier options for searchable dropdown
     const suppliers = window.Store.getSuppliers();
-    const supplierOptionsHTML = suppliers.map(s =>
-        `<option value="${s.id}">${s.short_name}</option>`
-    ).join('');
+    const supplierOptions = suppliers.map(s => ({
+        value: s.id,
+        label: s.short_name,
+        subtitle: s.full_name || ''
+    }));
+    const existingSupplier = item.acquisition?.supplier || '';
+
 
     const formHTML = `
                                                                                                                         ${item.usage?.currentUser ? `
@@ -560,10 +566,7 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Supplier</label>
-                                                                                                                                <select class="form-control" name="acquisition.supplier">
-                                                                                                                                    <option value="">Select Supplier...</option>
-                                                                                                                                    ${supplierOptionsHTML}
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-supplier-dropdown-placeholder"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Contract Ref</label>
@@ -766,6 +769,19 @@ export function openInventoryModal(context, resourceId = null) {
         return true;
     }, true);
 
+    // Initialize supplier searchable dropdown
+    const supplierDropdownPlaceholder = document.getElementById('inventory-supplier-dropdown-placeholder');
+    if (supplierDropdownPlaceholder) {
+        supplierDropdownPlaceholder.outerHTML = renderSearchableDropdown({
+            name: 'acquisition.supplier',
+            id: 'inventory-supplier-dropdown',
+            options: supplierOptions,
+            selectedValue: existingSupplier,
+            placeholder: '搜索供应商...'
+        });
+        initSearchableDropdown('inventory-supplier-dropdown-container');
+    }
+
     // Attach Form Event Listeners after modal is rendered
     context.attachInventoryFormListeners();
 }
@@ -822,6 +838,7 @@ export function attachInventoryFormListeners(context) {
         if (startVal && termVal > 0) {
             const startDate = new Date(startVal);
             startDate.setMonth(startDate.getMonth() + termVal);
+            startDate.setDate(startDate.getDate() - 1); // End date is the last day of the term
             // Format as YYYY-MM-DD
             const year = startDate.getFullYear();
             const month = String(startDate.getMonth() + 1).padStart(2, '0');
