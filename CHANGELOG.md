@@ -2,6 +2,27 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.3.0] - 2026-01-14
+
+### Added
+- **ES6 Module Architecture** - Migrated view logic to ES6 modules with `import/export` syntax
+  - `modules/dashboard.js` - Dashboard rendering (~290 lines)
+  - `modules/inventory.js` - Inventory management (~860 lines)
+  - `modules/sales.js` - Sales list view (~553 lines)
+  - `modules/salesForm.js` - Sales form + financial calculations (~1,780 lines)
+
+### Changed
+- **Massive Code Reduction** - Main `app.js` reduced from 3,633 to 514 lines (**-86%**)
+- **Context Parameter Pattern** - All ES6 module functions receive `context` (App object) for shared state access
+- **Module Script Loading** - Updated `index.html` to use `type="module"` for proper ES6 module support
+
+### Technical
+- Global bridge pattern (`window.App = App`) maintained for HTML onclick handler compatibility
+- Thin delegation methods in `app.js` route to ES6 module functions
+- All modules pass Node.js syntax validation
+
+---
+
 ## [1.2.0] - 2026-01-13
 
 ### Added
