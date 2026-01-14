@@ -35,10 +35,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
         let soldCapacity = 0;
         linkedSales.forEach(s => { soldCapacity += (s.capacity?.value || 0); });
         const availableCapacity = (r.capacity?.value || 0) - soldCapacity;
-        const isSelected = existingOrder?.inventoryLink === r.resourceId ? 'selected' : '';
 
-        return `<option value="${r.resourceId}" ${isSelected}>${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)</option>`;
-    }).join('');
+        return {
+            value: r.resourceId,
+            label: `${r.resourceId} - ${r.cableSystem} (${availableCapacity} ${r.capacity?.unit || 'Gbps'} available)`
+        };
+    });
 
     // Generate customer options for searchable dropdown
     const customers = window.Store.getCustomers();
@@ -181,21 +183,13 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Unit</label>
-                            <select class="form-control" name="capacity.unit">
-                                <option ${existingOrder?.capacity?.unit === 'Gbps' || !existingOrder ? 'selected' : ''}>Gbps</option>
-                                <option ${existingOrder?.capacity?.unit === 'Wavelength' ? 'selected' : ''}>Wavelength</option>
-                                <option ${existingOrder?.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                            </select>
+                            <div id="capacity-unit-dropdown-placeholder" data-selected="${existingOrder?.capacity?.unit || 'Gbps'}"></div>
                         </div>
                     </div>
 
-                    <!-- Linked Resource (visibility controlled by Sales Type) -->
                     <div class="form-group" id="linked-resource-group">
                         <label class="form-label">Linked Resource (Available)</label>
-                        <select class="form-control" name="inventoryLink" id="inventory-link-select">
-                            <option value="">Select Resource...</option>
-                            ${resourceOptions}
-                        </select>
+                        <div id="linked-resource-dropdown-placeholder" data-selected="${existingOrder?.inventoryLink || ''}"></div>
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 
@@ -223,17 +217,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Salesperson <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <select class="form-control" name="salesperson" required>
-                                <option value="">Select...</option>
-                                <option ${existingOrder?.salesperson === 'Janna Dai' ? 'selected' : ''}>Janna Dai</option>
-                                <option ${existingOrder?.salesperson === 'Miki Chen' ? 'selected' : ''}>Miki Chen</option>
-                                <option ${existingOrder?.salesperson === 'Wayne Jiang' ? 'selected' : ''}>Wayne Jiang</option>
-                                <option ${existingOrder?.salesperson === 'Kristen Gan' ? 'selected' : ''}>Kristen Gan</option>
-                                <option ${existingOrder?.salesperson === 'Becky Hai' ? 'selected' : ''}>Becky Hai</option>
-                                <option ${existingOrder?.salesperson === 'Wolf Yuan' ? 'selected' : ''}>Wolf Yuan</option>
-                                <option ${existingOrder?.salesperson === 'Yifeng Jiang' ? 'selected' : ''}>Yifeng Jiang</option>
-                                <option ${existingOrder?.salesperson === 'Procurement Team' ? 'selected' : ''}>Procurement Team</option>
-                            </select>
+                            <div id="salesperson-dropdown-placeholder" data-selected="${existingOrder?.salesperson || ''}"></div>
                         </div>
                     </div>
 
@@ -495,6 +479,62 @@ export function openAddSalesModal(context, existingOrderId = null) {
             placeholder: '搜索客户...'
         });
         initSearchableDropdown(`${dropdownId}-container`);
+    }
+
+    // Initialize Capacity Unit simple dropdown
+    const capacityUnitPlaceholder = document.getElementById('capacity-unit-dropdown-placeholder');
+    if (capacityUnitPlaceholder) {
+        const selectedUnit = capacityUnitPlaceholder.dataset.selected || 'Gbps';
+        capacityUnitPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'capacity.unit',
+            id: 'capacity-unit-select',
+            options: [
+                { value: 'Gbps', label: 'Gbps' },
+                { value: 'Wavelength', label: 'Wavelength' },
+                { value: 'Fiber Pair', label: 'Fiber Pair' }
+            ],
+            selectedValue: selectedUnit,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('capacity-unit-select-container');
+    }
+
+    // Initialize Linked Resource simple dropdown
+    const linkedResourcePlaceholder = document.getElementById('linked-resource-dropdown-placeholder');
+    if (linkedResourcePlaceholder) {
+        const selectedResource = linkedResourcePlaceholder.dataset.selected || '';
+        linkedResourcePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'inventoryLink',
+            id: 'inventory-link-select',
+            options: [{ value: '', label: 'Select Resource...' }, ...resourceOptions],
+            selectedValue: selectedResource,
+            placeholder: 'Select Resource...'
+        });
+        initSimpleDropdown('inventory-link-select-container');
+    }
+
+    // Initialize Salesperson simple dropdown
+    const salespersonPlaceholder = document.getElementById('salesperson-dropdown-placeholder');
+    if (salespersonPlaceholder) {
+        const selectedPerson = salespersonPlaceholder.dataset.selected || '';
+        salespersonPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'salesperson',
+            id: 'salesperson-select',
+            options: [
+                { value: '', label: 'Select...' },
+                { value: 'Janna Dai', label: 'Janna Dai' },
+                { value: 'Miki Chen', label: 'Miki Chen' },
+                { value: 'Wayne Jiang', label: 'Wayne Jiang' },
+                { value: 'Kristen Gan', label: 'Kristen Gan' },
+                { value: 'Becky Hai', label: 'Becky Hai' },
+                { value: 'Wolf Yuan', label: 'Wolf Yuan' },
+                { value: 'Yifeng Jiang', label: 'Yifeng Jiang' },
+                { value: 'Procurement Team', label: 'Procurement Team' }
+            ],
+            selectedValue: selectedPerson,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('salesperson-select-container');
     }
 
     // Attach Event Listeners for Dynamic Logic

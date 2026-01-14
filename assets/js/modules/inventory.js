@@ -6,7 +6,7 @@
  * to access shared state and utilities.
  */
 
-import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown, initSimpleDropdown } from './searchableDropdown.js';
 
 export function renderInventory(context, searchQuery = '', page = 1, statusFilter = '') {
     // Check if coming from Dashboard with an expiring filter
@@ -538,12 +538,7 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
-                                                                                                                                <select class="form-control" name="status" style="background-color: var(--bg-card-hover);">
-                                                                                                                                    <option ${calculatedStatus === 'Draft' ? 'selected' : ''}>Draft</option>
-                                                                                                                                    <option ${calculatedStatus === 'Available' ? 'selected' : ''}>Available</option>
-                                                                                                                                    <option ${calculatedStatus === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
-                                                                                                                                    <option ${calculatedStatus === 'Expired' ? 'selected' : ''}>Expired</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-status-dropdown-placeholder" data-selected="${calculatedStatus}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
 
@@ -552,17 +547,11 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-3">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Acquisition Type</label>
-                                                                                                                                <select class="form-control" name="acquisition.type">
-                                                                                                                                    <option ${item.acquisition?.type === 'Purchased' ? 'selected' : ''}>Purchased</option>
-                                                                                                                                    <option ${item.acquisition?.type === 'Swapped In' ? 'selected' : ''}>Swapped In</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-acquisition-type-dropdown-placeholder" data-selected="${item.acquisition?.type || 'Purchased'}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Ownership</label>
-                                                                                                                                <select class="form-control" name="acquisition.ownership">
-                                                                                                                                    <option ${item.acquisition?.ownership === 'Leased' ? 'selected' : ''}>Leased</option>
-                                                                                                                                    <option ${item.acquisition?.ownership === 'IRU' ? 'selected' : ''}>IRU</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-ownership-dropdown-placeholder" data-selected="${item.acquisition?.ownership || 'Leased'}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Supplier</label>
@@ -583,23 +572,13 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Segment Type</label>
-                                                                                                                                <select class="form-control" name="segmentType">
-                                                                                                                                    <option ${item.segmentType === 'Capacity' ? 'selected' : ''}>Capacity</option>
-                                                                                                                                    <option ${item.segmentType === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                                                                                                                                    <option ${item.segmentType === 'Spectrum' ? 'selected' : ''}>Spectrum</option>
-                                                                                                                                    <option ${item.segmentType === 'Backhaul' ? 'selected' : ''}>Backhaul</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-segment-type-dropdown-placeholder" data-selected="${item.segmentType || 'Capacity'}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Handoff Type</label>
-                                                                                                                                <select class="form-control" name="handoffType" id="handoff-type-select">
-                                                                                                                                    <option ${item.handoffType === 'OTU-4' ? 'selected' : ''}>OTU-4</option>
-                                                                                                                                    <option ${item.handoffType === '100GE' ? 'selected' : ''}>100GE</option>
-                                                                                                                                    <option ${item.handoffType === '400GE' ? 'selected' : ''}>400GE</option>
-                                                                                                                                    <option ${item.handoffType === 'Other' || (item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType)) ? 'selected' : ''}>Other</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-handoff-type-dropdown-placeholder" data-selected="${item.handoffType || 'OTU-4'}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group" id="handoff-type-custom-container" style="display: ${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? 'block' : 'none'}">
                                                                                                                                 <label class="form-label">Custom Handoff Type</label>
@@ -619,20 +598,11 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Unit</label>
-                                                                                                                                <select class="form-control" name="capacity.unit">
-                                                                                                                                    <option ${item.capacity?.unit === 'Gbps' ? 'selected' : ''}>Gbps</option>
-                                                                                                                                    <option ${item.capacity?.unit === 'Tbps' ? 'selected' : ''}>Tbps</option>
-                                                                                                                                    <option ${item.capacity?.unit === 'Fiber Pair' ? 'selected' : ''}>Fiber Pair</option>
-                                                                                                                                    <option ${item.capacity?.unit === 'Half Fiber Pair' ? 'selected' : ''}>Half Fiber Pair</option>
-                                                                                                                                    <option ${item.capacity?.unit === 'GHz' ? 'selected' : ''}>GHz</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-capacity-unit-dropdown-placeholder" data-selected="${item.capacity?.unit || 'Gbps'}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Protection</label>
-                                                                                                                                <select class="form-control" name="protection" id="protection-select">
-                                                                                                                                    <option ${item.protection === 'Unprotected' || !item.protection ? 'selected' : ''}>Unprotected</option>
-                                                                                                                                    <option ${item.protection === 'Protected' ? 'selected' : ''}>Protected</option>
-                                                                                                                                </select>
+                                                                                                                                <div id="inventory-protection-dropdown-placeholder" data-selected="${item.protection || 'Unprotected'}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-1" id="protection-cable-container" style="display: ${item.protection === 'Protected' ? 'block' : 'none'}">
@@ -780,6 +750,139 @@ export function openInventoryModal(context, resourceId = null) {
             placeholder: '搜索供应商...'
         });
         initSearchableDropdown('inventory-supplier-dropdown-container');
+    }
+
+    // Initialize Status simple dropdown
+    const statusPlaceholder = document.getElementById('inventory-status-dropdown-placeholder');
+    if (statusPlaceholder) {
+        const selectedStatus = statusPlaceholder.dataset.selected || 'Available';
+        statusPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'status',
+            id: 'inventory-status',
+            options: [
+                { value: 'Draft', label: 'Draft' },
+                { value: 'Available', label: 'Available' },
+                { value: 'Sold Out', label: 'Sold Out' },
+                { value: 'Expired', label: 'Expired' }
+            ],
+            selectedValue: selectedStatus,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-status-container');
+    }
+
+    // Initialize Acquisition Type simple dropdown
+    const acquisitionTypePlaceholder = document.getElementById('inventory-acquisition-type-dropdown-placeholder');
+    if (acquisitionTypePlaceholder) {
+        const selectedType = acquisitionTypePlaceholder.dataset.selected || 'Purchased';
+        acquisitionTypePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'acquisition.type',
+            id: 'inventory-acquisition-type',
+            options: [
+                { value: 'Purchased', label: 'Purchased' },
+                { value: 'Swapped In', label: 'Swapped In' }
+            ],
+            selectedValue: selectedType,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-acquisition-type-container');
+    }
+
+    // Initialize Ownership simple dropdown
+    const ownershipPlaceholder = document.getElementById('inventory-ownership-dropdown-placeholder');
+    if (ownershipPlaceholder) {
+        const selectedOwnership = ownershipPlaceholder.dataset.selected || 'Leased';
+        ownershipPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'acquisition.ownership',
+            id: 'inventory-ownership',
+            options: [
+                { value: 'Leased', label: 'Leased' },
+                { value: 'IRU', label: 'IRU' }
+            ],
+            selectedValue: selectedOwnership,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-ownership-container');
+    }
+
+    // Initialize Segment Type simple dropdown
+    const segmentTypePlaceholder = document.getElementById('inventory-segment-type-dropdown-placeholder');
+    if (segmentTypePlaceholder) {
+        const selectedSegment = segmentTypePlaceholder.dataset.selected || 'Capacity';
+        segmentTypePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'segmentType',
+            id: 'inventory-segment-type',
+            options: [
+                { value: 'Capacity', label: 'Capacity' },
+                { value: 'Fiber Pair', label: 'Fiber Pair' },
+                { value: 'Spectrum', label: 'Spectrum' },
+                { value: 'Backhaul', label: 'Backhaul' }
+            ],
+            selectedValue: selectedSegment,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-segment-type-container');
+    }
+
+    // Initialize Handoff Type simple dropdown
+    const handoffTypePlaceholder = document.getElementById('inventory-handoff-type-dropdown-placeholder');
+    if (handoffTypePlaceholder) {
+        let selectedHandoff = handoffTypePlaceholder.dataset.selected || 'OTU-4';
+        // If it's a custom value, set to 'Other'
+        const standardHandoffs = ['OTU-4', '100GE', '400GE', 'Other'];
+        if (selectedHandoff && !standardHandoffs.includes(selectedHandoff)) {
+            selectedHandoff = 'Other';
+        }
+        handoffTypePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'handoffType',
+            id: 'inventory-handoff-type',
+            options: [
+                { value: 'OTU-4', label: 'OTU-4' },
+                { value: '100GE', label: '100GE' },
+                { value: '400GE', label: '400GE' },
+                { value: 'Other', label: 'Other' }
+            ],
+            selectedValue: selectedHandoff,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-handoff-type-container');
+    }
+
+    // Initialize Capacity Unit simple dropdown
+    const capacityUnitPlaceholder = document.getElementById('inventory-capacity-unit-dropdown-placeholder');
+    if (capacityUnitPlaceholder) {
+        const selectedUnit = capacityUnitPlaceholder.dataset.selected || 'Gbps';
+        capacityUnitPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'capacity.unit',
+            id: 'inventory-capacity-unit',
+            options: [
+                { value: 'Gbps', label: 'Gbps' },
+                { value: 'Tbps', label: 'Tbps' },
+                { value: 'Fiber Pair', label: 'Fiber Pair' },
+                { value: 'Half Fiber Pair', label: 'Half Fiber Pair' },
+                { value: 'GHz', label: 'GHz' }
+            ],
+            selectedValue: selectedUnit,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-capacity-unit-container');
+    }
+
+    // Initialize Protection simple dropdown
+    const protectionPlaceholder = document.getElementById('inventory-protection-dropdown-placeholder');
+    if (protectionPlaceholder) {
+        const selectedProtection = protectionPlaceholder.dataset.selected || 'Unprotected';
+        protectionPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'protection',
+            id: 'inventory-protection',
+            options: [
+                { value: 'Unprotected', label: 'Unprotected' },
+                { value: 'Protected', label: 'Protected' }
+            ],
+            selectedValue: selectedProtection,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-protection-container');
     }
 
     // Attach Form Event Listeners after modal is rendered
