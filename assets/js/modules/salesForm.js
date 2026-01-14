@@ -6,6 +6,8 @@
  * to access shared state and utilities.
  */
 
+import { renderSearchableDropdown, initSearchableDropdown } from './searchableDropdown.js';
+
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
     const existingOrder = existingOrderId ? window.Store.getSales().find(s => s.salesOrderId === existingOrderId) : null;
@@ -564,11 +566,25 @@ export function openAddSalesModal(context, existingOrderId = null) {
 }
 
 export function attachSalesFormListeners(context) {
-    // Generate supplier options for cost card dropdowns
+    // Generate supplier options for searchable dropdowns
     const suppliers = window.Store.getSuppliers();
-    const supplierOptionsHTML = suppliers.map(s =>
-        `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
-    ).join('');
+    const supplierOptions = suppliers.map(s => ({
+        value: s.id,
+        label: s.short_name,
+        subtitle: s.full_name || ''
+    }));
+
+    // Helper function to create supplier searchable dropdown HTML
+    const createSupplierDropdown = (fieldName, id) => {
+        return renderSearchableDropdown({
+            name: fieldName,
+            id: id,
+            options: supplierOptions,
+            selectedValue: '',
+            placeholder: '搜索供应商...'
+        });
+    };
+
 
     // ===== Cost Card Templates =====
     const costCardTemplates = {
@@ -585,10 +601,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.cable.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.cable.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -703,10 +716,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.backhaulA.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.backhaulA.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -781,10 +791,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.backhaulZ.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.backhaulZ.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -859,10 +866,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.xcA.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.xcA.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -912,10 +916,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field="costs.xcZ.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field="costs.xcZ.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -969,10 +970,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Supplier</label>
-                                                                                                                                    <select class="form-control cost-input" data-field-base="costs.other.supplier">
-                                                                                                                                        <option value="">Select Supplier...</option>
-                                                                                                                                        ${supplierOptionsHTML}
-                                                                                                                                    </select>
+                                                                                                                                    <div class="supplier-dropdown-placeholder" data-field-base="costs.other.supplier"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Order No.</label>
@@ -1039,6 +1037,17 @@ export function attachSalesFormListeners(context) {
         }
 
         cardsContainer.appendChild(card);
+
+        // Initialize supplier searchable dropdown
+        const supplierPlaceholder = card.querySelector('.supplier-dropdown-placeholder');
+        if (supplierPlaceholder) {
+            const fieldName = supplierPlaceholder.dataset.field || supplierPlaceholder.dataset.fieldBase;
+            const dropdownId = `supplier-${type}-${Date.now()}`;
+            supplierPlaceholder.outerHTML = createSupplierDropdown(fieldName, dropdownId);
+            // Initialize the dropdown after it's in the DOM
+            setTimeout(() => initSearchableDropdown(`${dropdownId}-container`), 10);
+        }
+
 
         // Update button state (only for non-multi types)
         if (!isMulti) {
