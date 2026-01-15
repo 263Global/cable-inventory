@@ -272,6 +272,211 @@ open http://localhost:3000
 | Data doesn't persist | Missing `await` on Store method |
 | Theme looks broken | Hardcoded colors instead of CSS variables |
 | Stale status shown | Not recalculating status on render |
+---
+
+## Data Models
+
+### Inventory Item (Resource/Cost Side)
+
+| Field | DB Column | Description |
+|-------|-----------|-------------|
+| `resourceId` | `resource_id` | Primary Key |
+| `status` | `status` | Draft, Available, Sold Out, Expired |
+| `acquisitionType` | `acquisition_type` | Purchased, Swapped In |
+| `ownership` | `ownership` | Leased, IRU |
+| `supplierId` | `supplier_id` | FK to Suppliers table |
+| `segmentType` | `segment_type` | E2E, Segment, Backhaul, Spectrum |
+| `capacity.value/unit` | `capacity_value/unit` | e.g., 100 Gbps |
+| `location.aEnd/zEnd` | `a_end_*/z_end_*` | `{ country, city, pop, device, port }` |
+| `mrc/otc/nrc` | `mrc/otc/nrc` | Financial costs |
+| `dates.start/end` | `start_date/end_date` | Contract period |
+
+### Sales Order (Revenue Side)
+
+| Field | DB Column | Description |
+|-------|-----------|-------------|
+| `salesOrderId` | `sales_order_id` | Primary Key (SO-XXXX) |
+| `inventoryLink` | `inventory_link` | FK to Inventory |
+| `customerId` | `customer_id` | FK to Customers table |
+| `salesModel` | `sales_model` | "Lease" or "IRU" |
+| `salesType` | `sales_type` | Resale, Inventory, Hybrid, Swapped Out |
+| `costs.cable` | JSON | `{ supplier, mrc, otc, omRate, ... }` |
+| `costs.backhaulA/Z` | JSON | Backhaul cost cards |
+| `costs.crossConnectA/Z` | JSON | Cross-connect cost cards |
+
+### Stakeholder Entities (CRM/SRM)
+
+| Table | Key Fields |
+|-------|-----------|
+| **Customers** | `id`, `short_name`, `full_name`, `company_type`, `contact_*` |
+| **Suppliers** | `id`, `short_name`, `full_name`, `portal_url`, `contact_*` |
+
+---
+
+## iOS Safari Compatibility
+
+Safari on iPhone requires special handling:
+
+### Safe Area (Notch/Dynamic Island)
+
+```html
+<!-- Required in <head> -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+```
+
+```css
+/* Bottom navigation must account for safe area */
+.sidebar {
+    position: fixed !important;
+    bottom: 0 !important;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    -webkit-transform: translateZ(0);  /* GPU acceleration */
+}
+
+/* Main content needs clearance for fixed nav */
+.main-content {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow: visible;  /* Required for Safari address bar collapse */
+}
+```
+
+### Common Safari Pitfalls
+
+| Issue | Solution |
+|-------|----------|
+| Address bar won't collapse | Set `overflow: visible` on scrollable container |
+| Fixed nav overlaps content | Use `env(safe-area-inset-bottom)` |
+| Elements flicker on scroll | Add `-webkit-transform: translateZ(0)` |
+
+---
+
+## Supabase Configuration
+
+### Authentication Setup
+
+```javascript
+// supabase.js - Correct SDK v2 pattern
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.SupabaseClient = supabaseClient;
+```
+
+### Critical Dashboard Settings
+
+| Setting | Location | Value |
+|---------|----------|-------|
+| **Site URL** | Auth > URL Configuration | Your production URL (not localhost!) |
+| **Redirect URLs** | Auth > URL Configuration | Add `/reset-password.html` |
+| **Allow Signups** | Auth > Providers > Email | **OFF** for internal tools |
+
+### Password Reset Flow
+
+The system requires a **Pre-Auth Redirector** in `index.html`:
+
+```javascript
+// At top of index.html script - redirects auth tokens to reset page
+const hashParams = new URLSearchParams(window.location.hash.substring(1));
+const type = hashParams.get('type');
+
+if (type === 'invite' || type === 'recovery') {
+    window.location.href = 'reset-password.html' + window.location.hash;
+    return;
+}
+```
+
+---
+
+## Naming Conventions
+
+### JavaScript Variables
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| State/Data | `*Value` | `statusValue`, `searchQuery` |
+| DOM Element | `*Element` or `*Filter` | `statusFilter`, `searchInput` |
+| Module Function | `render*`, `open*Modal` | `renderInventory`, `openAddSalesModal` |
+
+### CSS Classes
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Component | `.component-name` | `.card`, `.modal`, `.btn` |
+| State | `.is-*` or `.has-*` | `.is-active`, `.has-error` |
+| Responsive | `.*-hidden` | `.mobile-hidden`, `.tablet-only` |
+
+---
+
+## Additional Gotchas
+
+### 1. Variable Redeclaration in View Functions
+
+```javascript
+// ❌ ERROR: Cannot redeclare block-scoped variable
+renderSales(filters = {}) {
+    const statusFilter = filters.status;
+    const statusFilter = document.getElementById('status-filter');  // Crash!
+}
+
+// ✅ Use different names for values vs elements
+renderSales(filters = {}) {
+    const statusValue = filters.status;          // Data
+    const statusFilter = document.getElementById('status-filter');  // DOM
+}
+```
+
+### 2. Button Duplication on Re-render
+
+```javascript
+// ❌ Buttons multiply on every search keystroke
+renderInventory() {
+    this.headerActions.appendChild(addBtn);
+}
+
+// ✅ Clear container first
+renderInventory() {
+    this.headerActions.innerHTML = '';  // Reset!
+    this.headerActions.appendChild(addBtn);
+}
+```
+
+### 3. Modal Stacking in Detail Navigation
+
+```javascript
+// ❌ New modal appears behind current one
+<button onclick="App.viewSalesDetails('${id}')">View</button>
+
+// ✅ Close current modal first
+<button onclick="App.closeModal(); App.viewSalesDetails('${id}')">View</button>
+```
+
+### 4. Edit Mode ID Protection
+
+```javascript
+// ❌ User changes ID → update fails to find record
+<input type="text" name="orderId" value="${order.id}">
+
+// ✅ Make ID readonly in edit mode
+<input type="text" name="orderId" value="${order.id}" 
+       ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
+```
+
+### 5. Cost Card Hydration in Edit Mode
+
+```javascript
+// ❌ Cost cards appear empty even with data
+if (isEditMode) {
+    // Only populates hidden inputs
+}
+
+// ✅ Trigger UI creation + populate visible fields
+if (isEditMode && data.costs?.cable) {
+    document.querySelector('.add-cable-btn').click();  // Create card
+    setTimeout(() => {
+        populateField('[name="costs.cable.mrc"]', data.costs.cable.mrc);
+        this.calculateSalesFinancials();
+    }, 100);  // Wait for DOM
+}
+```
 
 ---
 
@@ -289,7 +494,6 @@ open http://localhost:3000
 ## External Resources
 
 - **Live Demo**: Deployed on Cloudflare Pages / GitHub Pages
-- **Blog Post**: [造个轮子：海缆库存管理系统](https://blog.legionc.xyz/posts/cable-inventory-manager/)
 - **Repository**: [github.com/263Global/cable-inventory](https://github.com/263Global/cable-inventory)
 
 ---
