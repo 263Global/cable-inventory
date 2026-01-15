@@ -676,56 +676,119 @@ export function openAddSalesModal(context, existingOrderId = null) {
                             addCableBtn.click();
                             // Wait for card to be created and dropdowns initialized
                             setTimeout(() => {
-                                // Basic fields
-                                populateCardField('[data-field="costs.cable.orderNo"]', cableCost.orderNo);
-                                populateCardField('[data-field="costs.cable.cableSystem"]', cableCost.cableSystem);
-                                populateCardField('[data-field="costs.cable.capacity"]', cableCost.capacity, true);
-                                populateCardField('[data-field="costs.cable.notes"]', cableCost.notes);
+                                // Get the cable card as scope for all lookups
+                                const cableCard = document.querySelector('.cost-card[data-cost-type="cable"]');
+                                if (!cableCard) return;
+
+                                // Basic fields - scope to cableCard
+                                const populateField = (dataField, value, allowZero = false) => {
+                                    if (value === undefined || value === null || value === '') return;
+                                    if (!allowZero && value === 0) return;
+                                    const field = cableCard.querySelector(`[data-field="${dataField}"]`);
+                                    if (field) {
+                                        field.value = value;
+                                        field.dispatchEvent(new Event('input', { bubbles: true }));
+                                    }
+                                };
+
+                                populateField('costs.cable.orderNo', cableCost.orderNo);
+                                populateField('costs.cable.cableSystem', cableCost.cableSystem);
+                                populateField('costs.cable.capacity', cableCost.capacity, true);
+                                populateField('costs.cable.notes', cableCost.notes);
 
                                 // Capacity unit dropdown (native select)
-                                const capacityUnitSelect = document.querySelector('[data-field="costs.cable.capacityUnit"]');
+                                const capacityUnitSelect = cableCard.querySelector('[data-field="costs.cable.capacityUnit"]');
                                 if (capacityUnitSelect && cableCost.capacityUnit) {
                                     capacityUnitSelect.value = cableCost.capacityUnit;
                                 }
 
-                                // Cost Model SimpleDropdown
-                                populateSimpleDropdown('cable-cost-model-select-container', cableCost.model || 'Lease');
+                                // Cost Model SimpleDropdown - find by hidden input name within card
+                                const costModelContainer = cableCard.querySelector('.simple-dropdown-container');
+                                if (costModelContainer && cableCost.model) {
+                                    const hiddenInput = costModelContainer.querySelector('input[type="hidden"][name="costs.cable.model"]');
+                                    if (hiddenInput) {
+                                        hiddenInput.value = cableCost.model;
+                                        const selectedDisplay = costModelContainer.querySelector('.simple-dropdown-selected');
+                                        const options = costModelContainer.querySelectorAll('.simple-dropdown-option');
+                                        options.forEach(opt => {
+                                            if (opt.dataset.value === cableCost.model) {
+                                                opt.classList.add('selected');
+                                                if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
+                                            } else {
+                                                opt.classList.remove('selected');
+                                            }
+                                        });
+                                    }
+                                }
 
-                                // Protection SimpleDropdown
-                                populateSimpleDropdown('cable-protection-select-container', cableCost.protection || 'Unprotected');
+                                // Protection SimpleDropdown - find second simple dropdown or by name
+                                const allSimpleDropdowns = cableCard.querySelectorAll('.simple-dropdown-container');
+                                allSimpleDropdowns.forEach(container => {
+                                    const hiddenInput = container.querySelector('input[type="hidden"]');
+                                    if (hiddenInput && hiddenInput.name === 'costs.cable.protection' && cableCost.protection) {
+                                        hiddenInput.value = cableCost.protection;
+                                        const selectedDisplay = container.querySelector('.simple-dropdown-selected');
+                                        const options = container.querySelectorAll('.simple-dropdown-option');
+                                        options.forEach(opt => {
+                                            if (opt.dataset.value === cableCost.protection) {
+                                                opt.classList.add('selected');
+                                                if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
+                                            } else {
+                                                opt.classList.remove('selected');
+                                            }
+                                        });
+                                    }
+                                });
 
                                 // Protection cable system (if protected)
                                 if (cableCost.protection && cableCost.protection !== 'Unprotected') {
-                                    const protSystemContainer = document.querySelector('.cable-protection-system-container');
+                                    const protSystemContainer = cableCard.querySelector('.cable-protection-system-container');
                                     if (protSystemContainer) protSystemContainer.style.display = 'block';
-                                    populateCardField('[data-field="costs.cable.protectionCableSystem"]', cableCost.protectionCableSystem);
+                                    populateField('costs.cable.protectionCableSystem', cableCost.protectionCableSystem);
                                 }
 
-                                // Supplier searchable dropdown
-                                populateSearchableDropdown('cable-supplier-dropdown-container', cableCost.supplier);
+                                // Supplier searchable dropdown - find by class
+                                const supplierContainer = cableCard.querySelector('.searchable-dropdown-container');
+                                if (supplierContainer && cableCost.supplier) {
+                                    const hiddenInput = supplierContainer.querySelector('input[type="hidden"]');
+                                    const selectedDisplay = supplierContainer.querySelector('.searchable-dropdown-selected');
+                                    const options = supplierContainer.querySelectorAll('.searchable-dropdown-option');
+                                    if (hiddenInput) hiddenInput.value = cableCost.supplier;
+                                    options.forEach(opt => {
+                                        if (opt.dataset.value === cableCost.supplier) {
+                                            opt.classList.add('selected');
+                                            if (selectedDisplay) {
+                                                const label = opt.querySelector('.option-label')?.textContent || opt.textContent;
+                                                selectedDisplay.textContent = label;
+                                            }
+                                        } else {
+                                            opt.classList.remove('selected');
+                                        }
+                                    });
+                                }
 
                                 // Handle Cost Model: Lease vs IRU fields visibility and values
                                 const costModel = cableCost.model || 'Lease';
-                                const leaseFields = document.querySelector('.cable-lease-fields');
-                                const iruFields = document.querySelector('.cable-iru-fields');
+                                const leaseFields = cableCard.querySelector('.cable-lease-fields');
+                                const iruFields = cableCard.querySelector('.cable-iru-fields');
 
                                 if (costModel === 'IRU') {
                                     if (leaseFields) leaseFields.style.display = 'none';
                                     if (iruFields) iruFields.style.display = 'block';
-                                    populateCardField('[data-field="costs.cable.otc"]', cableCost.otc, true);
-                                    populateCardField('[data-field="costs.cable.omRate"]', cableCost.omRate, true);
-                                    populateCardField('[data-field="costs.cable.annualOm"]', cableCost.annualOm, true);
+                                    populateField('costs.cable.otc', cableCost.otc, true);
+                                    populateField('costs.cable.omRate', cableCost.omRate, true);
+                                    populateField('costs.cable.annualOm', cableCost.annualOm, true);
                                 } else {
                                     if (leaseFields) leaseFields.style.display = 'block';
                                     if (iruFields) iruFields.style.display = 'none';
-                                    populateCardField('[data-field="costs.cable.mrc"]', cableCost.mrc, true);
-                                    populateCardField('[data-field="costs.cable.nrc"]', cableCost.nrc, true);
+                                    populateField('costs.cable.mrc', cableCost.mrc, true);
+                                    populateField('costs.cable.nrc', cableCost.nrc, true);
                                 }
 
                                 // Contract period
-                                populateCardField('[data-field="costs.cable.startDate"]', cableCost.startDate);
-                                populateCardField('[data-field="costs.cable.termMonths"]', cableCost.termMonths || 12, true);
-                                populateCardField('[data-field="costs.cable.endDate"]', cableCost.endDate);
+                                populateField('costs.cable.startDate', cableCost.startDate);
+                                populateField('costs.cable.termMonths', cableCost.termMonths || 12, true);
+                                populateField('costs.cable.endDate', cableCost.endDate);
 
                                 context.calculateSalesFinancials();
                             }, 150);
