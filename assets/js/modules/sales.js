@@ -404,11 +404,22 @@ export function viewSalesDetails(context, salesOrderId) {
         `;
     }
 
-    // Location info
-    const aEndCity = order.locationAEnd?.city || order.aEndCity || '-';
-    const aEndPop = order.locationAEnd?.pop || order.aEndPop || '-';
-    const zEndCity = order.locationZEnd?.city || order.zEndCity || '-';
-    const zEndPop = order.locationZEnd?.pop || order.zEndPop || '-';
+    // Location info - fix field path to match saved data structure
+    const aEndCity = order.location?.aEnd?.city || order.locationAEnd?.city || order.aEndCity || '-';
+    const aEndPop = order.location?.aEnd?.pop || order.locationAEnd?.pop || order.aEndPop || '-';
+    const zEndCity = order.location?.zEnd?.city || order.locationZEnd?.city || order.zEndCity || '-';
+    const zEndPop = order.location?.zEnd?.pop || order.locationZEnd?.pop || order.zEndPop || '-';
+
+    // Get cable supplier name from ID
+    const cableSupplierId = order.costs?.cable?.supplier;
+    let cableSupplierName = cableSupplierId || '-';
+    if (cableSupplierId) {
+        const suppliers = window.Store.getSuppliers();
+        const supplier = suppliers.find(s => s.id === cableSupplierId);
+        if (supplier) {
+            cableSupplierName = supplier.short_name || supplier.full_name || cableSupplierId;
+        }
+    }
 
     const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
     const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
@@ -488,6 +499,21 @@ export function viewSalesDetails(context, salesOrderId) {
                         </div>
                     </div>
                 </div>
+
+                <!-- Cable System Information (Resale only) -->
+                ${salesType === 'Resale' && (order.costs?.cable?.cableSystem || order.costs?.cable?.supplier) ? `
+                <div style="${sectionStyle}">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">🔌 Cable System</h4>
+                    <table style="width:100%;">
+                        ${order.costs?.cable?.cableSystem ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable System</td><td style="font-weight:600; color:var(--accent-primary);">${order.costs.cable.cableSystem}</td></tr>` : ''}
+                        ${order.costs?.cable?.supplier ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Supplier</td><td>${cableSupplierName}</td></tr>` : ''}
+                        ${order.costs?.cable?.capacity ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono">${order.costs.cable.capacity} ${order.costs.cable.capacityUnit || 'Gbps'}</td></tr>` : ''}
+                        ${order.costs?.cable?.model ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Model</td><td>${order.costs.cable.model}</td></tr>` : ''}
+                        ${order.costs?.cable?.protection && order.costs.cable.protection !== 'Unprotected' ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Protection</td><td><span style="color:var(--accent-success);">${order.costs.cable.protection}</span>${order.costs.cable.protectionCableSystem ? ` (${order.costs.cable.protectionCableSystem})` : ''}</td></tr>` : ''}
+                        ${order.costs?.cable?.orderNo ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order No.</td><td class="font-mono">${order.costs.cable.orderNo}</td></tr>` : ''}
+                    </table>
+                </div>
+                ` : ''}
             </div>
             <div>
                 <!-- Revenue -->

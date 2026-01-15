@@ -816,11 +816,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">MRC ($)</label>
-                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.mrc" value="0">
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaul.aEnd.monthly" value="0">
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">NRC ($)</label>
-                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulA.nrc" value="0">
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaul.aEnd.nrc" value="0">
                                                                                                                                     </div>
                                                                                                                                 </div>
                                                                                                                             </div>
@@ -891,11 +891,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                                 <div class="grid-2">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">MRC ($)</label>
-                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.mrc" value="0">
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaul.zEnd.monthly" value="0">
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">NRC ($)</label>
-                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaulZ.nrc" value="0">
+                                                                                                                                        <input type="number" class="form-control cost-input calc-trigger" data-field="costs.backhaul.zEnd.nrc" value="0">
                                                                                                                                     </div>
                                                                                                                                 </div>
                                                                                                                             </div>
@@ -958,11 +958,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Monthly Fee ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.monthly" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.crossConnect.aEnd.monthly" value="0">
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">NRC ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcA.nrc" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.crossConnect.aEnd.nrc" value="0">
                                                                                                                                 </div>
                                                                                                                             </div>
                                                                                                                             <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
@@ -1008,11 +1008,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Monthly Fee ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.monthly" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.crossConnect.zEnd.monthly" value="0">
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">NRC ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.xcZ.nrc" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.crossConnect.zEnd.nrc" value="0">
                                                                                                                                 </div>
                                                                                                                             </div>
                                                                                                                             <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
@@ -1047,7 +1047,7 @@ export function attachSalesFormListeners(context) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Description</label>
-                                                                                                                                <input type="text" class="form-control cost-input" data-field-base="costs.other.description" placeholder="e.g., Smart Hands, Testing, etc.">
+                                                                                                                                <input type="text" class="form-control cost-input" data-field="costs.otherCosts.description" placeholder="e.g., Smart Hands, Testing, etc.">
                                                                                                                             </div>
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
@@ -1062,11 +1062,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">One-off Fee ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.oneOff" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.otherCosts.oneOff" value="0">
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Monthly Fee ($)</label>
-                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field-base="costs.other.monthly" value="0">
+                                                                                                                                    <input type="number" class="form-control cost-input calc-trigger" data-field="costs.otherCosts.monthly" value="0">
                                                                                                                                 </div>
                                                                                                                             </div>
                                                                                                                             <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
