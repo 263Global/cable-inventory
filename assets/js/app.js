@@ -125,7 +125,7 @@ const App = {
     async deleteInventoryItem(id) {
         if (confirm('Are you sure you want to delete this resource?')) {
             await window.Store.deleteInventory(id);
-            this.renderInventoryView();
+            this.renderView('inventory');
         }
     },
 
@@ -134,6 +134,15 @@ const App = {
             await window.Store.deleteSalesOrder(id);
             this.renderView('sales');
         }
+    },
+
+    // Aliases for the new button onclick handlers
+    async deleteInventoryWithConfirm(id) {
+        await this.deleteInventoryItem(id);
+    },
+
+    async deleteSalesOrderWithConfirm(id) {
+        await this.deleteSalesOrder(id);
     },
 
     renderView(viewName) {

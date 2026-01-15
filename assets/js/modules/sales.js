@@ -6,6 +6,17 @@
  * to access shared state and utilities.
  */
 
+// HTML escape utility to prevent XSS
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 export function renderSales(context, filters = {}) {
     // Check if coming from Dashboard with an expiring filter
     if (context._pendingFilter === 'expiring' && !filters.status) {
@@ -92,7 +103,7 @@ export function renderSales(context, filters = {}) {
                 <option value="">All Status</option>
                 <option value="Active" ${statusValue === 'Active' ? 'selected' : ''}>Active</option>
                 <option value="Pending" ${statusValue === 'Pending' ? 'selected' : ''}>Pending</option>
-                <option value="Churned" ${statusValue === 'Churned' ? 'selected' : ''}>Churned</option>
+                <option value="Expired" ${statusValue === 'Expired' ? 'selected' : ''}>Expired</option>
                 <option value="Expiring" ${statusValue === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
             </select>
             <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
@@ -209,11 +220,11 @@ export function renderSales(context, filters = {}) {
         return `
                         <tr class="${context._selectedSales.has(item.salesOrderId) ? 'row-selected' : ''}">
                             ${context._salesSelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${item.salesOrderId}" ${context._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>` : ''}
-                            <td class="font-mono order-id-cell">${item.salesOrderId}</td>
+                            <td class="font-mono order-id-cell">${escapeHtml(item.salesOrderId)}</td>
                             <td>
-                                <div class="customer-name" style="font-weight:600" title="${item.customerName}">${item.customerName}</div>
+                                <div class="customer-name" style="font-weight:600" title="${escapeHtml(item.customerName)}">${escapeHtml(item.customerName)}</div>
                                 <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-primary); margin-top:0.25rem; font-weight:500;">📦 ${item.capacity?.value || '-'} ${item.capacity?.unit || 'Gbps'}</div>
-                                ${item.inventoryLink ? `<div class="inventory-link">🔗 ${item.inventoryLink}</div>` : ''}
+                                ${item.inventoryLink ? `<div class="inventory-link">🔗 ${escapeHtml(item.inventoryLink)}</div>` : ''}
                             </td>
                             <td>
                                 <span class="type-icon ${typeClass}">${typeIcon} ${salesType}</span>
@@ -236,7 +247,7 @@ export function renderSales(context, filters = {}) {
                                     <button class="btn btn-warning" style="padding:0.4rem" onclick="App.openRenewModal('${item.salesOrderId}')" title="Renew">
                                         <ion-icon name="refresh-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="window.Store.deleteSalesOrder('${item.salesOrderId}'); App.renderView('sales');" title="Delete">
+                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteSalesOrderWithConfirm('${item.salesOrderId}')" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
                                 </div>

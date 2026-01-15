@@ -8,6 +8,17 @@
 
 import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown, initSimpleDropdown } from './searchableDropdown.js';
 
+// HTML escape utility to prevent XSS
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 export function renderInventory(context, searchQuery = '', page = 1, statusFilter = '') {
     // Check if coming from Dashboard with an expiring filter
     if (context._pendingFilter === 'expiring' && !statusFilter) {
@@ -30,16 +41,47 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
     // Apply status filter
     if (statusFilter) {
         if (statusFilter === 'Expiring') {
+            // For Expiring, we need to use computed status logic
             const now = new Date();
             data = data.filter(item => {
-                if (item.status !== 'Active') return false;
-                if (!item.dates?.end) return false;
-                const endDate = new Date(item.dates.end);
+                // Compute status same as in table render
+                const startDate = item.dates?.start ? new Date(item.dates.start) : null;
+                const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+
+                // Skip Draft items (before start date) - they don't expire yet
+                if (startDate && now < startDate) return false;
+                // Skip already Expired items
+                if (endDate && now > endDate) return false;
+
+                // Check if expiring within 90 days
+                if (!endDate) return false;
                 const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
                 return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
             });
         } else {
-            data = data.filter(item => item.status === statusFilter);
+            // For other filters, need to compute status and compare
+            data = data.filter(item => {
+                const allSales = window.Store.getSales();
+                const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
+                let totalSoldCapacity = 0;
+                linkedSales.forEach(s => { totalSoldCapacity += (s.capacity?.value || 0); });
+                const totalCapacity = item.capacity?.value || 0;
+
+                const today = new Date();
+                const startDate = item.dates?.start ? new Date(item.dates.start) : null;
+                const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+
+                let calculatedStatus = 'Available';
+                if (endDate && today > endDate) {
+                    calculatedStatus = 'Expired';
+                } else if (startDate && today < startDate) {
+                    calculatedStatus = 'Draft';
+                } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
+                    calculatedStatus = 'Sold Out';
+                }
+
+                return calculatedStatus === statusFilter;
+            });
         }
     }
 
@@ -66,8 +108,10 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
             </div>
             <select id="inventory-status-filter" class="form-control" style="max-width: 160px;">
                 <option value="">All Status</option>
-                <option value="Active" ${statusFilter === 'Active' ? 'selected' : ''}>Active</option>
-                <option value="Pending" ${statusFilter === 'Pending' ? 'selected' : ''}>Pending</option>
+                <option value="Available" ${statusFilter === 'Available' ? 'selected' : ''}>Available</option>
+                <option value="Draft" ${statusFilter === 'Draft' ? 'selected' : ''}>Draft</option>
+                <option value="Sold Out" ${statusFilter === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
+                <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
                 <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
             </select>
             <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
@@ -179,8 +223,8 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                                 <div style="font-size:0.75rem; color:var(--text-muted)">${item.acquisition?.ownership || ''}</div>
                             </td>
                             <td>
-                                <div style="font-weight:600">${item.cableSystem}</div>
-                                ${item.protection === 'Protected' && item.protectionCableSystem ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;">${item.protectionCableSystem}</div>` : ''}
+                                <div style="font-weight:600">${escapeHtml(item.cableSystem)}</div>
+                                ${item.protection === 'Protected' && item.protectionCableSystem ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;">${escapeHtml(item.protectionCableSystem)}</div>` : ''}
                                 <div style="font-size:0.8em; color:var(--text-muted)">
                                     ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
                                 </div>
@@ -208,7 +252,7 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                                     <button class="btn btn-primary" style="padding:0.4rem" onclick="App.openInventoryModal('${item.resourceId}')" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="window.Store.deleteInventory('${item.resourceId}'); App.renderView('inventory');" title="Delete">
+                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteInventoryWithConfirm('${item.resourceId}')" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
                                 </div>
@@ -920,7 +964,7 @@ export function attachInventoryFormListeners(context) {
     }
 
     // Handoff Type Toggle
-    const handoffSelect = document.getElementById('handoff-type-select');
+    const handoffSelect = document.querySelector('[name="handoffType"]');
     const handoffCustomContainer = document.getElementById('handoff-type-custom-container');
     if (handoffSelect && handoffCustomContainer) {
         handoffSelect.addEventListener('change', (e) => {

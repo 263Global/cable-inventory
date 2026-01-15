@@ -2,6 +2,22 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [1.7.1] - 2026-01-15
+
+### Security
+- **XSS Prevention** - Added `escapeHtml()` utility to sanitize user-supplied data before rendering to DOM
+  - Prevents script injection via customer names, cable system names, and other user input
+  - Applied to `sales.js` and `inventory.js` table renders
+
+### Fixed
+- **Sales Status Filter** - Changed `Churned` to `Expired` to match auto-calculated status
+- **Inventory Status Filter** - Updated options from `Active/Pending` to `Available/Draft/Sold Out/Expired` to match computed statuses
+- **Handoff Type Toggle** - Fixed selector from `#handoff-type-select` to `[name="handoffType"]`
+- **Delete Actions** - Now use proper async handlers with confirmation dialogs
+  - Fixed `renderInventoryView()` → `renderView('inventory')` bug
+
+---
+
 ## [1.7.0] - 2026-01-14
 
 ### Changed
