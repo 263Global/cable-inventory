@@ -540,6 +540,26 @@ export function openAddSalesModal(context, existingOrderId = null) {
     // Attach Event Listeners for Dynamic Logic
     context.attachSalesFormListeners();
 
+    // Smart default: Auto-expand Cable cost card for new Resale orders
+    if (!isEditMode) {
+        // Check current sales type and auto-add cable card for Resale
+        const checkAndAutoAddCable = () => {
+            const salesTypeSelect = document.getElementById('sales-type-select');
+            const addCableBtn = document.getElementById('add-cable-btn');
+            const cardsContainer = document.getElementById('cost-cards-container');
+
+            if (salesTypeSelect && addCableBtn && cardsContainer) {
+                const salesType = salesTypeSelect.value || 'Resale';
+                // Only auto-add if Resale and no cable card exists yet
+                if (salesType === 'Resale' && !cardsContainer.querySelector('[data-cost-type="cable"]')) {
+                    addCableBtn.click();
+                }
+            }
+        };
+        // Delay to allow dropdown initialization
+        setTimeout(checkAndAutoAddCable, 200);
+    }
+
     // If edit mode, sync hidden inputs and add Edit Costs button handler
     if (isEditMode && existingOrder) {
         // Sync hidden inputs from existing order data for correct calculation
