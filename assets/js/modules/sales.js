@@ -17,6 +17,8 @@ const escapeHtml = (str) => {
         .replace(/'/g, '&#039;');
 };
 
+const { getSalesStatusBadgeClass } = window.SalesStatus;
+
 export function renderSales(context, filters = {}) {
     // Check if coming from Dashboard with an expiring filter
     if (context._pendingFilter === 'expiring' && !filters.status) {
@@ -190,7 +192,7 @@ export function renderSales(context, filters = {}) {
         const recurringMarginClass = recurringMargin >= 50 ? 'margin-high' : (recurringMargin >= 20 ? 'margin-mid' : 'margin-low');
 
         // Status badge
-        const statusClass = item.status === 'Active' ? 'badge-success' : (item.status === 'Pending' ? 'badge-warning' : 'badge-danger');
+        const statusClass = getSalesStatusBadgeClass(item.status);
 
         // Type icons
         const typeClass = salesType === 'Resale' ? 'type-resale' :
@@ -361,7 +363,7 @@ export function viewSalesDetails(context, salesOrderId) {
     const revenueLabel1 = isIru ? 'Monthly O&M Revenue' : 'Monthly Revenue (MRR)';
     const revenueLabel2 = isIru ? 'OTC Revenue' : 'One-time Revenue (NRC)';
 
-    const statusClass = order.status === 'Active' ? 'badge-success' : (order.status === 'Pending' ? 'badge-warning' : 'badge-danger');
+    const statusClass = getSalesStatusBadgeClass(order.status);
 
     // Calculate costs display - MRC
     const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;

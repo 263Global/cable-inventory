@@ -70,6 +70,7 @@ A professional Telecom Resource and P&L Management System for managing submarine
    ```
 
 4. Open `http://localhost:3000` and start managing your cable inventory!
+5. Optional: open `docs/status-test.html` to run the status helper checks in your browser.
 
 ## Project Structure
 
@@ -99,6 +100,9 @@ cable-inventory/
 │       ├── store.js        # Data layer (Supabase + localStorage)
 │       ├── auth.js         # Authentication logic
 │       ├── supabase.js     # Supabase client configuration
+│       ├── inventoryStatus.js # Inventory status helpers (logic + UI)
+│       ├── salesStatus.js  # Sales status badge helpers
+│       ├── statusUi.js     # Shared UI helpers for status/alerts
 │       └── modules/        # ES6 Feature Modules
 │           ├── dashboard.js    # Dashboard view (~290 lines)
 │           ├── inventory.js    # Inventory management (~860 lines)
@@ -113,7 +117,8 @@ cable-inventory/
 │           └── searchableDropdown.js  # Searchable dropdown component
 └── docs/
     ├── supabase_schema.sql # Database schema
-    └── test_data.sql       # Sample data for testing
+    ├── test_data.sql       # Sample data for testing
+    └── status-test.html    # Status helper test page
 ```
 
 

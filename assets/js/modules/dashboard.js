@@ -7,6 +7,8 @@
  * Renders the dashboard view
  * @param {Object} context - The App object context (this)
  */
+const { getAlertBadgeClass, getAlertAccentColor, isExpiringWithin } = window.StatusUi;
+
 export function renderDashboard(context) {
     const inventory = window.Store.getInventory();
     const sales = window.Store.getSalesOrders();
@@ -40,22 +42,12 @@ export function renderDashboard(context) {
     const totalOpex = inventory.reduce((acc, item) => acc + (item.financials?.mrc || 0), 0);
     const profit = totalMrr - totalOpex;
 
-    // Expiry Logic (90 Days)
-    const getDaysDiff = (dateStr) => {
-        if (!dateStr) return 9999;
-        const end = new Date(dateStr);
-        const now = new Date();
-        return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-    };
-
     const expiringSales = sales.filter(s => {
-        const days = getDaysDiff(s.dates?.end);
-        return s.status === 'Active' && days >= 0 && days <= 90;
+        return s.status === 'Active' && isExpiringWithin(s.dates?.end, 90, now, s.dates?.start);
     });
 
     const expiringInventory = inventory.filter(i => {
-        const days = getDaysDiff(i.dates?.end);
-        return days >= 0 && days <= 90;
+        return isExpiringWithin(i.dates?.end, 90, now, i.dates?.start);
     });
 
     // Salesperson Leaderboard - Exclude Procurement Team
@@ -162,10 +154,10 @@ export function renderDashboard(context) {
         <!-- Alerts Row -->
         <div class="grid-2 mb-6 alert-grid">
             <!-- Sales Alerts -->
-            <div class="card alert-card" style="border-left: 4px solid var(--accent-warning);">
+            <div class="card alert-card" style="border-left: 4px solid ${getAlertAccentColor('warning')};">
                 <div class="alert-header">
-                    <h3 style="color: var(--accent-warning)"><ion-icon name="alert-circle-outline"></ion-icon> <span class="alert-title-full">Expiring Sales (90 Days)</span><span class="alert-title-short">Sales Expiry</span></h3>
-                    <span class="badge badge-warning">${expiringSales.length}</span>
+                    <h3 style="color: ${getAlertAccentColor('warning')}"><ion-icon name="alert-circle-outline"></ion-icon> <span class="alert-title-full">Expiring Sales (90 Days)</span><span class="alert-title-short">Sales Expiry</span></h3>
+                    <span class="badge ${getAlertBadgeClass('warning')}">${expiringSales.length}</span>
                 </div>
                 <div class="alert-content">
                 ${expiringSales.length === 0 ? '<p style="color:var(--text-muted)">No contracts expiring soon.</p>' : `
@@ -175,7 +167,7 @@ export function renderDashboard(context) {
         return `<div class="alert-item">
                                 <span class="alert-item-id">${s.salesOrderId}</span>
                                 <span class="alert-item-name">${s.customerName}</span>
-                                <span class="alert-item-days" style="color:var(--accent-warning)">${days}d</span>
+                                <span class="alert-item-days" style="color:${getAlertAccentColor('warning')}">${days}d</span>
                             </div>`;
     }).join('')}
                     </div>
@@ -185,10 +177,10 @@ export function renderDashboard(context) {
             </div>
 
             <!-- Inventory Alerts -->
-            <div class="card alert-card" style="border-left: 4px solid var(--accent-danger);">
+            <div class="card alert-card" style="border-left: 4px solid ${getAlertAccentColor('danger')};">
                 <div class="alert-header">
-                    <h3 style="color: var(--accent-danger)"><ion-icon name="timer-outline"></ion-icon> <span class="alert-title-full">Expiring Resources (90 Days)</span><span class="alert-title-short">Resource Expiry</span></h3>
-                    <span class="badge badge-danger">${expiringInventory.length}</span>
+                    <h3 style="color: ${getAlertAccentColor('danger')}"><ion-icon name="timer-outline"></ion-icon> <span class="alert-title-full">Expiring Resources (90 Days)</span><span class="alert-title-short">Resource Expiry</span></h3>
+                    <span class="badge ${getAlertBadgeClass('danger')}">${expiringInventory.length}</span>
                 </div>
                 <div class="alert-content">
                 ${expiringInventory.length === 0 ? '<p style="color:var(--text-muted)">No resources expiring soon.</p>' : `
@@ -198,7 +190,7 @@ export function renderDashboard(context) {
         return `<div class="alert-item">
                                 <span class="alert-item-id">${i.resourceId}</span>
                                 <span class="alert-item-name">${i.cableSystem}</span>
-                                <span class="alert-item-days" style="color:var(--accent-danger)">${days}d</span>
+                                <span class="alert-item-days" style="color:${getAlertAccentColor('danger')}">${days}d</span>
                             </div>`;
     }).join('')}
                     </div>

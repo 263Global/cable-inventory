@@ -19,6 +19,14 @@ const escapeHtml = (str) => {
         .replace(/'/g, '&#039;');
 };
 
+const {
+    buildSalesIndex,
+    computeInventoryStatus,
+    getInventoryDisplayMetrics
+} = window.InventoryStatus;
+
+const { isExpiringWithin } = window.StatusUi;
+
 export function renderInventory(context, searchQuery = '', page = 1, statusFilter = '') {
     // Check if coming from Dashboard with an expiring filter
     if (context._pendingFilter === 'expiring' && !statusFilter) {
@@ -28,6 +36,9 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
 
     const ITEMS_PER_PAGE = 20;
     let data = window.Store.getInventory();
+    const allSales = window.Store.getSales();
+    const { byResourceId: salesByResourceId, soldByResourceId } = buildSalesIndex(allSales);
+    const now = new Date();
 
     // Apply search filter
     if (searchQuery) {
@@ -42,44 +53,16 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
     if (statusFilter) {
         if (statusFilter === 'Expiring') {
             // For Expiring, we need to use computed status logic
-            const now = new Date();
             data = data.filter(item => {
-                // Compute status same as in table render
-                const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-                const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-
-                // Skip Draft items (before start date) - they don't expire yet
-                if (startDate && now < startDate) return false;
-                // Skip already Expired items
-                if (endDate && now > endDate) return false;
-
-                // Check if expiring within 90 days
-                if (!endDate) return false;
-                const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-                return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
+                const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
+                const { startDate, endDate } = computeInventoryStatus(item, totalSoldCapacity, now);
+                return isExpiringWithin(endDate, 90, now, startDate);
             });
         } else {
             // For other filters, need to compute status and compare
             data = data.filter(item => {
-                const allSales = window.Store.getSales();
-                const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
-                let totalSoldCapacity = 0;
-                linkedSales.forEach(s => { totalSoldCapacity += (s.capacity?.value || 0); });
-                const totalCapacity = item.capacity?.value || 0;
-
-                const today = new Date();
-                const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-                const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-
-                let calculatedStatus = 'Available';
-                if (endDate && today > endDate) {
-                    calculatedStatus = 'Expired';
-                } else if (startDate && today < startDate) {
-                    calculatedStatus = 'Draft';
-                } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
-                    calculatedStatus = 'Sold Out';
-                }
-
+                const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
+                const { calculatedStatus } = computeInventoryStatus(item, totalSoldCapacity, now);
                 return calculatedStatus === statusFilter;
             });
         }
@@ -159,47 +142,19 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                 <tbody>
                     ${paginatedData.map(item => {
         // Get all sales linked to this resource
-        const allSales = window.Store.getSales();
-        const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
+        const linkedSales = salesByResourceId.get(item.resourceId) || [];
 
         // Calculate total sold capacity
-        let totalSoldCapacity = 0;
-        linkedSales.forEach(sale => {
-            totalSoldCapacity += (sale.capacity?.value || 0);
-        });
-
-        // Resource total capacity
-        const totalCapacity = item.capacity?.value || 0;
-
-        // Calculate usage percentage
-        const usagePercent = totalCapacity > 0 ? Math.min(100, Math.round((totalSoldCapacity / totalCapacity) * 100)) : 0;
+        const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
 
         // Auto-calculate status based on dates and usage
-        const today = new Date();
-        const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-        const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-
-        let calculatedStatus = item.status;
-        if (endDate && today > endDate) {
-            calculatedStatus = 'Expired';
-        } else if (startDate && today < startDate) {
-            calculatedStatus = 'Draft';
-        } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
-            calculatedStatus = 'Sold Out';
-        } else {
-            calculatedStatus = 'Available';
-        }
-
-        // Progress bar color based on usage
-        const progressColor = usagePercent >= 100 ? 'var(--accent-danger)' :
-            usagePercent >= 50 ? 'var(--accent-warning)' :
-                calculatedStatus === 'Expired' ? 'var(--text-muted)' :
-                    calculatedStatus === 'Draft' ? 'var(--accent-warning)' : 'var(--accent-success)';
-
-        // Status badge color
-        const statusBadgeClass = calculatedStatus === 'Available' ? 'badge-success' :
-            calculatedStatus === 'Sold Out' ? 'badge-danger' :
-                calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
+        const {
+            calculatedStatus,
+            totalCapacity,
+            usagePercent,
+            statusBadgeClass,
+            progressColor
+        } = getInventoryDisplayMetrics(item, totalSoldCapacity, now);
 
         return `
                         <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}" class="${context._selectedInventory.has(item.resourceId) ? 'row-selected' : ''}">
@@ -350,36 +305,19 @@ export function viewInventoryDetails(context, resourceId) {
 
     // Get linked sales orders
     const allSales = window.Store.getSales();
-    const linkedSales = allSales.filter(s => s.inventoryLink === resourceId);
+    const { byResourceId: salesByResourceId, soldByResourceId } = buildSalesIndex(allSales);
+    const linkedSales = salesByResourceId.get(resourceId) || [];
+    const now = new Date();
 
     // Calculate usage
-    let totalSoldCapacity = 0;
-    linkedSales.forEach(sale => {
-        totalSoldCapacity += (sale.capacity?.value || 0);
-    });
+    const totalSoldCapacity = soldByResourceId.get(resourceId) || 0;
     const totalCapacity = item.capacity?.value || 0;
-    const usagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
-
-    // Dynamic status calculation (same logic as renderInventory)
-    const today = new Date();
-    const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-    const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-
-    let calculatedStatus = item.status;
-    if (endDate && today > endDate) {
-        calculatedStatus = 'Expired';
-    } else if (startDate && today < startDate) {
-        calculatedStatus = 'Draft';
-    } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
-        calculatedStatus = 'Sold Out';
-    } else {
-        calculatedStatus = 'Available';
-    }
-
-    // Status badge color
-    const statusBadgeClass = calculatedStatus === 'Available' ? 'badge-success' :
-        calculatedStatus === 'Sold Out' ? 'badge-danger' :
-            calculatedStatus === 'Expired' ? 'badge-danger' : 'badge-warning';
+    const {
+        calculatedStatus,
+        totalCapacity: displayTotalCapacity,
+        usagePercent,
+        statusBadgeClass
+    } = getInventoryDisplayMetrics(item, totalSoldCapacity, now);
 
     // Calculate financial totals from linked sales
     let totalMrcRevenue = 0;
@@ -390,7 +328,7 @@ export function viewInventoryDetails(context, resourceId) {
     });
     const contractTerm = item.financials?.term || 12;
     const totalContractRevenue = (totalMrcRevenue * contractTerm) + totalNrcRevenue;
-    const remainingCapacity = totalCapacity - totalSoldCapacity;
+    const remainingCapacity = displayTotalCapacity - totalSoldCapacity;
 
     // Build clickable linked sales list
     const linkedSalesHtml = linkedSales.length === 0
@@ -530,19 +468,11 @@ export function openInventoryModal(context, resourceId = null) {
     // Calculate correct status based on capacity usage
     let calculatedStatus = item.status || 'Available';
     if (isEdit && item.resourceId) {
-        const allSales = window.Store.getSales(); // Assuming getSales() returns all sales orders
-        const linkedSales = allSales.filter(s => s.inventoryLink === item.resourceId);
-        let totalSoldCapacity = 0;
-        linkedSales.forEach(s => {
-            totalSoldCapacity += (s.capacity?.value || 0);
-        });
-        const totalCapacity = item.capacity?.value || 0;
-
-        if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
-            calculatedStatus = 'Sold Out';
-        } else {
-            calculatedStatus = 'Available';
-        }
+        const allSales = window.Store.getSales();
+        const { soldByResourceId } = buildSalesIndex(allSales);
+        const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
+        const now = new Date();
+        calculatedStatus = computeInventoryStatus(item, totalSoldCapacity, now).calculatedStatus;
     }
 
     // Generate supplier options for searchable dropdown

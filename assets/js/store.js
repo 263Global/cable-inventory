@@ -221,9 +221,11 @@ class Store {
         const resource = this.inventory.find(r => r.resourceId === resourceId);
         if (!resource) return;
 
-        const totalCapacity = resource.capacity?.value || 0;
         const soldCapacity = this.getSoldCapacity(resourceId);
-        const newStatus = soldCapacity >= totalCapacity ? 'Sold Out' : 'Available';
+        const now = new Date();
+        const newStatus = window.InventoryStatus
+            .computeInventoryStatus(resource, soldCapacity, now)
+            .calculatedStatus;
 
         const updates = {
             status: newStatus,
@@ -243,17 +245,13 @@ class Store {
     }
 
     getAvailableResources() {
-        const today = new Date();
+        const now = new Date();
+        const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(this.salesOrders);
         return this.inventory.filter(item => {
-            const endDate = item.dates?.end ? new Date(item.dates.end) : null;
-            if (endDate && today > endDate) return false;
-
-            const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-            if (startDate && today < startDate) return false;
-
-            const totalCapacity = item.capacity?.value || 0;
-            const soldCapacity = this.getSoldCapacity(item.resourceId);
-            return soldCapacity < totalCapacity;
+            const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
+            const { calculatedStatus, totalCapacity } = window.InventoryStatus.computeInventoryStatus(item, totalSoldCapacity, now);
+            if (calculatedStatus !== 'Available') return false;
+            return totalCapacity > totalSoldCapacity;
         });
     }
 

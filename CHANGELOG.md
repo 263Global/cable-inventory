@@ -2,6 +2,17 @@
 
 All notable changes to the Cable Inventory Manager will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Status Helper Test Page** - `docs/status-test.html` for browser-based helper checks
+- **Shared Status Helpers** - Inventory, sales, and alert UI helpers for consistent status rendering
+
+### Changed
+- **Inventory Status Logic** - Centralized status computation and sales aggregation across inventory views
+- **Status UI Rendering** - Consolidated badge/alert colors for inventory, sales, and dashboard
+- **Asset Bundling** - Added `assets/css/bundle.css` and `assets/js/bundle.js` for fewer requests and faster page load
+
 ## [1.7.1] - 2026-01-15
 
 ### Security

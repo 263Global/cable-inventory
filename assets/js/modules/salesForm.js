@@ -8,6 +8,8 @@
 
 import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown, initSimpleDropdown } from './searchableDropdown.js';
 
+const { computeSalesStatus } = window.SalesStatus;
+
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
     const existingOrder = existingOrderId ? window.Store.getSales().find(s => s.salesOrderId === existingOrderId) : null;
@@ -1913,15 +1915,7 @@ export function attachSalesFormListeners(context) {
 
     const updateStatus = () => {
         if (!startDateInput.value || !endDateInput.value) return;
-        const today = new Date();
-        const start = new Date(startDateInput.value);
-        const end = new Date(endDateInput.value);
-
-        let status = 'Active';
-        if (today < start) status = 'Pending';
-        if (today > end) status = 'Expired';
-
-        statusDisplay.value = status;
+        statusDisplay.value = computeSalesStatus(startDateInput.value, endDateInput.value);
     };
 
     if (startDateInput && termInput && endDateInput) {
@@ -2189,13 +2183,7 @@ export async function handleSalesSubmit(context, form) {
     const isEditMode = !!context._editingOrderId;
 
     // Calculate Status to ensure it's accurate at save time
-    let status = 'Active';
-    const today = new Date();
-    const start = new Date(getVal('dates.start'));
-    const end = new Date(getVal('dates.end'));
-
-    if (today < start) status = 'Pending';
-    if (today > end) status = 'Expired';
+    const status = computeSalesStatus(getVal('dates.start'), getVal('dates.end'));
 
     const orderData = {
         salesOrderId: isEditMode ? context._editingOrderId : (getVal('orderId') || null),
@@ -2557,12 +2545,7 @@ export function openRenewModal(context, salesOrderId) {
         }
 
         // Calculate new status based on dates
-        const today = new Date();
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        let newStatus = 'Active';
-        if (today < start) newStatus = 'Pending';
-        if (today > end) newStatus = 'Expired';
+        const newStatus = computeSalesStatus(startDate, endDate);
 
         // Start with base updated data
         const updatedData = {
@@ -2746,4 +2729,3 @@ export function openRenewModal(context, salesOrderId) {
         }
     }, 100);
 }
-

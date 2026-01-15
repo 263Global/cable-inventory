@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Status Helpers Test</title>
+    <style>
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            padding: 24px;
+            background: #f6f7f8;
+            color: #222;
+        }
+        .result {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background: #fff;
+            border: 1px solid #e2e4e8;
+        }
+        .pass { color: #0b7a2a; }
+        .fail { color: #b42318; }
+        .muted { color: #6b7280; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Status Helpers Test</h1>
+    <div id="results"></div>
+
+    <script src="../assets/js/inventoryStatus.js"></script>
+    <script src="../assets/js/salesStatus.js"></script>
+    <script src="../assets/js/statusUi.js"></script>
+    <script>
+        const resultsEl = document.getElementById('results');
+        const now = new Date('2024-06-01T00:00:00Z');
+
+        const addResult = (name, pass, details) => {
+            const el = document.createElement('div');
+            el.className = 'result';
+            el.innerHTML = `<strong class="${pass ? 'pass' : 'fail'}">${pass ? 'PASS' : 'FAIL'}</strong> ${name}` +
+                (details ? `<div class="muted">${details}</div>` : '');
+            resultsEl.appendChild(el);
+        };
+
+        const assertEqual = (name, actual, expected) => {
+            const pass = actual === expected;
+            addResult(name, pass, pass ? '' : `Expected: ${expected}, got: ${actual}`);
+        };
+
+        if (!window.InventoryStatus) {
+            addResult('InventoryStatus loaded', false, 'Missing window.InventoryStatus. Try opening from a local server.');
+        } else {
+            addResult('InventoryStatus loaded', true);
+            // Inventory status cases
+            const baseItem = {
+                capacity: { value: 10 },
+                dates: { start: '2024-05-01', end: '2024-07-01' }
+            };
+
+            assertEqual(
+                'Inventory: Available',
+                InventoryStatus.computeInventoryStatus(baseItem, 5, now).calculatedStatus,
+                'Available'
+            );
+
+            assertEqual(
+                'Inventory: Draft (before start)',
+                InventoryStatus.computeInventoryStatus({ ...baseItem, dates: { start: '2024-07-01', end: '2024-08-01' } }, 0, now).calculatedStatus,
+                'Draft'
+            );
+
+            assertEqual(
+                'Inventory: Expired (after end)',
+                InventoryStatus.computeInventoryStatus({ ...baseItem, dates: { start: '2024-01-01', end: '2024-05-01' } }, 0, now).calculatedStatus,
+                'Expired'
+            );
+
+            assertEqual(
+                'Inventory: Sold Out (capacity used)',
+                InventoryStatus.computeInventoryStatus(baseItem, 10, now).calculatedStatus,
+                'Sold Out'
+            );
+
+            assertEqual(
+                'Inventory badge: Available',
+                InventoryStatus.getInventoryStatusBadgeClass('Available'),
+                'badge-success'
+            );
+        }
+
+        if (!window.SalesStatus) {
+            addResult('SalesStatus loaded', false, 'Missing window.SalesStatus. Try opening from a local server.');
+        } else {
+            addResult('SalesStatus loaded', true);
+            assertEqual(
+                'Sales badge: Pending',
+                SalesStatus.getSalesStatusBadgeClass('Pending'),
+                'badge-warning'
+            );
+            assertEqual(
+                'Sales status: Expired (after end)',
+                SalesStatus.computeSalesStatus('2024-01-01', '2024-05-01', now),
+                'Expired'
+            );
+        }
+
+        if (!window.StatusUi) {
+            addResult('StatusUi loaded', false, 'Missing window.StatusUi. Try opening from a local server.');
+        } else {
+            addResult('StatusUi loaded', true);
+            assertEqual(
+                'Alert badge: danger',
+                StatusUi.getAlertBadgeClass('danger'),
+                'badge-danger'
+            );
+            assertEqual(
+                'Expiring within 90 days',
+                StatusUi.isExpiringWithin('2024-08-15', 90, now, '2024-05-01'),
+                true
+            );
+        }
+    </script>
+</body>
+</html>
