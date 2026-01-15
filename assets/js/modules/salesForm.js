@@ -675,13 +675,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     // Helper function to hydrate the cable card with data
                     const hydrateCableCard = () => {
                         const cableCard = document.querySelector('.cost-card[data-cost-type="cable"]');
-                        if (!cableCard) {
-                            console.log('[EDIT_COSTS_DEBUG] ERROR: Cable card not found!');
-                            return;
-                        }
-
-                        console.log('[EDIT_COSTS_DEBUG] Cable hydration starting...');
-                        console.log('[EDIT_COSTS_DEBUG] cableCost object:', cableCost);
+                        if (!cableCard) return;
 
                         // Basic fields - scope to cableCard
                         const populateField = (dataField, value, allowZero = false) => {
@@ -793,7 +787,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         populateField('costs.cable.termMonths', cableCost.termMonths || 12, true);
                         populateField('costs.cable.endDate', cableCost.endDate);
 
-                        console.log('[EDIT_COSTS_DEBUG] Cable hydration complete.');
+
                         context.calculateSalesFinancials();
                     };
 
@@ -803,11 +797,9 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                         if (existingCableCard) {
                             // Card already exists (e.g., auto-created for Resale), just hydrate it
-                            console.log('[EDIT_COSTS_DEBUG] Cable card already exists, hydrating...');
                             setTimeout(hydrateCableCard, 50);
                         } else if (addCableBtn && !addCableBtn.disabled) {
                             // Need to create the card first, then hydrate
-                            console.log('[EDIT_COSTS_DEBUG] Creating cable card...');
                             addCableBtn.click();
                             setTimeout(hydrateCableCard, 150);
                         }
