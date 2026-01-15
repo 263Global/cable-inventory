@@ -540,6 +540,26 @@ export function openAddSalesModal(context, existingOrderId = null) {
     // Attach Event Listeners for Dynamic Logic
     context.attachSalesFormListeners();
 
+    // Smart default: Auto-expand Cable cost card for new Resale orders
+    if (!isEditMode) {
+        // Check current sales type and auto-add cable card for Resale
+        const checkAndAutoAddCable = () => {
+            const salesTypeSelect = document.getElementById('sales-type-select');
+            const addCableBtn = document.getElementById('add-cable-btn');
+            const cardsContainer = document.getElementById('cost-cards-container');
+
+            if (salesTypeSelect && addCableBtn && cardsContainer) {
+                const salesType = salesTypeSelect.value || 'Resale';
+                // Only auto-add if Resale and no cable card exists yet
+                if (salesType === 'Resale' && !cardsContainer.querySelector('[data-cost-type="cable"]')) {
+                    addCableBtn.click();
+                }
+            }
+        };
+        // Delay to allow dropdown initialization
+        setTimeout(checkAndAutoAddCable, 200);
+    }
+
     // If edit mode, sync hidden inputs and add Edit Costs button handler
     if (isEditMode && existingOrder) {
         // Sync hidden inputs from existing order data for correct calculation
@@ -710,17 +730,11 @@ export function attachSalesFormListeners(context) {
                                                                                                                             <div class="grid-2">
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Cost Model</label>
-                                                                                                                                    <select class="form-control cost-input cable-cost-model-select" data-field="costs.cable.model">
-                                                                                                                                        <option value="Lease">Lease</option>
-                                                                                                                                        <option value="IRU">IRU</option>
-                                                                                                                                    </select>
+                                                                                                                                    <div class="cable-cost-model-dropdown-placeholder" data-field="costs.cable.model"></div>
                                                                                                                                 </div>
                                                                                                                                 <div class="form-group">
                                                                                                                                     <label class="form-label">Protection</label>
-                                                                                                                                    <select class="form-control cost-input cable-protection-select" data-field="costs.cable.protection">
-                                                                                                                                        <option value="Unprotected">Unprotected</option>
-                                                                                                                                        <option value="Protected">Protected</option>
-                                                                                                                                    </select>
+                                                                                                                                    <div class="cable-protection-dropdown-placeholder" data-field="costs.cable.protection"></div>
                                                                                                                                 </div>
                                                                                                                             </div>
                                                                                                                             <div class="cable-protection-system-container form-group" style="display: none;">
@@ -1130,6 +1144,44 @@ export function attachSalesFormListeners(context) {
             setTimeout(() => initSearchableDropdown(`${dropdownId}-container`), 10);
         }
 
+        // Initialize Cost Model and Protection SimpleDropdowns for cable card
+        if (type === 'cable') {
+            const timestamp = Date.now();
+
+            // Cost Model dropdown
+            const costModelPlaceholder = card.querySelector('.cable-cost-model-dropdown-placeholder');
+            if (costModelPlaceholder) {
+                const costModelId = `cable-cost-model-${timestamp}`;
+                costModelPlaceholder.outerHTML = renderSimpleDropdown({
+                    name: 'costs.cable.model',
+                    id: costModelId,
+                    options: [
+                        { value: 'Lease', label: 'Lease' },
+                        { value: 'IRU', label: 'IRU' }
+                    ],
+                    selectedValue: 'Lease',
+                    placeholder: 'Select...'
+                });
+                setTimeout(() => initSimpleDropdown(`${costModelId}-container`), 10);
+            }
+
+            // Protection dropdown
+            const protectionPlaceholder = card.querySelector('.cable-protection-dropdown-placeholder');
+            if (protectionPlaceholder) {
+                const protectionId = `cable-protection-${timestamp}`;
+                protectionPlaceholder.outerHTML = renderSimpleDropdown({
+                    name: 'costs.cable.protection',
+                    id: protectionId,
+                    options: [
+                        { value: 'Unprotected', label: 'Unprotected' },
+                        { value: 'Protected', label: 'Protected' }
+                    ],
+                    selectedValue: 'Unprotected',
+                    placeholder: 'Select...'
+                });
+                setTimeout(() => initSimpleDropdown(`${protectionId}-container`), 10);
+            }
+        }
 
         // Update button state (only for non-multi types)
         if (!isMulti) {
@@ -1159,10 +1211,8 @@ export function attachSalesFormListeners(context) {
 
         // Attach special handlers for cable card
         if (type === 'cable') {
-            const modelSelect = card.querySelector('.cable-cost-model-select');
             const leaseFields = card.querySelector('.cable-lease-fields');
             const iruFields = card.querySelector('.cable-iru-fields');
-            const protectionSelect = card.querySelector('.cable-protection-select');
             const protectionSystemContainer = card.querySelector('.cable-protection-system-container');
             const otcInput = card.querySelector('.cable-otc-input');
             const omRateInput = card.querySelector('.cable-om-rate-input');
@@ -1171,24 +1221,43 @@ export function attachSalesFormListeners(context) {
             const termMonthsInput = card.querySelector('.cable-term-months');
             const endDateInput = card.querySelector('.cable-end-date');
 
-            // Cost Model Toggle (Lease vs IRU)
-            if (modelSelect && leaseFields && iruFields) {
-                modelSelect.addEventListener('change', (e) => {
-                    const isIRU = e.target.value === 'IRU';
-                    leaseFields.style.display = isIRU ? 'none' : 'block';
-                    iruFields.style.display = isIRU ? 'block' : 'none';
-                    syncCostInputs();
-                    context.calculateSalesFinancials();
-                });
-            }
+            // Cost Model Toggle (Lease vs IRU) - using SimpleDropdown hidden input
+            setTimeout(() => {
+                const modelInput = document.querySelector('input[name="costs.cable.model"]');
+                if (modelInput && leaseFields && iruFields) {
+                    // Create MutationObserver to detect value changes
+                    const modelObserver = new MutationObserver(() => {
+                        const isIRU = modelInput.value === 'IRU';
+                        leaseFields.style.display = isIRU ? 'none' : 'block';
+                        iruFields.style.display = isIRU ? 'block' : 'none';
+                        syncCostInputs();
+                        context.calculateSalesFinancials();
+                    });
+                    modelObserver.observe(modelInput, { attributes: true, attributeFilter: ['value'] });
+                    // Also listen to manual input changes
+                    modelInput.addEventListener('change', () => {
+                        const isIRU = modelInput.value === 'IRU';
+                        leaseFields.style.display = isIRU ? 'none' : 'block';
+                        iruFields.style.display = isIRU ? 'block' : 'none';
+                        syncCostInputs();
+                        context.calculateSalesFinancials();
+                    });
+                }
 
-            // Protection Toggle
-            if (protectionSelect && protectionSystemContainer) {
-                protectionSelect.addEventListener('change', (e) => {
-                    protectionSystemContainer.style.display = e.target.value === 'Protected' ? 'block' : 'none';
-                    syncCostInputs();
-                });
-            }
+                // Protection Toggle - using SimpleDropdown hidden input
+                const protectionInput = document.querySelector('input[name="costs.cable.protection"]');
+                if (protectionInput && protectionSystemContainer) {
+                    const protectionObserver = new MutationObserver(() => {
+                        protectionSystemContainer.style.display = protectionInput.value === 'Protected' ? 'block' : 'none';
+                        syncCostInputs();
+                    });
+                    protectionObserver.observe(protectionInput, { attributes: true, attributeFilter: ['value'] });
+                    protectionInput.addEventListener('change', () => {
+                        protectionSystemContainer.style.display = protectionInput.value === 'Protected' ? 'block' : 'none';
+                        syncCostInputs();
+                    });
+                }
+            }, 50);
 
             // Annual O&M Auto-calculation
             const calculateAnnualOm = () => {
