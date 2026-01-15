@@ -2325,8 +2325,163 @@ export function openRenewModal(context, salesOrderId) {
     const currentMRC = order.financials?.mrcSales || 0;
     const currentNRC = order.financials?.nrcSales || 0;
 
+    // Get cost info for renewal section
+    const costs = order.costs || {};
+    const cableCost = costs.cable || {};
+    const hasCableCost = cableCost.mrc > 0 || cableCost.otc > 0 || cableCost.annualOm > 0;
+    const isIruCable = cableCost.model === 'IRU';
+    const backhaulA = costs.backhaul?.aEnd || {};
+    const backhaulZ = costs.backhaul?.zEnd || {};
+    const hasBackhaulA = backhaulA.monthly > 0 || backhaulA.nrc > 0;
+    const hasBackhaulZ = backhaulZ.monthly > 0 || backhaulZ.nrc > 0;
+    const xcA = costs.crossConnect?.aEnd || {};
+    const xcZ = costs.crossConnect?.zEnd || {};
+    const hasXcA = xcA.monthly > 0 || xcA.nrc > 0;
+    const hasXcZ = xcZ.monthly > 0 || xcZ.nrc > 0;
+    const otherCosts = costs.otherCosts || {};
+    const hasOther = otherCosts.monthly > 0 || otherCosts.oneOff > 0;
+    const hasAnyCost = hasCableCost || hasBackhaulA || hasBackhaulZ || hasXcA || hasXcZ || hasOther;
+
+    // Helper for cost renewal card
+    const costCard = (id, title, icon, fields) => `
+        <div class="cost-renew-card" style="background: var(--bg-card); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <ion-icon name="${icon}" style="font-size: 1rem; color: var(--accent-info);"></ion-icon>
+                <span style="font-weight: 500; font-size: 0.85rem;">${title}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                ${fields}
+            </div>
+        </div>
+    `;
+
+    // Build cost renewal section HTML
+    let costRenewalHTML = '';
+    if (hasAnyCost) {
+        let costCards = '';
+
+        if (hasCableCost) {
+            if (isIruCable) {
+                // IRU Cable - only show Annual O&M renewal
+                costCards += costCard('cable', '🔌 Cable (IRU)', 'flash-outline', `
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.7rem; color: var(--text-muted);">Annual O&M ($)</label>
+                        <input type="number" class="form-control" id="renew-cable-om" value="${cableCost.annualOm || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                        <small style="color: var(--text-muted);">原: $${(cableCost.annualOm || 0).toLocaleString()}</small>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.7rem; color: var(--text-muted);">O&M Rate (%)</label>
+                        <input type="number" class="form-control" id="renew-cable-om-rate" value="${cableCost.omRate || 0}" min="0" step="0.1" style="font-size: 0.85rem; padding: 0.4rem;">
+                    </div>
+                `);
+            } else {
+                // Lease Cable - show MRC/NRC renewal
+                costCards += costCard('cable', '🔌 Cable (Lease)', 'flash-outline', `
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.7rem; color: var(--text-muted);">MRC ($)</label>
+                        <input type="number" class="form-control" id="renew-cable-mrc" value="${cableCost.mrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                        <small style="color: var(--text-muted);">原: $${(cableCost.mrc || 0).toLocaleString()}</small>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.7rem; color: var(--text-muted);">NRC ($)</label>
+                        <input type="number" class="form-control" id="renew-cable-nrc" value="${cableCost.nrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    </div>
+                `);
+            }
+        }
+
+        if (hasBackhaulA) {
+            costCards += costCard('bh-a', '📡 Backhaul A-End', 'radio-outline', `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">Monthly ($)</label>
+                    <input type="number" class="form-control" id="renew-bh-a-mrc" value="${backhaulA.monthly || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    <small style="color: var(--text-muted);">原: $${(backhaulA.monthly || 0).toLocaleString()}</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">NRC ($)</label>
+                    <input type="number" class="form-control" id="renew-bh-a-nrc" value="${backhaulA.nrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                </div>
+            `);
+        }
+
+        if (hasBackhaulZ) {
+            costCards += costCard('bh-z', '📡 Backhaul Z-End', 'radio-outline', `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">Monthly ($)</label>
+                    <input type="number" class="form-control" id="renew-bh-z-mrc" value="${backhaulZ.monthly || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    <small style="color: var(--text-muted);">原: $${(backhaulZ.monthly || 0).toLocaleString()}</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">NRC ($)</label>
+                    <input type="number" class="form-control" id="renew-bh-z-nrc" value="${backhaulZ.nrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                </div>
+            `);
+        }
+
+        if (hasXcA) {
+            costCards += costCard('xc-a', '🔗 Cross-Connect A', 'link-outline', `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">Monthly ($)</label>
+                    <input type="number" class="form-control" id="renew-xc-a-mrc" value="${xcA.monthly || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    <small style="color: var(--text-muted);">原: $${(xcA.monthly || 0).toLocaleString()}</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">NRC ($)</label>
+                    <input type="number" class="form-control" id="renew-xc-a-nrc" value="${xcA.nrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                </div>
+            `);
+        }
+
+        if (hasXcZ) {
+            costCards += costCard('xc-z', '🔗 Cross-Connect Z', 'link-outline', `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">Monthly ($)</label>
+                    <input type="number" class="form-control" id="renew-xc-z-mrc" value="${xcZ.monthly || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    <small style="color: var(--text-muted);">原: $${(xcZ.monthly || 0).toLocaleString()}</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">NRC ($)</label>
+                    <input type="number" class="form-control" id="renew-xc-z-nrc" value="${xcZ.nrc || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                </div>
+            `);
+        }
+
+        if (hasOther) {
+            costCards += costCard('other', '💰 Other Costs', 'wallet-outline', `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">Monthly ($)</label>
+                    <input type="number" class="form-control" id="renew-other-mrc" value="${otherCosts.monthly || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                    <small style="color: var(--text-muted);">原: $${(otherCosts.monthly || 0).toLocaleString()}</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted);">One-off ($)</label>
+                    <input type="number" class="form-control" id="renew-other-nrc" value="${otherCosts.oneOff || 0}" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem;">
+                </div>
+            `);
+        }
+
+        costRenewalHTML = `
+            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02)); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; margin-bottom: 1rem; overflow: hidden;">
+                <div id="cost-renew-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; cursor: pointer; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <ion-icon name="cash-outline" style="font-size: 1.1rem; color: var(--accent-success);"></ion-icon>
+                        <span style="font-weight: 500; color: var(--text-primary);">成本同步续约</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">(可选)</span>
+                    </div>
+                    <ion-icon name="chevron-down-outline" id="cost-renew-chevron" style="font-size: 1rem; color: var(--text-muted); transition: transform 0.2s;"></ion-icon>
+                </div>
+                <div id="cost-renew-body" style="display: none; padding: 0 1rem 1rem 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                        💡 展开此面板可同时更新成本金额。成本合同日期将自动与销售合同同步。
+                    </div>
+                    ${costCards}
+                </div>
+            </div>
+        `;
+    }
+
     const modalContent = `
-        <div style="max-width: 400px; margin: 0 auto;">
+        <div style="max-width: 450px; margin: 0 auto;">
             <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <ion-icon name="refresh-outline" style="font-size: 1.25rem; color: var(--accent-warning);"></ion-icon>
@@ -2369,6 +2524,9 @@ export function openRenewModal(context, salesOrderId) {
                 </div>
             </div>
             
+            <!-- 成本续约区域 (可折叠) -->
+            ${costRenewalHTML}
+            
             <div class="form-group">
                 <label class="form-label">新合同开始日期</label>
                 <input type="date" class="form-control" name="renewStartDate" id="renew-start-date" value="${newStartDate}" required>
@@ -2406,7 +2564,7 @@ export function openRenewModal(context, salesOrderId) {
         if (today < start) newStatus = 'Pending';
         if (today > end) newStatus = 'Expired';
 
-        // Update order with new dates and prices
+        // Start with base updated data
         const updatedData = {
             ...order,
             dates: {
@@ -2422,6 +2580,111 @@ export function openRenewModal(context, salesOrderId) {
             status: newStatus
         };
 
+        // Collect cost changes
+        const costChanges = [];
+
+        // Check if cost renewal panel was expanded (user interacted with costs)
+        const costRenewBody = document.getElementById('cost-renew-body');
+        const costsWereEdited = costRenewBody && costRenewBody.style.display !== 'none';
+
+        if (costsWereEdited && hasAnyCost) {
+            // Initialize costs structure
+            updatedData.costs = { ...order.costs };
+
+            // Cable costs
+            if (hasCableCost) {
+                updatedData.costs.cable = { ...order.costs.cable };
+                // Update contract dates to match sales dates
+                updatedData.costs.cable.startDate = startDate;
+                updatedData.costs.cable.termMonths = term;
+                updatedData.costs.cable.endDate = endDate;
+
+                if (isIruCable) {
+                    const newOm = parseFloat(document.getElementById('renew-cable-om')?.value) || 0;
+                    const newOmRate = parseFloat(document.getElementById('renew-cable-om-rate')?.value) || 0;
+                    if (newOm !== (cableCost.annualOm || 0)) {
+                        costChanges.push(`Cable O&M: $${cableCost.annualOm || 0} → $${newOm}`);
+                    }
+                    updatedData.costs.cable.annualOm = newOm;
+                    updatedData.costs.cable.omRate = newOmRate;
+                } else {
+                    const newCableMrc = parseFloat(document.getElementById('renew-cable-mrc')?.value) || 0;
+                    const newCableNrc = parseFloat(document.getElementById('renew-cable-nrc')?.value) || 0;
+                    if (newCableMrc !== (cableCost.mrc || 0)) {
+                        costChanges.push(`Cable MRC: $${cableCost.mrc || 0} → $${newCableMrc}`);
+                    }
+                    updatedData.costs.cable.mrc = newCableMrc;
+                    updatedData.costs.cable.nrc = newCableNrc;
+                }
+            }
+
+            // Backhaul A-End
+            if (hasBackhaulA) {
+                const newBhAMrc = parseFloat(document.getElementById('renew-bh-a-mrc')?.value) || 0;
+                const newBhANrc = parseFloat(document.getElementById('renew-bh-a-nrc')?.value) || 0;
+                if (newBhAMrc !== (backhaulA.monthly || 0)) {
+                    costChanges.push(`BH-A: $${backhaulA.monthly || 0} → $${newBhAMrc}`);
+                }
+                updatedData.costs.backhaul = {
+                    ...order.costs.backhaul,
+                    aEnd: { monthly: newBhAMrc, nrc: newBhANrc }
+                };
+            }
+
+            // Backhaul Z-End
+            if (hasBackhaulZ) {
+                const newBhZMrc = parseFloat(document.getElementById('renew-bh-z-mrc')?.value) || 0;
+                const newBhZNrc = parseFloat(document.getElementById('renew-bh-z-nrc')?.value) || 0;
+                if (newBhZMrc !== (backhaulZ.monthly || 0)) {
+                    costChanges.push(`BH-Z: $${backhaulZ.monthly || 0} → $${newBhZMrc}`);
+                }
+                updatedData.costs.backhaul = {
+                    ...updatedData.costs.backhaul,
+                    zEnd: { monthly: newBhZMrc, nrc: newBhZNrc }
+                };
+            }
+
+            // Cross-Connect A
+            if (hasXcA) {
+                const newXcAMrc = parseFloat(document.getElementById('renew-xc-a-mrc')?.value) || 0;
+                const newXcANrc = parseFloat(document.getElementById('renew-xc-a-nrc')?.value) || 0;
+                if (newXcAMrc !== (xcA.monthly || 0)) {
+                    costChanges.push(`XC-A: $${xcA.monthly || 0} → $${newXcAMrc}`);
+                }
+                updatedData.costs.crossConnect = {
+                    ...order.costs.crossConnect,
+                    aEnd: { monthly: newXcAMrc, nrc: newXcANrc }
+                };
+            }
+
+            // Cross-Connect Z
+            if (hasXcZ) {
+                const newXcZMrc = parseFloat(document.getElementById('renew-xc-z-mrc')?.value) || 0;
+                const newXcZNrc = parseFloat(document.getElementById('renew-xc-z-nrc')?.value) || 0;
+                if (newXcZMrc !== (xcZ.monthly || 0)) {
+                    costChanges.push(`XC-Z: $${xcZ.monthly || 0} → $${newXcZMrc}`);
+                }
+                updatedData.costs.crossConnect = {
+                    ...updatedData.costs.crossConnect,
+                    zEnd: { monthly: newXcZMrc, nrc: newXcZNrc }
+                };
+            }
+
+            // Other Costs
+            if (hasOther) {
+                const newOtherMrc = parseFloat(document.getElementById('renew-other-mrc')?.value) || 0;
+                const newOtherNrc = parseFloat(document.getElementById('renew-other-nrc')?.value) || 0;
+                if (newOtherMrc !== (otherCosts.monthly || 0)) {
+                    costChanges.push(`Other: $${otherCosts.monthly || 0} → $${newOtherMrc}`);
+                }
+                updatedData.costs.otherCosts = {
+                    ...order.costs.otherCosts,
+                    monthly: newOtherMrc,
+                    oneOff: newOtherNrc
+                };
+            }
+        }
+
         await window.Store.updateSalesOrder(salesOrderId, updatedData);
 
         // Build success message
@@ -2433,13 +2696,18 @@ export function openRenewModal(context, salesOrderId) {
             priceChangeMsg += ` NRC: $${currentNRC} → $${newNRC}`;
         }
 
-        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！${priceChangeMsg ? '价格已更新:' + priceChangeMsg : ''}`) : null;
+        let costChangeMsg = '';
+        if (costChanges.length > 0) {
+            costChangeMsg = ` | 成本更新: ${costChanges.join(', ')}`;
+        }
+
+        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！${priceChangeMsg ? '价格已更新:' + priceChangeMsg : ''}${costChangeMsg}`) : null;
 
         context.renderView('sales');
         return true;
     }, false);
 
-    // Attach event listeners for auto-calculating end date
+    // Attach event listeners for auto-calculating end date and cost panel toggle
     setTimeout(() => {
         const startInput = document.getElementById('renew-start-date');
         const termInput = document.getElementById('renew-term');
@@ -2461,5 +2729,21 @@ export function openRenewModal(context, salesOrderId) {
             // Calculate initial end date
             calculateEndDate();
         }
+
+        // Cost panel toggle
+        const costHeader = document.getElementById('cost-renew-header');
+        const costBody = document.getElementById('cost-renew-body');
+        const costChevron = document.getElementById('cost-renew-chevron');
+
+        if (costHeader && costBody) {
+            costHeader.addEventListener('click', () => {
+                const isExpanded = costBody.style.display !== 'none';
+                costBody.style.display = isExpanded ? 'none' : 'block';
+                if (costChevron) {
+                    costChevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            });
+        }
     }, 100);
 }
+
