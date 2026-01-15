@@ -614,51 +614,268 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                 // Auto-create cost cards with existing data
                 setTimeout(() => {
-                    // Helper to populate card field
-                    const populateCardField = (selector, value) => {
+                    // Helper to populate card field (for standard inputs)
+                    const populateCardField = (selector, value, allowZero = false) => {
                         const field = document.querySelector(selector);
-                        if (field && value !== undefined && value !== null && value !== '' && value !== 0) {
+                        if (field && value !== undefined && value !== null && value !== '') {
+                            if (!allowZero && value === 0) return;
                             field.value = value;
+                            // Trigger input event to sync hidden inputs
+                            field.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                     };
 
-                    // Cable cost card
-                    if (cableCost.mrc > 0 || cableCost.otc > 0 || cableCost.supplier) {
+                    // Helper to populate SimpleDropdown
+                    const populateSimpleDropdown = (containerId, value) => {
+                        if (!value) return;
+                        const container = document.getElementById(containerId);
+                        if (!container) return;
+                        const hiddenInput = container.querySelector('input[type="hidden"]');
+                        const selectedDisplay = container.querySelector('.simple-dropdown-selected');
+                        const options = container.querySelectorAll('.simple-dropdown-option');
+
+                        if (hiddenInput) hiddenInput.value = value;
+                        options.forEach(opt => {
+                            if (opt.dataset.value === value) {
+                                opt.classList.add('selected');
+                                if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
+                            } else {
+                                opt.classList.remove('selected');
+                            }
+                        });
+                    };
+
+                    // Helper to populate SearchableDropdown (for suppliers)
+                    const populateSearchableDropdown = (containerId, value) => {
+                        if (!value) return;
+                        const container = document.getElementById(containerId);
+                        if (!container) return;
+                        const hiddenInput = container.querySelector('input[type="hidden"]');
+                        const selectedDisplay = container.querySelector('.searchable-dropdown-selected');
+                        const options = container.querySelectorAll('.searchable-dropdown-option');
+
+                        if (hiddenInput) hiddenInput.value = value;
+                        options.forEach(opt => {
+                            if (opt.dataset.value === value) {
+                                opt.classList.add('selected');
+                                if (selectedDisplay) {
+                                    const label = opt.querySelector('.option-label')?.textContent || opt.textContent;
+                                    selectedDisplay.textContent = label;
+                                }
+                            } else {
+                                opt.classList.remove('selected');
+                            }
+                        });
+                    };
+
+                    // ===== Cable Cost Card =====
+                    const hasCableCost = cableCost.mrc > 0 || cableCost.nrc > 0 || cableCost.otc > 0 || cableCost.supplier || cableCost.cableSystem;
+                    if (hasCableCost) {
                         const addCableBtn = document.querySelector('.cost-add-btn[data-cost-type="cable"]');
                         if (addCableBtn && !addCableBtn.disabled) {
                             addCableBtn.click();
+                            // Wait for card to be created and dropdowns initialized
                             setTimeout(() => {
-                                populateCardField('[data-field="costs.cable.mrc"]', cableCost.mrc);
-                                populateCardField('[data-field="costs.cable.nrc"]', cableCost.nrc);
-                                populateCardField('[data-field="costs.cable.supplier"]', cableCost.supplier);
+                                // Basic fields
+                                populateCardField('[data-field="costs.cable.orderNo"]', cableCost.orderNo);
+                                populateCardField('[data-field="costs.cable.cableSystem"]', cableCost.cableSystem);
+                                populateCardField('[data-field="costs.cable.capacity"]', cableCost.capacity, true);
+                                populateCardField('[data-field="costs.cable.notes"]', cableCost.notes);
+
+                                // Capacity unit dropdown (native select)
+                                const capacityUnitSelect = document.querySelector('[data-field="costs.cable.capacityUnit"]');
+                                if (capacityUnitSelect && cableCost.capacityUnit) {
+                                    capacityUnitSelect.value = cableCost.capacityUnit;
+                                }
+
+                                // Cost Model SimpleDropdown
+                                populateSimpleDropdown('cable-cost-model-select-container', cableCost.model || 'Lease');
+
+                                // Protection SimpleDropdown
+                                populateSimpleDropdown('cable-protection-select-container', cableCost.protection || 'Unprotected');
+
+                                // Protection cable system (if protected)
+                                if (cableCost.protection && cableCost.protection !== 'Unprotected') {
+                                    const protSystemContainer = document.querySelector('.cable-protection-system-container');
+                                    if (protSystemContainer) protSystemContainer.style.display = 'block';
+                                    populateCardField('[data-field="costs.cable.protectionCableSystem"]', cableCost.protectionCableSystem);
+                                }
+
+                                // Supplier searchable dropdown
+                                populateSearchableDropdown('cable-supplier-dropdown-container', cableCost.supplier);
+
+                                // Handle Cost Model: Lease vs IRU fields visibility and values
+                                const costModel = cableCost.model || 'Lease';
+                                const leaseFields = document.querySelector('.cable-lease-fields');
+                                const iruFields = document.querySelector('.cable-iru-fields');
+
+                                if (costModel === 'IRU') {
+                                    if (leaseFields) leaseFields.style.display = 'none';
+                                    if (iruFields) iruFields.style.display = 'block';
+                                    populateCardField('[data-field="costs.cable.otc"]', cableCost.otc, true);
+                                    populateCardField('[data-field="costs.cable.omRate"]', cableCost.omRate, true);
+                                    populateCardField('[data-field="costs.cable.annualOm"]', cableCost.annualOm, true);
+                                } else {
+                                    if (leaseFields) leaseFields.style.display = 'block';
+                                    if (iruFields) iruFields.style.display = 'none';
+                                    populateCardField('[data-field="costs.cable.mrc"]', cableCost.mrc, true);
+                                    populateCardField('[data-field="costs.cable.nrc"]', cableCost.nrc, true);
+                                }
+
+                                // Contract period
+                                populateCardField('[data-field="costs.cable.startDate"]', cableCost.startDate);
+                                populateCardField('[data-field="costs.cable.termMonths"]', cableCost.termMonths || 12, true);
+                                populateCardField('[data-field="costs.cable.endDate"]', cableCost.endDate);
+
                                 context.calculateSalesFinancials();
-                            }, 50);
+                            }, 150);
                         }
                     }
 
-                    // Backhaul A
+                    // ===== Backhaul A-End Card =====
                     const bhAMrc = bhA.mrc || bhA.monthly || 0;
-                    if (bhAMrc > 0) {
+                    const bhANrc = bhA.nrc || 0;
+                    const hasBhA = bhAMrc > 0 || bhANrc > 0 || bhA.supplier || bhA.otc > 0;
+                    if (hasBhA) {
                         const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulA"]');
                         if (addBtn && !addBtn.disabled) {
                             addBtn.click();
                             setTimeout(() => {
-                                populateCardField('[data-field="costs.backhaulA.mrc"]', bhAMrc);
-                                populateCardField('[data-field="costs.backhaulA.nrc"]', bhA.nrc);
-                            }, 50);
+                                // Supplier dropdown
+                                populateSearchableDropdown('bh-a-supplier-dropdown-container', bhA.supplier);
+                                populateCardField('[data-field="costs.backhaulA.orderNo"]', bhA.orderNo);
+
+                                // Cost model
+                                const bhAModelSelect = document.querySelector('.bh-a-cost-model-select');
+                                if (bhAModelSelect && bhA.model) {
+                                    bhAModelSelect.value = bhA.model;
+                                    // Toggle fields visibility
+                                    const leaseFields = document.querySelector('.bh-a-lease-fields');
+                                    const iruFields = document.querySelector('.bh-a-iru-fields');
+                                    if (bhA.model === 'IRU') {
+                                        if (leaseFields) leaseFields.style.display = 'none';
+                                        if (iruFields) iruFields.style.display = 'block';
+                                    }
+                                }
+
+                                // Lease fields (note: actual data-field is costs.backhaul.aEnd.monthly)
+                                populateCardField('[data-field="costs.backhaul.aEnd.monthly"]', bhAMrc, true);
+                                populateCardField('[data-field="costs.backhaul.aEnd.nrc"]', bhANrc, true);
+
+                                // IRU fields
+                                populateCardField('[data-field="costs.backhaulA.otc"]', bhA.otc, true);
+                                populateCardField('[data-field="costs.backhaulA.omRate"]', bhA.omRate, true);
+                                populateCardField('[data-field="costs.backhaulA.annualOm"]', bhA.annualOm, true);
+
+                                // Contract period
+                                populateCardField('[data-field="costs.backhaulA.startDate"]', bhA.startDate);
+                                populateCardField('[data-field="costs.backhaulA.termMonths"]', bhA.termMonths || 12, true);
+                                populateCardField('[data-field="costs.backhaulA.endDate"]', bhA.endDate);
+                                populateCardField('[data-field="costs.backhaulA.notes"]', bhA.notes);
+
+                                context.calculateSalesFinancials();
+                            }, 150);
                         }
                     }
 
-                    // Backhaul Z
+                    // ===== Backhaul Z-End Card =====
                     const bhZMrc = bhZ.mrc || bhZ.monthly || 0;
-                    if (bhZMrc > 0) {
+                    const bhZNrc = bhZ.nrc || 0;
+                    const hasBhZ = bhZMrc > 0 || bhZNrc > 0 || bhZ.supplier || bhZ.otc > 0;
+                    if (hasBhZ) {
                         const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulZ"]');
                         if (addBtn && !addBtn.disabled) {
                             addBtn.click();
                             setTimeout(() => {
-                                populateCardField('[data-field="costs.backhaulZ.mrc"]', bhZMrc);
-                                populateCardField('[data-field="costs.backhaulZ.nrc"]', bhZ.nrc);
-                            }, 50);
+                                // Supplier dropdown
+                                populateSearchableDropdown('bh-z-supplier-dropdown-container', bhZ.supplier);
+                                populateCardField('[data-field="costs.backhaulZ.orderNo"]', bhZ.orderNo);
+
+                                // Cost model
+                                const bhZModelSelect = document.querySelector('.bh-z-cost-model-select');
+                                if (bhZModelSelect && bhZ.model) {
+                                    bhZModelSelect.value = bhZ.model;
+                                    const leaseFields = document.querySelector('.bh-z-lease-fields');
+                                    const iruFields = document.querySelector('.bh-z-iru-fields');
+                                    if (bhZ.model === 'IRU') {
+                                        if (leaseFields) leaseFields.style.display = 'none';
+                                        if (iruFields) iruFields.style.display = 'block';
+                                    }
+                                }
+
+                                // Lease fields
+                                populateCardField('[data-field="costs.backhaul.zEnd.monthly"]', bhZMrc, true);
+                                populateCardField('[data-field="costs.backhaul.zEnd.nrc"]', bhZNrc, true);
+
+                                // IRU fields
+                                populateCardField('[data-field="costs.backhaulZ.otc"]', bhZ.otc, true);
+                                populateCardField('[data-field="costs.backhaulZ.omRate"]', bhZ.omRate, true);
+                                populateCardField('[data-field="costs.backhaulZ.annualOm"]', bhZ.annualOm, true);
+
+                                // Contract period
+                                populateCardField('[data-field="costs.backhaulZ.startDate"]', bhZ.startDate);
+                                populateCardField('[data-field="costs.backhaulZ.termMonths"]', bhZ.termMonths || 12, true);
+                                populateCardField('[data-field="costs.backhaulZ.endDate"]', bhZ.endDate);
+                                populateCardField('[data-field="costs.backhaulZ.notes"]', bhZ.notes);
+
+                                context.calculateSalesFinancials();
+                            }, 200);
+                        }
+                    }
+
+                    // ===== Cross-Connect A-End Card =====
+                    const xcAMrc = xcA.mrc || xcA.monthly || 0;
+                    const xcANrc = xcA.nrc || 0;
+                    const hasXcA = xcAMrc > 0 || xcANrc > 0 || xcA.supplier;
+                    if (hasXcA) {
+                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="xcA"]');
+                        if (addBtn && !addBtn.disabled) {
+                            addBtn.click();
+                            setTimeout(() => {
+                                // Supplier dropdown
+                                populateSearchableDropdown('xc-a-supplier-dropdown-container', xcA.supplier);
+                                populateCardField('[data-field="costs.xcA.orderNo"]', xcA.orderNo);
+
+                                // Monthly and NRC
+                                populateCardField('[data-field="costs.crossConnect.aEnd.monthly"]', xcAMrc, true);
+                                populateCardField('[data-field="costs.crossConnect.aEnd.nrc"]', xcANrc, true);
+
+                                // Contract period
+                                populateCardField('[data-field="costs.xcA.startDate"]', xcA.startDate);
+                                populateCardField('[data-field="costs.xcA.termMonths"]', xcA.termMonths || 12, true);
+                                populateCardField('[data-field="costs.xcA.endDate"]', xcA.endDate);
+                                populateCardField('[data-field="costs.xcA.notes"]', xcA.notes);
+
+                                context.calculateSalesFinancials();
+                            }, 250);
+                        }
+                    }
+
+                    // ===== Cross-Connect Z-End Card =====
+                    const xcZMrc = xcZ.mrc || xcZ.monthly || 0;
+                    const xcZNrc = xcZ.nrc || 0;
+                    const hasXcZ = xcZMrc > 0 || xcZNrc > 0 || xcZ.supplier;
+                    if (hasXcZ) {
+                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="xcZ"]');
+                        if (addBtn && !addBtn.disabled) {
+                            addBtn.click();
+                            setTimeout(() => {
+                                // Supplier dropdown
+                                populateSearchableDropdown('xc-z-supplier-dropdown-container', xcZ.supplier);
+                                populateCardField('[data-field="costs.xcZ.orderNo"]', xcZ.orderNo);
+
+                                // Monthly and NRC
+                                populateCardField('[data-field="costs.crossConnect.zEnd.monthly"]', xcZMrc, true);
+                                populateCardField('[data-field="costs.crossConnect.zEnd.nrc"]', xcZNrc, true);
+
+                                // Contract period
+                                populateCardField('[data-field="costs.xcZ.startDate"]', xcZ.startDate);
+                                populateCardField('[data-field="costs.xcZ.termMonths"]', xcZ.termMonths || 12, true);
+                                populateCardField('[data-field="costs.xcZ.endDate"]', xcZ.endDate);
+                                populateCardField('[data-field="costs.xcZ.notes"]', xcZ.notes);
+
+                                context.calculateSalesFinancials();
+                            }, 300);
                         }
                     }
                 }, 100);
