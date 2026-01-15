@@ -190,6 +190,7 @@ function initSuppliersModule(App) {
     };
 
     App.deleteSupplier = async function (supplierId) {
+        if (!confirm('Are you sure you want to delete this supplier?')) return;
         try {
             await window.Store.deleteSupplier(supplierId);
             this.renderSuppliers();
