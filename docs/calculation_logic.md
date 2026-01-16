@@ -1,4 +1,4 @@
-、# Sales Order 成本与收入计算逻辑
+# Sales Order 成本与收入计算逻辑
 
 > 本文档记录了 Cable Inventory Manager 系统中各种销售场景的利润计算规则。
 
@@ -20,6 +20,21 @@
 | **Leased** | `MRC × 分摊比例` |
 | **IRU** | `(OTC ÷ Term Months + Annual O&M ÷ 12) × 分摊比例` |
 
+### 利润率定义
+**常规（非 IRU + Resale）：**
+```
+利润率 = 月利润 ÷ 月收入
+```
+其中：
+- Lease：月收入 = MRC收入
+- IRU（Inventory / Hybrid）：月收入 = 月OTC收入 + 月O&M收入
+
+**IRU + Resale（特殊）：**
+```
+首月利润率 = 首月利润 ÷ (OTC收入 + 当月O&M收入)
+续月利润率 = 续月利润 ÷ 当月O&M收入
+```
+
 ---
 
 ## 一、Lease Model（月租模式）
@@ -35,6 +50,16 @@
 ```
 月利润 = MRC收入 - Cable MRC - Backhaul MRC - XC MRC - Other Monthly
 NRC利润 = NRC收入 - Cable NRC - Backhaul NRC - XC NRC - Other One-off
+```
+
+**示例：**
+- 收入：MRC=5,000；NRC=2,000
+- 成本：Cable MRC=2,500；Backhaul MRC=300；XC MRC=200；Other Monthly=0
+- 一次性成本：Cable NRC=500；Backhaul NRC=100；XC NRC=100；Other One-off=0
+```
+月利润 = 5,000 - 2,500 - 300 - 200 = 2,000
+NRC利润 = 2,000 - 500 - 100 - 100 = 1,300
+利润率 = 2,000 ÷ 5,000 = 40.00%
 ```
 
 ---
@@ -53,6 +78,16 @@ NRC利润 = NRC收入 - Cable NRC - Backhaul NRC - XC NRC - Other One-off
 
 *注：无 3rd Party Cable 成本*
 
+**示例：**
+- Inventory（Leased）：MRC=8,000
+- 销售容量=10G；Inventory容量=100G → 分摊比例=0.1
+- 收入：MRC=6,000
+```
+Inventory月成本 = 8,000 × 0.1 = 800
+月利润 = 6,000 - 800 = 5,200
+利润率 = 5,200 ÷ 6,000 = 86.67%
+```
+
 ---
 
 ### 3. Lease + Hybrid（混合资源）
@@ -65,6 +100,15 @@ NRC利润 = NRC收入 - Cable NRC - Backhaul NRC - XC NRC - Other One-off
 **月利润：**
 ```
 月利润 = MRC收入 - Inventory月成本 - Cable MRC - Backhaul MRC - XC MRC - Other Monthly
+```
+
+**示例：**
+- Inventory（Leased）：MRC=8,000 → 分摊=800
+- 3rd Party Cable：MRC=1,500
+- 收入：MRC=6,000
+```
+月利润 = 6,000 - 800 - 1,500 = 3,700
+利润率 = 3,700 ÷ 6,000 = 61.67%
 ```
 
 ---
@@ -95,6 +139,17 @@ NRC利润 = NRC收入 - Cable NRC - Backhaul NRC - XC NRC - Other One-off
        - Backhaul MRC 
        - XC MRC 
        - Other Monthly
+```
+
+**示例：**
+- 收入：OTC=120,000；Annual O&M=12,000
+- 成本：OTC=90,000；Annual O&M=3,600
+```
+当月O&M差 = (12,000 - 3,600) ÷ 12 = 700
+首月利润 = (120,000 - 90,000) + 700 = 30,700
+续月利润 = 700
+首月利润率 = 30,700 ÷ (120,000 + 1,000) = 25.37%
+续月利润率 = 700 ÷ 1,000 = 70.00%
 ```
 
 ---
@@ -129,6 +184,18 @@ Inventory O&M月成本 = (Inventory Annual O&M ÷ 12) × 分摊比例
 Inventory月成本 = (120,000 ÷ 180) × (10 ÷ 100) = 666.67 × 0.1 = 66.67/月
 ```
 
+**完整示例（含利润）：**
+- 销售：OTC=120,000；合同期=60月 → 月OTC收入=2,000
+- Annual O&M=12,000 → 月O&M收入=1,000
+- Inventory（IRU）：OTC=300,000；Term=180；Annual O&M=18,000
+- 分摊比例=0.1
+```
+Inventory月成本 = (300,000 ÷ 180) × 0.1 = 166.67
+Inventory O&M月成本 = (18,000 ÷ 12) × 0.1 = 150
+月利润 = 2,000 + 1,000 - 166.67 - 150 = 2,683.33
+利润率 = 2,683.33 ÷ 3,000 = 89.44%
+```
+
 ---
 
 ### 3. IRU + Hybrid（混合资源买断销售）
@@ -157,6 +224,20 @@ Cable O&M月成本 = Cable Annual O&M ÷ 12
        - Other Monthly
 ```
 
+**示例：**
+- 销售：OTC=120,000；合同期=60 → 月OTC=2,000
+- Annual O&M=12,000 → 月O&M=1,000
+- Inventory（IRU）：OTC=300,000；Term=180；Annual O&M=18,000；分摊=0.1
+- Cable（IRU）：OTC=60,000；Term=60；Annual O&M=6,000
+```
+Inventory月成本 = (300,000 ÷ 180) × 0.1 = 166.67
+Inventory O&M月成本 = (18,000 ÷ 12) × 0.1 = 150
+Cable月成本 = 60,000 ÷ 60 = 1,000
+Cable O&M月成本 = 6,000 ÷ 12 = 500
+月利润 = 3,000 - 166.67 - 150 - 1,000 - 500 = 1,183.33
+利润率 = 1,183.33 ÷ 3,000 = 39.44%
+```
+
 ---
 
 ### 4. IRU + Swapped Out（置换）
@@ -174,11 +255,11 @@ Cable O&M月成本 = Cable Annual O&M ÷ 12
 | 成本类型 | 月租字段 (MRC) | 一次性字段 (NRC/OTC) |
 |---------|---------------|---------------------|
 | **3rd Party Cable** | `costs.cable.mrc` | `costs.cable.nrc` / `costs.cable.otc` |
-| **Backhaul A-End** | `costs.backhaulA.mrc` | `costs.backhaulA.nrc` |
-| **Backhaul Z-End** | `costs.backhaulZ.mrc` | `costs.backhaulZ.nrc` |
-| **Cross Connect A** | `costs.xcA.mrc` | `costs.xcA.nrc` |
-| **Cross Connect Z** | `costs.xcZ.mrc` | `costs.xcZ.nrc` |
-| **Other Costs** | `costs.other.monthly` | `costs.other.oneOff` |
+| **Backhaul A-End** | `costs.backhaul.aEnd.monthly` | `costs.backhaul.aEnd.nrc` |
+| **Backhaul Z-End** | `costs.backhaul.zEnd.monthly` | `costs.backhaul.zEnd.nrc` |
+| **Cross Connect A** | `costs.crossConnect.aEnd.monthly` | `costs.crossConnect.aEnd.nrc` |
+| **Cross Connect Z** | `costs.crossConnect.zEnd.monthly` | `costs.crossConnect.zEnd.nrc` |
+| **Other Costs** | `costs.otherCosts.monthly` | `costs.otherCosts.oneOff` |
 
 ---
 

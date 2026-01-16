@@ -2040,8 +2040,8 @@ textarea.is-invalid:focus {
         width: auto;
         height: auto;
         flex-direction: row;
-        padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-        margin-bottom: env(safe-area-inset-bottom, 0px);
+        padding: 8px;
+        margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
         border-right: none;
         border-top: none;
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2115,7 +2115,7 @@ textarea.is-invalid:focus {
 
     /* Main content adjustments */
     .main-content {
-        padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         overflow: visible;
     }
 
