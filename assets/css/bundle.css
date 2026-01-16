@@ -91,7 +91,9 @@
     /* Darker amber */
     --accent-danger: #dc2626;
     /* Darker red */
-}/* 
+}
+
+/* 
  * CSS Reset & Base Styles
  * Global resets and foundational styles
  */
@@ -132,7 +134,9 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
-}/* 
+}
+
+/* 
  * Typography Styles
  * Headings and font utilities
  */
@@ -151,7 +155,9 @@ h6 {
 .font-mono {
     font-family: 'JetBrains Mono', 'SF Mono', monospace;
     font-size: 0.9em;
-}/* 
+}
+
+/* 
  * Grid & Layout System
  * Main layout containers and grid utilities
  */
@@ -206,7 +212,9 @@ h6 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
-}/* 
+}
+
+/* 
  * Sidebar Navigation Styles
  * Left sidebar with navigation menu
  */
@@ -275,7 +283,9 @@ h6 {
     margin-top: auto;
     padding: 0.75rem;
     border-top: 1px solid var(--border-color);
-}/* 
+}
+
+/* 
  * Header Styles
  * Top navigation bar and actions
  */
@@ -402,7 +412,9 @@ h6 {
 
 .mobile-user-logout ion-icon {
     color: var(--accent-danger);
-}/* 
+}
+
+/* 
  * Components - Stripe-Inspired Design
  * Professional, clean, modern UI components
  */
@@ -1262,7 +1274,9 @@ select.form-control:focus {
     text-align: center;
     color: var(--text-muted);
     font-size: 0.85rem;
-}/* 
+}
+
+/* 
  * Utility Classes
  * Common helper classes for layout and spacing
  */
@@ -1365,7 +1379,9 @@ select.form-control:focus {
 
 .text-muted {
     color: var(--text-muted);
-}/* 
+}
+
+/* 
  * Dashboard Page Styles
  * Dashboard-specific components and layouts
  */
@@ -1690,7 +1706,9 @@ textarea.is-invalid:focus {
 
 .fab.show {
     animation: fabIn 0.25s ease forwards;
-}/* 
+}
+
+/* 
  * Responsive Styles
  * All media queries consolidated for maintainability
  */
@@ -2012,24 +2030,29 @@ textarea.is-invalid:focus {
         }
     }
 
-    /* Mobile Sidebar - Bottom Navigation */
+    /* Mobile Sidebar - Bottom Navigation (Modern Floating Design) */
     .sidebar {
         position: fixed !important;
         bottom: 0 !important;
         top: auto !important;
-        left: 0;
-        right: 0;
-        width: 100%;
+        left: 12px;
+        right: 12px;
+        width: auto;
         height: auto;
         flex-direction: row;
-        padding: 0.5rem 0.5rem 0;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+        margin-bottom: env(safe-area-inset-bottom, 0px);
         border-right: none;
-        border-top: 1px solid var(--border-color);
+        border-top: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
         z-index: 9999;
-        background: var(--bg-sidebar);
-        -webkit-backdrop-filter: blur(10px);
-        backdrop-filter: blur(10px);
+        background: rgba(30, 35, 50, 0.85);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        backdrop-filter: blur(20px) saturate(180%);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
 
     .brand {
@@ -2040,22 +2063,48 @@ textarea.is-invalid:focus {
         flex-direction: row;
         flex: 1;
         justify-content: space-around;
-        gap: 0;
+        gap: 4px;
     }
 
     .nav-item {
         flex-direction: column;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.65rem;
-        gap: 0.25rem;
+        padding: 10px 14px;
+        font-size: 0.6rem;
+        gap: 4px;
+        border-radius: 16px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        color: rgba(255, 255, 255, 0.5);
+        position: relative;
     }
 
     .nav-menu .nav-item {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
+        letter-spacing: 0.02em;
     }
 
     .nav-item ion-icon {
-        font-size: 1.25rem !important;
+        font-size: 1.35rem !important;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Active state with pill background and glow */
+    .nav-item.active {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.2));
+        color: #a5b4fc;
+        box-shadow:
+            0 0 20px rgba(99, 102, 241, 0.3),
+            0 0 40px rgba(99, 102, 241, 0.1);
+    }
+
+    .nav-item.active ion-icon {
+        color: #818cf8;
+        transform: scale(1.1);
+    }
+
+    /* Hover state for non-active items */
+    .nav-item:not(.active):hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.8);
     }
 
     /* Hide sidebar footer on mobile */
