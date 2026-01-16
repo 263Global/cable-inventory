@@ -13,6 +13,32 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Status UI Rendering** - Consolidated badge/alert colors for inventory, sales, and dashboard
 - **Asset Bundling** - Added `assets/css/bundle.css` and `assets/js/bundle.js` for fewer requests and faster page load
 
+---
+
+## [1.8.0] - 2026-01-16
+
+### Added
+- **Cost Totals Summary** - Real-time summary panel in Sales form showing:
+  - Total Recurring Cost (MRC)
+  - Total One-time Cost (NRC)
+  - Amortized cost over contract term
+- **Dynamic Viewport Height** - `visualViewport` API integration for accurate mobile height
+  - Sets `--app-height` CSS variable dynamically
+  - Listens to resize and scroll events for real-time updates
+
+### Changed
+- **Cost Type Selector UI** - Redesigned cost buttons with toggle behavior
+  - Added "Cost Types" header label for clarity
+  - Renamed class from `cost-add-btn` to `cost-toggle-btn`
+  - Updated hydration selectors to match new class names
+
+### Fixed
+- **Mobile Viewport Height** - Replaced static `100vh` with dynamic `var(--app-height)`
+  - Fixes Safari/Chrome address bar height issues
+  - Uses `100dvh` fallback with `@supports` feature query
+
+---
+
 ## [1.7.1] - 2026-01-15
 
 ### Security
