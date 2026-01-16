@@ -330,8 +330,8 @@
         width: 100%;
         height: auto;
         flex-direction: row;
-        padding: 0.5rem;
-        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+        padding: 0.5rem 0.5rem 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
         border-right: none;
         border-top: 1px solid var(--border-color);
         z-index: 9999;
