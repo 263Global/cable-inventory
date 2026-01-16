@@ -78,14 +78,26 @@ NRC利润 = 2,000 - 500 - 100 - 100 = 1,300
 
 *注：无 3rd Party Cable 成本*
 
-**示例：**
-- Inventory（Leased）：MRC=8,000
+**示例 A（Inventory = Leased）：**
+- Inventory：MRC=8,000
 - 销售容量=10G；Inventory容量=100G → 分摊比例=0.1
 - 收入：MRC=6,000
 ```
 Inventory月成本 = 8,000 × 0.1 = 800
 月利润 = 6,000 - 800 = 5,200
 利润率 = 5,200 ÷ 6,000 = 86.67%
+```
+
+**示例 B（Inventory = IRU，仍按摊销计入成本）：**
+- Inventory：OTC=300,000；Term=180；Annual O&M=18,000
+- 销售容量=10G；Inventory容量=100G → 分摊比例=0.1
+- 收入：MRC=6,000
+```
+Inventory月成本 = (300,000 ÷ 180 + 18,000 ÷ 12) × 0.1
+               = (1,666.67 + 1,500) × 0.1
+               = 316.67
+月利润 = 6,000 - 316.67 = 5,683.33
+利润率 = 5,683.33 ÷ 6,000 = 94.72%
 ```
 
 ---
@@ -102,13 +114,23 @@ Inventory月成本 = 8,000 × 0.1 = 800
 月利润 = MRC收入 - Inventory月成本 - Cable MRC - Backhaul MRC - XC MRC - Other Monthly
 ```
 
-**示例：**
-- Inventory（Leased）：MRC=8,000 → 分摊=800
+**示例 A（Inventory = Leased）：**
+- Inventory：MRC=8,000 → 分摊=800
 - 3rd Party Cable：MRC=1,500
 - 收入：MRC=6,000
 ```
 月利润 = 6,000 - 800 - 1,500 = 3,700
 利润率 = 3,700 ÷ 6,000 = 61.67%
+```
+
+**示例 B（Inventory = IRU，仍按摊销计入成本）：**
+- Inventory：OTC=300,000；Term=180；Annual O&M=18,000 → 分摊=0.1
+- 3rd Party Cable：MRC=1,500
+- 收入：MRC=6,000
+```
+Inventory月成本 = (300,000 ÷ 180 + 18,000 ÷ 12) × 0.1 = 316.67
+月利润 = 6,000 - 316.67 - 1,500 = 4,183.33
+利润率 = 4,183.33 ÷ 6,000 = 69.72%
 ```
 
 ---
@@ -156,6 +178,8 @@ Inventory月成本 = 8,000 × 0.1 = 800
 
 ### 2. IRU + Inventory（自有资源买断销售）
 使用自有库存，以 IRU 方式卖给客户。
+
+*注：IRU 销售一般对应 IRU Inventory，Leased Inventory 通常不用于 IRU 销售。*
 
 **收入（按月分摊）：**
 - 月 OTC 收入 = OTC 收入 ÷ 销售合同月数
@@ -227,7 +251,8 @@ Cable O&M月成本 = Cable Annual O&M ÷ 12
 **示例：**
 - 销售：OTC=120,000；合同期=60 → 月OTC=2,000
 - Annual O&M=12,000 → 月O&M=1,000
-- Inventory（IRU）：OTC=300,000；Term=180；Annual O&M=18,000；分摊=0.1
+**示例 A（Inventory = IRU）：**
+- Inventory：OTC=300,000；Term=180；Annual O&M=18,000；分摊=0.1
 - Cable（IRU）：OTC=60,000；Term=60；Annual O&M=6,000
 ```
 Inventory月成本 = (300,000 ÷ 180) × 0.1 = 166.67
@@ -236,6 +261,17 @@ Cable月成本 = 60,000 ÷ 60 = 1,000
 Cable O&M月成本 = 6,000 ÷ 12 = 500
 月利润 = 3,000 - 166.67 - 150 - 1,000 - 500 = 1,183.33
 利润率 = 1,183.33 ÷ 3,000 = 39.44%
+```
+
+**示例 B（Inventory = Leased）：**
+- Inventory：MRC=8,000 → 分摊=800
+- Cable（IRU）：OTC=60,000；Term=60；Annual O&M=6,000
+```
+Inventory月成本 = 8,000 × 0.1 = 800
+Cable月成本 = 60,000 ÷ 60 = 1,000
+Cable O&M月成本 = 6,000 ÷ 12 = 500
+月利润 = 3,000 - 800 - 1,000 - 500 = 700
+利润率 = 700 ÷ 3,000 = 23.33%
 ```
 
 ---
