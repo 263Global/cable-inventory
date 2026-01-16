@@ -15,6 +15,19 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Export for use in other modules
 window.SupabaseClient = supabaseClient;
+
+const setAppViewportHeight = () => {
+    const viewport = window.visualViewport;
+    const height = viewport ? viewport.height : window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
+};
+
+setAppViewportHeight();
+window.addEventListener('resize', setAppViewportHeight);
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setAppViewportHeight);
+    window.visualViewport.addEventListener('scroll', setAppViewportHeight);
+}
 /**
  * Auth.js
  * Authentication logic using Supabase
