@@ -354,31 +354,48 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
                     ` : ''}
 
-                    <!-- Add Cost Buttons (Sticky with Wrapper) -->
+                    <!-- Cost Type Selector (Sticky with Wrapper) -->
                     <div id="cost-buttons" class="mb-4" style="display: ${isEditMode ? 'none' : 'flex'}; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
+                        <div style="width: 100%; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Cost Types</div>
+                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
                         </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
+                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> Backhaul A
                         </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
+                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> Backhaul Z
                         </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
+                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> XC A
                         </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
+                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> XC Z
                         </button>
                         <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Other Costs
+                            <ion-icon name="add-outline"></ion-icon> Add Other Cost
                         </button>
                     </div>
 
                     <!-- Dynamic Cost Cards Container -->
                     <div id="cost-cards-container" style="${isEditMode ? 'display: none;' : ''}">
                         <!-- Cost cards will be inserted here dynamically -->
+                    </div>
+
+                    <!-- Cost Totals Summary -->
+                    <div id="cost-totals" style="display: ${isEditMode ? 'none' : 'block'}; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; margin-top: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                            <span>Recurring Cost</span>
+                            <span id="cost-total-recurring" class="font-mono" style="color: var(--accent-danger);">$0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">
+                            <span>One-time Cost</span>
+                            <span id="cost-total-onetime" class="font-mono" style="color: var(--accent-warning);">$0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                            <span>Amortized (Contract Term)</span>
+                            <span id="cost-total-amortized" class="font-mono">$0</span>
+                        </div>
                     </div>
 
                     <!-- Hidden inputs for form submission (will be populated by JS) -->
@@ -612,8 +629,10 @@ export function openAddSalesModal(context, existingOrderId = null) {
                 // Show the cost buttons and cards container
                 const costButtons = document.getElementById('cost-buttons');
                 const cardsContainer = document.getElementById('cost-cards-container');
+                const costTotals = document.getElementById('cost-totals');
                 if (costButtons) costButtons.style.display = 'flex';
                 if (cardsContainer) cardsContainer.style.display = 'block';
+                if (costTotals) costTotals.style.display = 'block';
 
                 // Auto-create cost cards with existing data
                 setTimeout(() => {
@@ -794,13 +813,13 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     };
 
                     if (hasCableCost) {
-                        const addCableBtn = document.querySelector('.cost-add-btn[data-cost-type="cable"]');
+                        const addCableBtn = document.querySelector('.cost-toggle-btn[data-cost-type="cable"]');
                         const existingCableCard = document.querySelector('.cost-card[data-cost-type="cable"]');
 
                         if (existingCableCard) {
                             // Card already exists (e.g., auto-created for Resale), just hydrate it
                             setTimeout(hydrateCableCard, 50);
-                        } else if (addCableBtn && !addCableBtn.disabled) {
+                        } else if (addCableBtn) {
                             // Need to create the card first, then hydrate
                             addCableBtn.click();
                             setTimeout(hydrateCableCard, 150);
@@ -844,12 +863,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     };
 
                     if (hasBhA) {
-                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulA"]');
+                        const addBtn = document.querySelector('.cost-toggle-btn[data-cost-type="backhaulA"]');
                         const existingCard = document.querySelector('.cost-card[data-cost-type="backhaulA"]');
 
                         if (existingCard) {
                             setTimeout(hydrateBhACard, 50);
-                        } else if (addBtn && !addBtn.disabled) {
+                        } else if (addBtn) {
                             addBtn.click();
                             setTimeout(hydrateBhACard, 150);
                         }
@@ -892,12 +911,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     };
 
                     if (hasBhZ) {
-                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="backhaulZ"]');
+                        const addBtn = document.querySelector('.cost-toggle-btn[data-cost-type="backhaulZ"]');
                         const existingCard = document.querySelector('.cost-card[data-cost-type="backhaulZ"]');
 
                         if (existingCard) {
                             setTimeout(hydrateBhZCard, 50);
-                        } else if (addBtn && !addBtn.disabled) {
+                        } else if (addBtn) {
                             addBtn.click();
                             setTimeout(hydrateBhZCard, 200);
                         }
@@ -925,12 +944,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     };
 
                     if (hasXcA) {
-                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="xcA"]');
+                        const addBtn = document.querySelector('.cost-toggle-btn[data-cost-type="xcA"]');
                         const existingCard = document.querySelector('.cost-card[data-cost-type="xcA"]');
 
                         if (existingCard) {
                             setTimeout(hydrateXcACard, 50);
-                        } else if (addBtn && !addBtn.disabled) {
+                        } else if (addBtn) {
                             addBtn.click();
                             setTimeout(hydrateXcACard, 250);
                         }
@@ -958,12 +977,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     };
 
                     if (hasXcZ) {
-                        const addBtn = document.querySelector('.cost-add-btn[data-cost-type="xcZ"]');
+                        const addBtn = document.querySelector('.cost-toggle-btn[data-cost-type="xcZ"]');
                         const existingCard = document.querySelector('.cost-card[data-cost-type="xcZ"]');
 
                         if (existingCard) {
                             setTimeout(hydrateXcZCard, 50);
-                        } else if (addBtn && !addBtn.disabled) {
+                        } else if (addBtn) {
                             addBtn.click();
                             setTimeout(hydrateXcZCard, 300);
                         }
@@ -989,7 +1008,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                         if (existingCard) {
                             setTimeout(hydrateOtherCostsCard, 50);
-                        } else if (addBtn && !addBtn.disabled) {
+                        } else if (addBtn) {
                             addBtn.click();
                             setTimeout(hydrateOtherCostsCard, 150);
                         }
@@ -1025,8 +1044,15 @@ export function attachSalesFormListeners(context) {
     const costCardTemplates = {
         cable: `
                                                                                                                         <div class="cost-card" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1136,8 +1162,15 @@ export function attachSalesFormListeners(context) {
                                                                                                                         `,
         backhaulA: `
                                                                                                                         <div class="cost-card" data-cost-type="backhaulA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul A-End</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul A-End</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1211,8 +1244,15 @@ export function attachSalesFormListeners(context) {
                                                                                                                         `,
         backhaulZ: `
                                                                                                                         <div class="cost-card" data-cost-type="backhaulZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul Z-End</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem;">Backhaul Z-End</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1286,8 +1326,15 @@ export function attachSalesFormListeners(context) {
                                                                                                                         `,
         xcA: `
                                                                                                                         <div class="cost-card" data-cost-type="xcA" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect A-End</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect A-End</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1336,8 +1383,15 @@ export function attachSalesFormListeners(context) {
                                                                                                                         `,
         xcZ: `
                                                                                                                         <div class="cost-card" data-cost-type="xcZ" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect Z-End</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Cross Connect Z-End</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1386,8 +1440,15 @@ export function attachSalesFormListeners(context) {
                                                                                                                         `,
         other: `
                                                                                                                         <div class="cost-card cost-card-multi" data-cost-type="other" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                                                                                                                <h5 style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Other Costs</h5>
+                                                                                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
+                                                                                                                                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+                                                                                                                                    <h5 style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Other Costs</h5>
+                                                                                                                                    <div data-cost-summary style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                                                                                                                                        <span data-cost-summary-monthly>$0 / mo</span>
+                                                                                                                                        <span style="opacity: 0.6;">•</span>
+                                                                                                                                        <span data-cost-summary-onetime>$0 one-time</span>
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                                 <button type="button" class="btn-icon cost-remove-btn" style="color: var(--accent-danger); padding: 0.25rem;" title="Remove">
                                                                                                                                     <ion-icon name="close-outline"></ion-icon>
                                                                                                                                 </button>
@@ -1442,6 +1503,114 @@ export function attachSalesFormListeners(context) {
 
     const cardsContainer = document.getElementById('cost-cards-container');
     const addedCostTypes = new Set();
+
+    const formatCurrency = (value) => {
+        const amount = Number(value) || 0;
+        return '$' + amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    };
+
+    const getCardValue = (card, selector) => {
+        return Number(card.querySelector(selector)?.value || 0);
+    };
+
+    const getCableCostModel = () => {
+        return document.querySelector('input[name="costs.cable.model"]')?.value || 'Lease';
+    };
+
+    const getCostSummaryForCard = (card) => {
+        const type = card.dataset.costType;
+        let monthly = 0;
+        let onetime = 0;
+
+        if (type === 'cable') {
+            const model = getCableCostModel();
+            if (model === 'IRU') {
+                monthly = getCardValue(card, '[data-field="costs.cable.annualOm"]') / 12;
+                onetime = getCardValue(card, '[data-field="costs.cable.otc"]');
+            } else {
+                monthly = getCardValue(card, '[data-field="costs.cable.mrc"]');
+                onetime = getCardValue(card, '[data-field="costs.cable.nrc"]');
+            }
+        } else if (type === 'backhaulA') {
+            monthly = getCardValue(card, '[data-field="costs.backhaul.aEnd.monthly"]');
+            onetime = getCardValue(card, '[data-field="costs.backhaul.aEnd.nrc"]');
+        } else if (type === 'backhaulZ') {
+            monthly = getCardValue(card, '[data-field="costs.backhaul.zEnd.monthly"]');
+            onetime = getCardValue(card, '[data-field="costs.backhaul.zEnd.nrc"]');
+        } else if (type === 'xcA') {
+            monthly = getCardValue(card, '[data-field="costs.crossConnect.aEnd.monthly"]');
+            onetime = getCardValue(card, '[data-field="costs.crossConnect.aEnd.nrc"]');
+        } else if (type === 'xcZ') {
+            monthly = getCardValue(card, '[data-field="costs.crossConnect.zEnd.monthly"]');
+            onetime = getCardValue(card, '[data-field="costs.crossConnect.zEnd.nrc"]');
+        } else if (type === 'other') {
+            monthly = getCardValue(card, '[data-field="costs.otherCosts.monthly"]');
+            onetime = getCardValue(card, '[data-field="costs.otherCosts.oneOff"]');
+        }
+
+        return { monthly, onetime };
+    };
+
+    const updateCostSummary = (card) => {
+        const summary = card.querySelector('[data-cost-summary]');
+        if (!summary) return;
+
+        const monthlyEl = summary.querySelector('[data-cost-summary-monthly]');
+        const onetimeEl = summary.querySelector('[data-cost-summary-onetime]');
+        const { monthly, onetime } = getCostSummaryForCard(card);
+
+        if (monthlyEl) {
+            monthlyEl.textContent = `${formatCurrency(monthly)} / mo`;
+        }
+        if (onetimeEl) {
+            onetimeEl.textContent = `${formatCurrency(onetime)} one-time`;
+        }
+    };
+
+    const updateCostTotals = () => {
+        let totalMonthly = 0;
+        let totalOnetime = 0;
+        const cards = cardsContainer.querySelectorAll('.cost-card');
+        cards.forEach(card => {
+            const { monthly, onetime } = getCostSummaryForCard(card);
+            totalMonthly += monthly;
+            totalOnetime += onetime;
+        });
+
+        const term = Number(document.querySelector('[name="dates.term"]')?.value || 0) || 12;
+        const amortized = term > 0 ? totalMonthly + (totalOnetime / term) : totalMonthly;
+
+        const recurringEl = document.getElementById('cost-total-recurring');
+        const onetimeEl = document.getElementById('cost-total-onetime');
+        const amortizedEl = document.getElementById('cost-total-amortized');
+
+        if (recurringEl) recurringEl.textContent = `${formatCurrency(totalMonthly)} / mo`;
+        if (onetimeEl) onetimeEl.textContent = formatCurrency(totalOnetime);
+        if (amortizedEl) amortizedEl.textContent = `${formatCurrency(amortized)} / mo`;
+    };
+
+    const updateCostDisplays = (card = null) => {
+        if (card) {
+            updateCostSummary(card);
+        } else {
+            cardsContainer.querySelectorAll('.cost-card').forEach(updateCostSummary);
+        }
+        updateCostTotals();
+    };
+
+    const setCostToggleState = (type, isActive) => {
+        const btn = document.querySelector(`.cost-toggle-btn[data-cost-type="${type}"]`);
+        if (!btn) return;
+
+        btn.classList.toggle('btn-primary', isActive);
+        btn.classList.toggle('btn-secondary', !isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+        const icon = btn.querySelector('ion-icon');
+        if (icon) {
+            icon.setAttribute('name', isActive ? 'checkmark-outline' : 'add-outline');
+        }
+    };
 
     // ===== Add Cost Card Function =====
     let otherCostCounter = 0; // Counter for unique Other Costs cards
@@ -1516,13 +1685,9 @@ export function attachSalesFormListeners(context) {
             }
         }
 
-        // Update button state (only for non-multi types)
+        // Update toggle state (only for non-multi types)
         if (!isMulti) {
-            const btn = document.querySelector(`.cost-add-btn[data-cost-type="${type}"]`);
-            if (btn) {
-                btn.disabled = true;
-                btn.style.opacity = '0.5';
-            }
+            setCostToggleState(type, true);
         }
 
         // Attach remove handler
@@ -1764,18 +1929,13 @@ export function attachSalesFormListeners(context) {
         if (!isMulti) {
             addedCostTypes.delete(type);
 
-            // Re-enable button (only for non-multi types)
-            const btn = document.querySelector(`.cost-add-btn[data-cost-type="${type}"]`);
-            if (btn) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.title = '';
-            }
+            setCostToggleState(type, false);
 
             // Reset hidden inputs for this type
             resetCostInputs(type);
         }
 
+        updateCostDisplays();
         context.calculateSalesFinancials();
     };
 
@@ -1788,6 +1948,7 @@ export function attachSalesFormListeners(context) {
                 hiddenInput.value = input.value;
             }
         });
+        updateCostDisplays();
     };
 
     // ===== Reset hidden inputs when card is removed =====
@@ -1801,8 +1962,10 @@ export function attachSalesFormListeners(context) {
                 'costs.cable.omRate', 'costs.cable.annualOm',
                 'costs.cable.startDate', 'costs.cable.termMonths', 'costs.cable.endDate'
             ],
-            backhaul: ['costs.backhaul.aEnd.monthly', 'costs.backhaul.aEnd.nrc', 'costs.backhaul.zEnd.monthly', 'costs.backhaul.zEnd.nrc'],
-            crossConnect: ['costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc', 'costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc'],
+            backhaulA: ['costs.backhaul.aEnd.monthly', 'costs.backhaul.aEnd.nrc'],
+            backhaulZ: ['costs.backhaul.zEnd.monthly', 'costs.backhaul.zEnd.nrc'],
+            xcA: ['costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc'],
+            xcZ: ['costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc'],
             other: ['costs.otherCosts.description', 'costs.otherCosts.oneOff', 'costs.otherCosts.monthly']
         };
 
@@ -1824,12 +1987,29 @@ export function attachSalesFormListeners(context) {
     };
 
     // ===== Attach button click handlers =====
-    document.querySelectorAll('.cost-add-btn').forEach(btn => {
+    document.querySelectorAll('.cost-toggle-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const type = btn.dataset.costType;
-            const isMulti = btn.classList.contains('cost-add-multi');
-            addCostCard(type, isMulti);
+            const existingCard = cardsContainer.querySelector(`.cost-card[data-cost-type="${type}"]`);
+            if (existingCard) {
+                removeCostCard(type, existingCard);
+            } else {
+                addCostCard(type, false);
+            }
         });
+    });
+
+    document.querySelectorAll('.cost-add-btn.cost-add-multi').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.costType;
+            addCostCard(type, true);
+        });
+    });
+
+    document.querySelectorAll('.cost-toggle-btn').forEach(btn => {
+        const type = btn.dataset.costType;
+        const hasCard = !!cardsContainer.querySelector(`.cost-card[data-cost-type="${type}"]`);
+        setCostToggleState(type, hasCard);
     });
 
     // ===== Sales Type Smart Hints =====
@@ -1871,16 +2051,12 @@ export function attachSalesFormListeners(context) {
                 if (cableCard) {
                     removeCostCard('cable', cableCard);
                 }
+                setCostToggleState('cable', false);
             } else {
                 // Show button
                 addCableBtn.style.display = '';
 
-                // Enable button (unless already added)
-                if (!addedCostTypes.has('cable')) {
-                    addCableBtn.disabled = false;
-                    addCableBtn.style.opacity = '1';
-                    addCableBtn.title = '';
-                }
+                setCostToggleState('cable', addedCostTypes.has('cable'));
 
                 // Auto-add cable card for Resale/Hybrid
                 if ((type === 'Resale' || type === 'Hybrid') && !addedCostTypes.has('cable')) {
@@ -1921,6 +2097,7 @@ export function attachSalesFormListeners(context) {
     if (startDateInput && termInput && endDateInput) {
         startDateInput.addEventListener('change', calculateEndDate);
         termInput.addEventListener('input', calculateEndDate);
+        termInput.addEventListener('input', () => updateCostTotals());
     }
 
     // ===== Sales Model Toggle (Lease vs IRU Revenue Fields) =====

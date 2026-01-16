@@ -310,6 +310,16 @@
         min-height: 100vh;
     }
 
+    @supports (height: 100dvh) {
+        body {
+            min-height: 100dvh;
+        }
+
+        #app {
+            min-height: 100dvh;
+        }
+    }
+
     /* Mobile Sidebar - Bottom Navigation */
     .sidebar {
         position: fixed !important;
