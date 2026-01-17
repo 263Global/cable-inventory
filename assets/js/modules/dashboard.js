@@ -24,10 +24,12 @@ export function renderDashboard(context) {
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     let totalMrr = 0;
+    let totalMonthlyProfit = 0;
     let activeOrders = 0;
     sales.forEach(s => {
         if (s.status !== 'Active') return;
-        const mrr = s.financials?.mrcSales || s.financials?.totalMrr || 0;
+        const computed = computeOrderFinancials(s);
+        const mrr = computed.monthlyRevenue || 0;
         if (mrr <= 0) return;
         const contractStart = s.dates?.start ? new Date(s.dates.start) : null;
         const contractEnd = s.dates?.end ? new Date(s.dates.end) : null;
@@ -35,12 +37,12 @@ export function renderDashboard(context) {
         const endedAfterOrDuring = !contractEnd || contractEnd >= currentMonthStart;
         if (startedBeforeOrDuring && endedAfterOrDuring) {
             totalMrr += mrr;
+            totalMonthlyProfit += computed.monthlyProfit || 0;
             activeOrders++;
         }
     });
 
-    const totalOpex = inventory.reduce((acc, item) => acc + (item.financials?.mrc || 0), 0);
-    const profit = totalMrr - totalOpex;
+    const profit = totalMonthlyProfit;
 
     const expiringSales = sales.filter(s => {
         return s.status === 'Active' && isExpiringWithin(s.dates?.end, 90, now, s.dates?.start);
@@ -58,7 +60,8 @@ export function renderDashboard(context) {
         if (!salesByPerson[name]) {
             salesByPerson[name] = { name, totalMrr: 0, orderCount: 0 };
         }
-        salesByPerson[name].totalMrr += (s.financials?.mrcSales || s.financials?.totalMrr || 0);
+        const computed = computeOrderFinancials(s);
+        salesByPerson[name].totalMrr += (computed.monthlyRevenue || 0);
         salesByPerson[name].orderCount += 1;
     });
     const leaderboard = Object.values(salesByPerson).sort((a, b) => b.totalMrr - a.totalMrr);
@@ -90,7 +93,8 @@ export function renderDashboard(context) {
 
         sales.forEach(s => {
             if (s.status !== 'Active') return;
-            const mrr = s.financials?.mrcSales || s.financials?.totalMrr || 0;
+            const computed = computeOrderFinancials(s);
+            const mrr = computed.monthlyRevenue || 0;
             if (mrr <= 0) return;
             const contractStart = s.dates?.start ? new Date(s.dates.start) : null;
             const contractEnd = s.dates?.end ? new Date(s.dates.end) : null;
@@ -107,7 +111,7 @@ export function renderDashboard(context) {
 
     // Margin Distribution
     const marginDist = { high: 0, mid: 0, low: 0 };
-    sales.filter(s => s.status !== 'Swapped Out').forEach(s => {
+    sales.filter(s => s.salesType !== 'Swapped Out').forEach(s => {
         const computed = computeOrderFinancials(s);
         const m = computed.marginPercent || 0;
         if (m >= 50) marginDist.high++;

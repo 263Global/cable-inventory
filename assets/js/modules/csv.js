@@ -51,12 +51,13 @@ function exportSalesToCSV() {
         'Sales Order ID', 'Customer', 'Salesperson', 'Status',
         'Sales Model', 'Sales Type', 'Route', 'Capacity',
         'Contract Start', 'Contract End', 'Term (Months)',
-        'MRC Sales', 'OTC', 'Annual O&M', 'Legacy Customer Name'
+        'Monthly Revenue (Unified)', 'MRC Sales', 'OTC', 'Annual O&M', 'Legacy Customer Name'
     ];
 
     const rows = sales.map(s => {
         // Resolve customer name from ID, fallback to legacy customerName
         const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
+        const computed = computeOrderFinancials(s);
 
         return [
             s.salesOrderId || '',
@@ -70,6 +71,7 @@ function exportSalesToCSV() {
             s.dates?.start || '',
             s.dates?.end || '',
             s.dates?.term || '',
+            computed.monthlyRevenue || '',
             s.financials?.mrcSales || '',
             s.financials?.otc || '',
             s.financials?.annualOm || '',
@@ -100,7 +102,7 @@ function exportInventoryToCSV() {
         'Resource ID', 'Cable System', 'Segment Type', 'Route',
         'Status', 'Capacity', 'A-End', 'Z-End',
         'Ownership', 'Supplier', 'Contract Start', 'Contract End', 'Term (Months)',
-        'OTC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
+        'OTC/NRC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
     ];
 
     const rows = inventory.map(i => {

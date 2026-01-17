@@ -360,37 +360,98 @@ export function viewSalesDetails(context, salesOrderId) {
     const isIru = salesModel === 'IRU';
     const mrrDisplay = isIru ? computed.monthlyRevenue : (order.financials?.mrcSales || 0);
     const nrcDisplay = isIru ? (order.financials?.otc || 0) : (order.financials?.nrcSales || 0);
-    const revenueLabel1 = isIru ? 'Monthly O&M Revenue' : 'Monthly Revenue (MRR)';
+    const revenueLabel1 = isIru
+        ? (salesType === 'Resale' ? 'Monthly O&M Revenue' : 'Monthly Revenue (OTC amortized + O&M)')
+        : 'Monthly Revenue (MRR)';
     const revenueLabel2 = isIru ? 'OTC Revenue' : 'One-time Revenue (NRC)';
 
     const statusClass = getSalesStatusBadgeClass(order.status);
 
     // Calculate costs display - MRC
-    const cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
-    const backhaulAMrc = order.costs?.backhaulA?.mrc || order.costs?.backhaul?.aEnd?.monthly || 0;
-    const backhaulZMrc = order.costs?.backhaulZ?.mrc || order.costs?.backhaul?.zEnd?.monthly || 0;
+    const cableModel = order.costs?.cable?.model || 'Lease';
+    const cableOtc = order.costs?.cable?.otc || 0;
+    const cableAnnualOm = order.costs?.cable?.annualOm || 0;
+    const cableTerm = order.costs?.cable?.termMonths || term;
+    let cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
+    let cableCostLabel = 'Cable Cost';
+    if (salesModel === 'IRU') {
+        const cableMonthlyOtc = cableTerm ? (cableOtc / cableTerm) : 0;
+        const cableMonthlyOm = cableAnnualOm / 12;
+        cableCostMrc = cableMonthlyOtc + cableMonthlyOm;
+        cableCostLabel = 'Cable Cost (Amortized)';
+    } else if (cableModel === 'IRU') {
+        cableCostMrc = cableAnnualOm / 12;
+        cableCostLabel = 'Cable Cost (O&M)';
+    }
+    const getBackhaulMonthlyCost = (backhaul) => {
+        if (!backhaul) return 0;
+        if (backhaul.model === 'IRU') {
+            const termMonths = backhaul.termMonths || term;
+            const monthlyOtc = termMonths > 0 ? (backhaul.otc || 0) / termMonths : 0;
+            const monthlyOm = (backhaul.annualOm || 0) / 12;
+            return monthlyOtc + monthlyOm;
+        }
+        return backhaul.monthly || 0;
+    };
+    const backhaulA = order.costs?.backhaul?.aEnd || order.costs?.backhaulA || null;
+    const backhaulZ = order.costs?.backhaul?.zEnd || order.costs?.backhaulZ || null;
+    const backhaulAMrc = getBackhaulMonthlyCost(backhaulA);
+    const backhaulZMrc = getBackhaulMonthlyCost(backhaulZ);
     const xcAMrc = order.costs?.crossConnectA?.mrc || order.costs?.crossConnect?.aEnd?.monthly || 0;
     const xcZMrc = order.costs?.crossConnectZ?.mrc || order.costs?.crossConnect?.zEnd?.monthly || 0;
-    const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc;
+    const otherMonthly = order.costs?.otherCosts?.monthly || 0;
+    const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc + otherMonthly;
 
     // Calculate costs display - NRC
     const cableCostNrc = order.costs?.cableCost?.nrc || order.costs?.cable?.nrc || 0;
-    const backhaulANrc = order.costs?.backhaulA?.nrc || 0;
-    const backhaulZNrc = order.costs?.backhaulZ?.nrc || 0;
+    const backhaulANrc = backhaulA?.nrc || 0;
+    const backhaulZNrc = backhaulZ?.nrc || 0;
     const xcANrc = order.costs?.crossConnectA?.nrc || 0;
     const xcZNrc = order.costs?.crossConnectZ?.nrc || 0;
-    const totalCostsNrc = cableCostNrc + backhaulANrc + backhaulZNrc + xcANrc + xcZNrc;
+    const otherOneOff = order.costs?.otherCosts?.oneOff || 0;
+    const oneTimeCostLabel = salesModel === 'IRU' ? 'One-time Costs (OTC/NRC)' : 'One-time Costs (NRC)';
+    const cableOneTimeCost = salesModel === 'IRU' ? cableOtc : cableCostNrc;
+    const cableOneTimeLabel = salesModel === 'IRU' ? 'Cable OTC' : 'Cable NRC';
+    const backhaulAOneTimeCost = backhaulA?.model === 'IRU' ? (backhaulA?.otc || 0) : backhaulANrc;
+    const backhaulZOneTimeCost = backhaulZ?.model === 'IRU' ? (backhaulZ?.otc || 0) : backhaulZNrc;
+    const backhaulAOneTimeLabel = backhaulA?.model === 'IRU' ? 'Backhaul A OTC' : 'Backhaul A NRC';
+    const backhaulZOneTimeLabel = backhaulZ?.model === 'IRU' ? 'Backhaul Z OTC' : 'Backhaul Z NRC';
+    const totalOneTimeCosts = cableOneTimeCost + backhaulAOneTimeCost + backhaulZOneTimeCost + xcANrc + xcZNrc + otherOneOff;
 
-    // Contract totals
-    const totalRevenue = (mrrDisplay * term) + nrcDisplay;
-    const totalCost = (totalCostsMrc * term) + totalCostsNrc;
-    const totalProfit = totalRevenue - totalCost;
+    // Contract totals (align with unified financial logic)
+    let totalRevenue = (mrrDisplay * term) + nrcDisplay;
+    if (salesType === 'Swapped Out') {
+        totalRevenue = 0;
+    } else if (salesModel === 'IRU' && salesType !== 'Resale') {
+        // IRU Inventory/Hybrid: monthly revenue already amortizes OTC
+        totalRevenue = mrrDisplay * term;
+    }
+    let totalProfit = 0;
+    if (salesType === 'Swapped Out') {
+        totalProfit = 0;
+    } else if (salesModel === 'IRU') {
+        if (salesType === 'Resale') {
+            const firstMonthProfit = computed.firstMonthProfit || 0;
+            const recurringMonthlyProfit = computed.recurringMonthlyProfit || 0;
+            totalProfit = firstMonthProfit + (recurringMonthlyProfit * Math.max(term - 1, 0));
+        } else {
+            totalProfit = computed.monthlyProfit * term;
+        }
+    } else {
+        // Lease: include monthly profit plus one-time NRC profit
+        const nrcSales = order.financials?.nrcSales || 0;
+        const nrcProfit = nrcSales - totalOneTimeCosts;
+        totalProfit = (computed.monthlyProfit * term) + nrcProfit;
+    }
+    const totalCost = totalRevenue - totalProfit;
     const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100).toFixed(1) : 0;
 
-    // Annual figures
+    // Annual figures (use monthly profit/cost from unified logic)
     const annualRevenue = mrrDisplay * 12;
-    const annualCost = totalCostsMrc * 12;
+    const monthlyCost = mrrDisplay - computed.monthlyProfit;
+    const annualCost = monthlyCost * 12;
     const annualProfit = annualRevenue - annualCost;
+    const monthlyCostsLabel = salesModel === 'IRU' ? 'Monthly Costs (Amortized)' : 'Monthly Costs (MRC)';
 
     // Use computed values for margin
     const grossMargin = computed.monthlyProfit;
@@ -541,28 +602,30 @@ export function viewSalesDetails(context, salesOrderId) {
 
                 <!-- Cost Breakdown MRC -->
                 <div style="${sectionStyle}">
-                    <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Monthly Costs (MRC)</h4>
+                    <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${monthlyCostsLabel}</h4>
                     <table style="width:100%;">
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable Cost</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableCostLabel}</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                        ${otherMonthly > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other Monthly</td><td class="font-mono">$${otherMonthly.toLocaleString()}</td></tr>` : ''}
                         <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total MRC</td><td class="font-mono" style="color:var(--accent-danger); font-weight:600">$${totalCostsMrc.toLocaleString()}</td></tr>
                     </table>
                 </div>
 
                 <!-- Cost Breakdown NRC -->
-                ${totalCostsNrc > 0 ? `
+                ${totalOneTimeCosts > 0 ? `
                 <div style="${sectionStyle}">
-                    <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">One-time Costs (NRC)</h4>
+                    <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">${oneTimeCostLabel}</h4>
                     <table style="width:100%;">
-                        ${cableCostNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable NRC</td><td class="font-mono">$${cableCostNrc.toLocaleString()}</td></tr>` : ''}
-                        ${backhaulANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A NRC</td><td class="font-mono">$${backhaulANrc.toLocaleString()}</td></tr>` : ''}
-                        ${backhaulZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z NRC</td><td class="font-mono">$${backhaulZNrc.toLocaleString()}</td></tr>` : ''}
+                        ${cableOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableOneTimeLabel}</td><td class="font-mono">$${cableOneTimeCost.toLocaleString()}</td></tr>` : ''}
+                        ${backhaulAOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${backhaulAOneTimeLabel}</td><td class="font-mono">$${backhaulAOneTimeCost.toLocaleString()}</td></tr>` : ''}
+                        ${backhaulZOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${backhaulZOneTimeLabel}</td><td class="font-mono">$${backhaulZOneTimeCost.toLocaleString()}</td></tr>` : ''}
                         ${xcANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC A NRC</td><td class="font-mono">$${xcANrc.toLocaleString()}</td></tr>` : ''}
                         ${xcZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC Z NRC</td><td class="font-mono">$${xcZNrc.toLocaleString()}</td></tr>` : ''}
-                        <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total NRC</td><td class="font-mono" style="color:var(--accent-warning); font-weight:600">$${totalCostsNrc.toLocaleString()}</td></tr>
+                        ${otherOneOff > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other One-off</td><td class="font-mono">$${otherOneOff.toLocaleString()}</td></tr>` : ''}
+                        <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total One-time</td><td class="font-mono" style="color:var(--accent-warning); font-weight:600">$${totalOneTimeCosts.toLocaleString()}</td></tr>
                     </table>
                 </div>
                 ` : ''}

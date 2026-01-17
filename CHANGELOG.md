@@ -12,6 +12,19 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Inventory Status Logic** - Centralized status computation and sales aggregation across inventory views
 - **Status UI Rendering** - Consolidated badge/alert colors for inventory, sales, and dashboard
 - **Asset Bundling** - Added `assets/css/bundle.css` and `assets/js/bundle.js` for fewer requests and faster page load
+- **Profitability Calculations** - Unified dashboard, sales summary, and inventory revenue views to use the shared financial logic
+- **Sales Details Labels & Costs** - Updated IRU revenue label to reflect OTC amortization and included other costs in MRC/NRC breakdowns
+- **Sales Details Cable Costs** - Aligned cable monthly cost display with amortized IRU treatment and fixed NRC profit double-counting
+- **Sales Details One-time Costs** - IRU views now display OTC as one-time cost and total one-time sums across OTC/NRC fields
+- **Backhaul Cost Model** - Backhaul A/Z cost cards now enforce Lease-only inputs to match calculation logic
+- **Dashboard Margin Distribution** - Swapped Out orders are excluded by sales type (not status) for accurate buckets
+- **Backhaul IRU Support** - IRU backhaul costs now amortize OTC + O&M in Hybrid calculations; fields stored under backhaul aEnd/zEnd
+- **Sales Details One-time Costs** - Backhaul IRU now displays OTC values in the one-time cost breakdown
+- **Sales Exports** - Added unified monthly revenue column to full and bulk sales CSV exports
+- **Inventory Exports** - Inventory bulk/export headers now use OTC/NRC and export the correct field
+- **Backhaul IRU Persistence** - Sales form now stores backhaul IRU fields via hidden inputs and reset mappings
+- **Swapped Out Handling** - Enforced IRU-only selection in UI with locked dropdown styling; calculations now force zero revenue/profit
+- **Inventory Revenue Context** - Added UI + docs note clarifying monthly revenue is the sum of linked sales (incl. IRU amortized)
 
 ---
 

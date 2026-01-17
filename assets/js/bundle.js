@@ -855,6 +855,19 @@ function computeOrderFinancials(order) {
     const salesTerm = order.dates?.term || 12;
     const salesCapacity = order.capacity?.value || 1;
 
+    if (salesType === 'Swapped Out') {
+        return {
+            monthlyRevenue: 0,
+            monthlyProfit: 0,
+            marginPercent: 0,
+            isIruResale: false,
+            firstMonthProfit: 0,
+            firstMonthMargin: 0,
+            recurringMonthlyProfit: 0,
+            recurringMargin: 0
+        };
+    }
+
     // Get linked inventory for Inventory/Hybrid types
     const inventoryLink = order.inventoryLink;
     const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
@@ -877,7 +890,19 @@ function computeOrderFinancials(order) {
 
     // Get Operating Costs (Backhaul, XC, Other)
     const costs = order.costs || {};
-    const backhaulMRC = (costs.backhaul?.aEnd?.monthly || 0) + (costs.backhaul?.zEnd?.monthly || 0);
+    const getBackhaulMonthlyCost = (backhaul) => {
+        if (!backhaul) return 0;
+        if (backhaul.model === 'IRU') {
+            const termMonths = backhaul.termMonths || salesTerm;
+            const monthlyOtc = termMonths > 0 ? (backhaul.otc || 0) / termMonths : 0;
+            const monthlyOm = (backhaul.annualOm || 0) / 12;
+            return monthlyOtc + monthlyOm;
+        }
+        return backhaul.monthly || 0;
+    };
+    const backhaulA = costs.backhaul?.aEnd || costs.backhaulA || null;
+    const backhaulZ = costs.backhaul?.zEnd || costs.backhaulZ || null;
+    const backhaulMRC = getBackhaulMonthlyCost(backhaulA) + getBackhaulMonthlyCost(backhaulZ);
     const xcMRC = (costs.crossConnect?.aEnd?.monthly || 0) + (costs.crossConnect?.zEnd?.monthly || 0);
     const otherMonthly = costs.otherCosts?.monthly || 0;
     const operatingCosts = backhaulMRC + xcMRC + otherMonthly;
@@ -1145,12 +1170,13 @@ function exportSalesToCSV() {
         'Sales Order ID', 'Customer', 'Salesperson', 'Status',
         'Sales Model', 'Sales Type', 'Route', 'Capacity',
         'Contract Start', 'Contract End', 'Term (Months)',
-        'MRC Sales', 'OTC', 'Annual O&M', 'Legacy Customer Name'
+        'Monthly Revenue (Unified)', 'MRC Sales', 'OTC', 'Annual O&M', 'Legacy Customer Name'
     ];
 
     const rows = sales.map(s => {
         // Resolve customer name from ID, fallback to legacy customerName
         const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
+        const computed = computeOrderFinancials(s);
 
         return [
             s.salesOrderId || '',
@@ -1164,6 +1190,7 @@ function exportSalesToCSV() {
             s.dates?.start || '',
             s.dates?.end || '',
             s.dates?.term || '',
+            computed.monthlyRevenue || '',
             s.financials?.mrcSales || '',
             s.financials?.otc || '',
             s.financials?.annualOm || '',
@@ -1194,7 +1221,7 @@ function exportInventoryToCSV() {
         'Resource ID', 'Cable System', 'Segment Type', 'Route',
         'Status', 'Capacity', 'A-End', 'Z-End',
         'Ownership', 'Supplier', 'Contract Start', 'Contract End', 'Term (Months)',
-        'OTC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
+        'OTC/NRC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
     ];
 
     const rows = inventory.map(i => {
@@ -1704,25 +1731,29 @@ function initBulkOpsModule(App) {
 
         const headers = [
             'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
-            'Capacity', 'Unit', 'MRC Sales', 'NRC Sales', 'Salesperson',
+            'Capacity', 'Unit', 'Monthly Revenue (Unified)', 'MRC Sales', 'NRC Sales', 'Salesperson',
             'Start Date', 'End Date', 'Term (Months)'
         ];
 
-        const rows = sales.map(s => [
-            s.salesOrderId,
-            s.customerName || '',
-            s.status || '',
-            s.salesModel || '',
-            s.salesType || '',
-            s.capacity?.value || '',
-            s.capacity?.unit || 'Gbps',
-            s.financials?.mrcSales || 0,
-            s.financials?.nrcSales || 0,
-            s.salesperson || '',
-            s.dates?.start || '',
-            s.dates?.end || '',
-            s.dates?.term || ''
-        ]);
+        const rows = sales.map(s => {
+            const computed = computeOrderFinancials(s);
+            return [
+                s.salesOrderId,
+                s.customerName || '',
+                s.status || '',
+                s.salesModel || '',
+                s.salesType || '',
+                s.capacity?.value || '',
+                s.capacity?.unit || 'Gbps',
+                computed.monthlyRevenue || 0,
+                s.financials?.mrcSales || 0,
+                s.financials?.nrcSales || 0,
+                s.salesperson || '',
+                s.dates?.start || '',
+                s.dates?.end || '',
+                s.dates?.term || ''
+            ];
+        });
 
         const csvContent = [headers, ...rows]
             .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -1779,7 +1810,7 @@ function initBulkOpsModule(App) {
 
         const headers = [
             'Resource ID', 'Cable System', 'Status', 'Acquisition Type', 'Ownership',
-            'Capacity', 'Unit', 'MRC', 'NRC', 'A-End City', 'Z-End City',
+            'Capacity', 'Unit', 'MRC', 'OTC/NRC', 'A-End City', 'Z-End City',
             'Start Date', 'End Date'
         ];
 
@@ -1792,7 +1823,7 @@ function initBulkOpsModule(App) {
             i.capacity?.value || '',
             i.capacity?.unit || 'Gbps',
             i.financials?.mrc || 0,
-            i.financials?.nrc || 0,
+            i.financials?.otc || 0,
             i.location?.aEnd?.city || '',
             i.location?.zEnd?.city || '',
             i.dates?.start || '',

@@ -236,6 +236,8 @@ Inventory O&M月成本 = (Inventory Annual O&M ÷ 12) × 分摊比例
 
 Cable月成本 = Cable OTC ÷ Cable合同月数
 Cable O&M月成本 = Cable Annual O&M ÷ 12
+
+Backhaul月成本（如为 IRU）= Backhaul OTC ÷ Backhaul合同月数 + Backhaul Annual O&M ÷ 12
 ```
 
 **月利润：**
@@ -296,6 +298,10 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 | **Cross Connect A** | `costs.crossConnect.aEnd.monthly` | `costs.crossConnect.aEnd.nrc` |
 | **Cross Connect Z** | `costs.crossConnect.zEnd.monthly` | `costs.crossConnect.zEnd.nrc` |
 | **Other Costs** | `costs.otherCosts.monthly` | `costs.otherCosts.oneOff` |
+
+> 说明：当 Backhaul 为 IRU 时，月成本按 `OTC ÷ termMonths + Annual O&M ÷ 12` 计算，字段为 `costs.backhaul.aEnd.otc` / `costs.backhaul.aEnd.annualOm` / `costs.backhaul.aEnd.termMonths`（Z-End 同理）。
+
+> 说明：Inventory 详情页的 “Monthly Revenue” 指所有关联销售订单的月收入合计；IRU 订单按 OTC 摊销 + 月 O&M 口径计算。
 
 ---
 

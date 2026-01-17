@@ -320,14 +320,18 @@ export function viewInventoryDetails(context, resourceId) {
     } = getInventoryDisplayMetrics(item, totalSoldCapacity, now);
 
     // Calculate financial totals from linked sales
-    let totalMrcRevenue = 0;
-    let totalNrcRevenue = 0;
+    let totalMonthlyRevenue = 0;
+    let totalContractRevenue = 0;
     linkedSales.forEach(sale => {
-        totalMrcRevenue += (sale.financials?.mrcSales || 0);
-        totalNrcRevenue += (sale.financials?.nrcSales || 0);
+        const computed = computeOrderFinancials(sale);
+        const monthlyRevenue = computed.monthlyRevenue || 0;
+        const termMonths = sale.dates?.term || 12;
+        const oneTimeRevenue = sale.salesModel === 'IRU'
+            ? (sale.financials?.otc || 0)
+            : (sale.financials?.nrcSales || 0);
+        totalMonthlyRevenue += monthlyRevenue;
+        totalContractRevenue += (monthlyRevenue * termMonths) + oneTimeRevenue;
     });
-    const contractTerm = item.financials?.term || 12;
-    const totalContractRevenue = (totalMrcRevenue * contractTerm) + totalNrcRevenue;
     const remainingCapacity = displayTotalCapacity - totalSoldCapacity;
 
     // Build clickable linked sales list
@@ -380,7 +384,8 @@ export function viewInventoryDetails(context, resourceId) {
                 </div>
                 <div>
                     <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Monthly Revenue</div>
-                    <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">$${totalMrcRevenue.toLocaleString()}</div>
+                    <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">$${totalMonthlyRevenue.toLocaleString()}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Sum of linked sales monthly revenue (incl. IRU amortized)</div>
                 </div>
             </div>
             <!-- Usage Progress Bar -->

@@ -45,25 +45,29 @@ function initBulkOpsModule(App) {
 
         const headers = [
             'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
-            'Capacity', 'Unit', 'MRC Sales', 'NRC Sales', 'Salesperson',
+            'Capacity', 'Unit', 'Monthly Revenue (Unified)', 'MRC Sales', 'NRC Sales', 'Salesperson',
             'Start Date', 'End Date', 'Term (Months)'
         ];
 
-        const rows = sales.map(s => [
-            s.salesOrderId,
-            s.customerName || '',
-            s.status || '',
-            s.salesModel || '',
-            s.salesType || '',
-            s.capacity?.value || '',
-            s.capacity?.unit || 'Gbps',
-            s.financials?.mrcSales || 0,
-            s.financials?.nrcSales || 0,
-            s.salesperson || '',
-            s.dates?.start || '',
-            s.dates?.end || '',
-            s.dates?.term || ''
-        ]);
+        const rows = sales.map(s => {
+            const computed = computeOrderFinancials(s);
+            return [
+                s.salesOrderId,
+                s.customerName || '',
+                s.status || '',
+                s.salesModel || '',
+                s.salesType || '',
+                s.capacity?.value || '',
+                s.capacity?.unit || 'Gbps',
+                computed.monthlyRevenue || 0,
+                s.financials?.mrcSales || 0,
+                s.financials?.nrcSales || 0,
+                s.salesperson || '',
+                s.dates?.start || '',
+                s.dates?.end || '',
+                s.dates?.term || ''
+            ];
+        });
 
         const csvContent = [headers, ...rows]
             .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -120,7 +124,7 @@ function initBulkOpsModule(App) {
 
         const headers = [
             'Resource ID', 'Cable System', 'Status', 'Acquisition Type', 'Ownership',
-            'Capacity', 'Unit', 'MRC', 'NRC', 'A-End City', 'Z-End City',
+            'Capacity', 'Unit', 'MRC', 'OTC/NRC', 'A-End City', 'Z-End City',
             'Start Date', 'End Date'
         ];
 
@@ -133,7 +137,7 @@ function initBulkOpsModule(App) {
             i.capacity?.value || '',
             i.capacity?.unit || 'Gbps',
             i.financials?.mrc || 0,
-            i.financials?.nrc || 0,
+            i.financials?.otc || 0,
             i.location?.aEnd?.city || '',
             i.location?.zEnd?.city || '',
             i.dates?.start || '',

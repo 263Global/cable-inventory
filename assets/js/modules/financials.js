@@ -25,6 +25,19 @@ function computeOrderFinancials(order) {
     const salesTerm = order.dates?.term || 12;
     const salesCapacity = order.capacity?.value || 1;
 
+    if (salesType === 'Swapped Out') {
+        return {
+            monthlyRevenue: 0,
+            monthlyProfit: 0,
+            marginPercent: 0,
+            isIruResale: false,
+            firstMonthProfit: 0,
+            firstMonthMargin: 0,
+            recurringMonthlyProfit: 0,
+            recurringMargin: 0
+        };
+    }
+
     // Get linked inventory for Inventory/Hybrid types
     const inventoryLink = order.inventoryLink;
     const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
@@ -47,7 +60,19 @@ function computeOrderFinancials(order) {
 
     // Get Operating Costs (Backhaul, XC, Other)
     const costs = order.costs || {};
-    const backhaulMRC = (costs.backhaul?.aEnd?.monthly || 0) + (costs.backhaul?.zEnd?.monthly || 0);
+    const getBackhaulMonthlyCost = (backhaul) => {
+        if (!backhaul) return 0;
+        if (backhaul.model === 'IRU') {
+            const termMonths = backhaul.termMonths || salesTerm;
+            const monthlyOtc = termMonths > 0 ? (backhaul.otc || 0) / termMonths : 0;
+            const monthlyOm = (backhaul.annualOm || 0) / 12;
+            return monthlyOtc + monthlyOm;
+        }
+        return backhaul.monthly || 0;
+    };
+    const backhaulA = costs.backhaul?.aEnd || costs.backhaulA || null;
+    const backhaulZ = costs.backhaul?.zEnd || costs.backhaulZ || null;
+    const backhaulMRC = getBackhaulMonthlyCost(backhaulA) + getBackhaulMonthlyCost(backhaulZ);
     const xcMRC = (costs.crossConnect?.aEnd?.monthly || 0) + (costs.crossConnect?.zEnd?.monthly || 0);
     const otherMonthly = costs.otherCosts?.monthly || 0;
     const operatingCosts = backhaulMRC + xcMRC + otherMonthly;

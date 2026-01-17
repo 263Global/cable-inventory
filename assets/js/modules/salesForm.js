@@ -419,8 +419,22 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <!-- Backhaul -->
                     <input type="hidden" name="costs.backhaul.aEnd.monthly" value="${existingOrder?.costs?.backhaul?.aEnd?.monthly || 0}">
                     <input type="hidden" name="costs.backhaul.aEnd.nrc" value="${existingOrder?.costs?.backhaul?.aEnd?.nrc || 0}">
+                    <input type="hidden" name="costs.backhaulA.model" value="${existingOrder?.costs?.backhaul?.aEnd?.model || 'Lease'}">
+                    <input type="hidden" name="costs.backhaulA.otc" value="${existingOrder?.costs?.backhaul?.aEnd?.otc || 0}">
+                    <input type="hidden" name="costs.backhaulA.omRate" value="${existingOrder?.costs?.backhaul?.aEnd?.omRate || 0}">
+                    <input type="hidden" name="costs.backhaulA.annualOm" value="${existingOrder?.costs?.backhaul?.aEnd?.annualOm || 0}">
+                    <input type="hidden" name="costs.backhaulA.startDate" value="${existingOrder?.costs?.backhaul?.aEnd?.startDate || ''}">
+                    <input type="hidden" name="costs.backhaulA.termMonths" value="${existingOrder?.costs?.backhaul?.aEnd?.termMonths || 12}">
+                    <input type="hidden" name="costs.backhaulA.endDate" value="${existingOrder?.costs?.backhaul?.aEnd?.endDate || ''}">
                     <input type="hidden" name="costs.backhaul.zEnd.monthly" value="${existingOrder?.costs?.backhaul?.zEnd?.monthly || 0}">
                     <input type="hidden" name="costs.backhaul.zEnd.nrc" value="${existingOrder?.costs?.backhaul?.zEnd?.nrc || 0}">
+                    <input type="hidden" name="costs.backhaulZ.model" value="${existingOrder?.costs?.backhaul?.zEnd?.model || 'Lease'}">
+                    <input type="hidden" name="costs.backhaulZ.otc" value="${existingOrder?.costs?.backhaul?.zEnd?.otc || 0}">
+                    <input type="hidden" name="costs.backhaulZ.omRate" value="${existingOrder?.costs?.backhaul?.zEnd?.omRate || 0}">
+                    <input type="hidden" name="costs.backhaulZ.annualOm" value="${existingOrder?.costs?.backhaul?.zEnd?.annualOm || 0}">
+                    <input type="hidden" name="costs.backhaulZ.startDate" value="${existingOrder?.costs?.backhaul?.zEnd?.startDate || ''}">
+                    <input type="hidden" name="costs.backhaulZ.termMonths" value="${existingOrder?.costs?.backhaul?.zEnd?.termMonths || 12}">
+                    <input type="hidden" name="costs.backhaulZ.endDate" value="${existingOrder?.costs?.backhaul?.zEnd?.endDate || ''}">
                     <!-- Cross Connect -->
                     <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="${existingOrder?.costs?.crossConnect?.aEnd?.monthly || 0}">
                     <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="${existingOrder?.costs?.crossConnect?.aEnd?.nrc || 0}">
@@ -606,8 +620,22 @@ export function openAddSalesModal(context, existingOrderId = null) {
         // Sync backhaul costs
         syncHiddenInput('costs.backhaul.aEnd.monthly', bhA.mrc || bhA.monthly || 0);
         syncHiddenInput('costs.backhaul.aEnd.nrc', bhA.nrc || 0);
+        syncHiddenInput('costs.backhaulA.model', bhA.model || 'Lease');
+        syncHiddenInput('costs.backhaulA.otc', bhA.otc || 0);
+        syncHiddenInput('costs.backhaulA.omRate', bhA.omRate || 0);
+        syncHiddenInput('costs.backhaulA.annualOm', bhA.annualOm || 0);
+        syncHiddenInput('costs.backhaulA.startDate', bhA.startDate || '');
+        syncHiddenInput('costs.backhaulA.termMonths', bhA.termMonths || 12);
+        syncHiddenInput('costs.backhaulA.endDate', bhA.endDate || '');
         syncHiddenInput('costs.backhaul.zEnd.monthly', bhZ.mrc || bhZ.monthly || 0);
         syncHiddenInput('costs.backhaul.zEnd.nrc', bhZ.nrc || 0);
+        syncHiddenInput('costs.backhaulZ.model', bhZ.model || 'Lease');
+        syncHiddenInput('costs.backhaulZ.otc', bhZ.otc || 0);
+        syncHiddenInput('costs.backhaulZ.omRate', bhZ.omRate || 0);
+        syncHiddenInput('costs.backhaulZ.annualOm', bhZ.annualOm || 0);
+        syncHiddenInput('costs.backhaulZ.startDate', bhZ.startDate || '');
+        syncHiddenInput('costs.backhaulZ.termMonths', bhZ.termMonths || 12);
+        syncHiddenInput('costs.backhaulZ.endDate', bhZ.endDate || '');
 
         // Sync cross-connect costs
         syncHiddenInput('costs.crossConnect.aEnd.monthly', xcA.mrc || xcA.monthly || 0);
@@ -1532,11 +1560,23 @@ export function attachSalesFormListeners(context) {
                 onetime = getCardValue(card, '[data-field="costs.cable.nrc"]');
             }
         } else if (type === 'backhaulA') {
-            monthly = getCardValue(card, '[data-field="costs.backhaul.aEnd.monthly"]');
-            onetime = getCardValue(card, '[data-field="costs.backhaul.aEnd.nrc"]');
+            const model = card.querySelector('.bh-a-cost-model-select')?.value || 'Lease';
+            if (model === 'IRU') {
+                monthly = getCardValue(card, '[data-field="costs.backhaulA.annualOm"]') / 12;
+                onetime = getCardValue(card, '[data-field="costs.backhaulA.otc"]');
+            } else {
+                monthly = getCardValue(card, '[data-field="costs.backhaul.aEnd.monthly"]');
+                onetime = getCardValue(card, '[data-field="costs.backhaul.aEnd.nrc"]');
+            }
         } else if (type === 'backhaulZ') {
-            monthly = getCardValue(card, '[data-field="costs.backhaul.zEnd.monthly"]');
-            onetime = getCardValue(card, '[data-field="costs.backhaul.zEnd.nrc"]');
+            const model = card.querySelector('.bh-z-cost-model-select')?.value || 'Lease';
+            if (model === 'IRU') {
+                monthly = getCardValue(card, '[data-field="costs.backhaulZ.annualOm"]') / 12;
+                onetime = getCardValue(card, '[data-field="costs.backhaulZ.otc"]');
+            } else {
+                monthly = getCardValue(card, '[data-field="costs.backhaul.zEnd.monthly"]');
+                onetime = getCardValue(card, '[data-field="costs.backhaul.zEnd.nrc"]');
+            }
         } else if (type === 'xcA') {
             monthly = getCardValue(card, '[data-field="costs.crossConnect.aEnd.monthly"]');
             onetime = getCardValue(card, '[data-field="costs.crossConnect.aEnd.nrc"]');
@@ -1962,8 +2002,18 @@ export function attachSalesFormListeners(context) {
                 'costs.cable.omRate', 'costs.cable.annualOm',
                 'costs.cable.startDate', 'costs.cable.termMonths', 'costs.cable.endDate'
             ],
-            backhaulA: ['costs.backhaul.aEnd.monthly', 'costs.backhaul.aEnd.nrc'],
-            backhaulZ: ['costs.backhaul.zEnd.monthly', 'costs.backhaul.zEnd.nrc'],
+            backhaulA: [
+                'costs.backhaul.aEnd.monthly', 'costs.backhaul.aEnd.nrc',
+                'costs.backhaulA.model', 'costs.backhaulA.otc', 'costs.backhaulA.omRate',
+                'costs.backhaulA.annualOm', 'costs.backhaulA.startDate',
+                'costs.backhaulA.termMonths', 'costs.backhaulA.endDate'
+            ],
+            backhaulZ: [
+                'costs.backhaul.zEnd.monthly', 'costs.backhaul.zEnd.nrc',
+                'costs.backhaulZ.model', 'costs.backhaulZ.otc', 'costs.backhaulZ.omRate',
+                'costs.backhaulZ.annualOm', 'costs.backhaulZ.startDate',
+                'costs.backhaulZ.termMonths', 'costs.backhaulZ.endDate'
+            ],
             xcA: ['costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc'],
             xcZ: ['costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc'],
             other: ['costs.otherCosts.description', 'costs.otherCosts.oneOff', 'costs.otherCosts.monthly']
@@ -2021,6 +2071,29 @@ export function attachSalesFormListeners(context) {
     const updateSmartHints = () => {
         const type = salesTypeSelect?.value;
         const isInventoryOrSwap = (type === 'Inventory' || type === 'Swapped Out');
+
+        // ===== Sales Model Lock for Swapped Out =====
+        if (type === 'Swapped Out') {
+            if (!salesModelLocked) {
+                lastUnlockedSalesModel = salesModelSelect?.value || lastUnlockedSalesModel;
+            }
+            salesModelLocked = true;
+            setSalesModel('IRU');
+            if (salesModelTrigger) {
+                salesModelTrigger.classList.add('disabled');
+                salesModelTrigger.style.pointerEvents = 'none';
+            }
+            if (salesModelMenu) {
+                salesModelMenu.style.display = 'none';
+            }
+        } else if (salesModelLocked) {
+            salesModelLocked = false;
+            if (salesModelTrigger) {
+                salesModelTrigger.classList.remove('disabled');
+                salesModelTrigger.style.pointerEvents = '';
+            }
+            setSalesModel(lastUnlockedSalesModel || 'Lease');
+        }
 
         // ===== Linked Resource Visibility =====
         if (linkedResourceGroup && inventoryLinkSelect) {
@@ -2104,6 +2177,33 @@ export function attachSalesFormListeners(context) {
     const salesModelSelect = document.getElementById('sales-model-select');
     const leaseRevenueFields = document.getElementById('lease-revenue-fields');
     const iruRevenueFields = document.getElementById('iru-revenue-fields');
+    const salesModelContainer = document.getElementById('sales-model-select-container');
+    const salesModelTrigger = salesModelContainer?.querySelector('.simple-dropdown-trigger');
+    const salesModelText = salesModelContainer?.querySelector('.simple-dropdown-text');
+    const salesModelMenu = salesModelContainer?.querySelector('.simple-dropdown-menu');
+    const salesModelOptions = salesModelContainer?.querySelectorAll('.simple-dropdown-option');
+    let salesModelLocked = false;
+    let lastUnlockedSalesModel = salesModelSelect?.value || 'Lease';
+
+    const setSalesModel = (value) => {
+        if (!salesModelSelect) return;
+        salesModelSelect.value = value;
+        salesModelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        if (salesModelText) {
+            salesModelText.textContent = value === 'IRU' ? 'IRU (买断模式)' : 'Lease (月租模式)';
+        }
+        if (salesModelTrigger) {
+            salesModelTrigger.classList.remove('placeholder');
+        }
+        if (salesModelOptions) {
+            salesModelOptions.forEach(option => {
+                option.classList.toggle('selected', option.dataset.value === value);
+            });
+        }
+        if (salesModelMenu) {
+            salesModelMenu.style.display = 'none';
+        }
+    };
 
     const updateRevenueFields = () => {
         const model = salesModelSelect?.value;
@@ -2116,6 +2216,11 @@ export function attachSalesFormListeners(context) {
 
     if (salesModelSelect) {
         salesModelSelect.addEventListener('change', updateRevenueFields);
+        salesModelSelect.addEventListener('change', () => {
+            if (!salesModelLocked) {
+                lastUnlockedSalesModel = salesModelSelect.value;
+            }
+        });
     }
 
     // ===== IRU Revenue: Auto-calculate Annual O&M Fee =====
@@ -2154,6 +2259,7 @@ export function calculateSalesFinancials(context) {
     const salesType = getVal('salesType');     // 'Resale', 'Inventory', 'Hybrid', 'Swapped Out'
     const salesTerm = getValue('dates.term') || 12;  // Sales contract term in months
     const salesCapacity = getValue('capacity.value') || 1;
+    const isSwappedOut = salesType === 'Swapped Out';
 
     // ===== Get Linked Inventory (for Inventory/Hybrid types) =====
     const inventoryLink = getVal('inventoryLink');
@@ -2178,7 +2284,18 @@ export function calculateSalesFinancials(context) {
     }
 
     // ===== Get Operating Costs (Backhaul, XC, Other) =====
-    const backhaulMRC = getValue('costs.backhaul.aEnd.monthly') + getValue('costs.backhaul.zEnd.monthly');
+    const getBackhaulMonthlyCost = (suffix) => {
+        const model = getVal(`costs.backhaul${suffix}.model`) || 'Lease';
+        if (model === 'IRU') {
+            const otc = getValue(`costs.backhaul${suffix}.otc`);
+            const annualOm = getValue(`costs.backhaul${suffix}.annualOm`);
+            const termMonths = getValue(`costs.backhaul${suffix}.termMonths`) || salesTerm;
+            const monthlyOtc = termMonths > 0 ? (otc / termMonths) : 0;
+            return monthlyOtc + (annualOm / 12);
+        }
+        return getValue(`costs.backhaul.${suffix === 'A' ? 'aEnd' : 'zEnd'}.monthly`);
+    };
+    const backhaulMRC = getBackhaulMonthlyCost('A') + getBackhaulMonthlyCost('Z');
     const xcMRC = getValue('costs.crossConnect.aEnd.monthly') + getValue('costs.crossConnect.zEnd.monthly');
     const otherMonthly = getValue('costs.otherCosts.monthly');
     const operatingCosts = backhaulMRC + xcMRC + otherMonthly;
@@ -2190,7 +2307,13 @@ export function calculateSalesFinancials(context) {
     let ongoingMonthlyProfit = 0;  // For IRU Resale (subsequent months)
     let isIruResale = false;
 
-    if (salesModel === 'Lease') {
+    if (isSwappedOut) {
+        monthlyRevenue = 0;
+        monthlyProfit = 0;
+        firstMonthProfit = 0;
+        ongoingMonthlyProfit = 0;
+        isIruResale = false;
+    } else if (salesModel === 'Lease') {
         // ========== LEASE MODEL ==========
         const mrcSales = getValue('financials.mrcSales');
         const nrcSales = getValue('financials.nrcSales');
@@ -2317,7 +2440,10 @@ export function calculateSalesFinancials(context) {
 
     // NRC Profit display - for IRU Resale show first month profit, otherwise show regular NRC
     const nrcEl = document.getElementById('disp-nrc-profit');
-    if (isIruResale) {
+    if (isSwappedOut) {
+        nrcEl.textContent = fmt(0);
+        nrcEl.style.color = 'var(--text-muted)';
+    } else if (isIruResale) {
         nrcEl.textContent = fmt(firstMonthProfit) + ' (1st Mo)';
         nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
     } else {
@@ -2423,8 +2549,26 @@ export async function handleSalesSubmit(context, form) {
                 endDate: getVal('costs.cable.endDate')
             },
             backhaul: {
-                aEnd: { monthly: getNum('costs.backhaul.aEnd.monthly'), nrc: getNum('costs.backhaul.aEnd.nrc') },
-                zEnd: { monthly: getNum('costs.backhaul.zEnd.monthly'), nrc: getNum('costs.backhaul.zEnd.nrc') }
+                aEnd: {
+                    model: getVal('costs.backhaulA.model') || 'Lease',
+                    monthly: getNum('costs.backhaul.aEnd.monthly'),
+                    nrc: getNum('costs.backhaul.aEnd.nrc'),
+                    otc: getNum('costs.backhaulA.otc'),
+                    annualOm: getNum('costs.backhaulA.annualOm'),
+                    termMonths: getNum('costs.backhaulA.termMonths'),
+                    startDate: getVal('costs.backhaulA.startDate'),
+                    endDate: getVal('costs.backhaulA.endDate')
+                },
+                zEnd: {
+                    model: getVal('costs.backhaulZ.model') || 'Lease',
+                    monthly: getNum('costs.backhaul.zEnd.monthly'),
+                    nrc: getNum('costs.backhaul.zEnd.nrc'),
+                    otc: getNum('costs.backhaulZ.otc'),
+                    annualOm: getNum('costs.backhaulZ.annualOm'),
+                    termMonths: getNum('costs.backhaulZ.termMonths'),
+                    startDate: getVal('costs.backhaulZ.startDate'),
+                    endDate: getVal('costs.backhaulZ.endDate')
+                }
             },
             crossConnect: {
                 aEnd: { monthly: getNum('costs.crossConnect.aEnd.monthly'), nrc: getNum('costs.crossConnect.aEnd.nrc') },

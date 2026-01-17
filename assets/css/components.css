@@ -793,6 +793,21 @@ select.form-control:focus {
     border-radius: 6px 6px 0 0;
 }
 
+.simple-dropdown-trigger.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    border-color: var(--border-color);
+    background: var(--bg-secondary, var(--bg-card));
+}
+
+.simple-dropdown-trigger.disabled:hover {
+    border-color: var(--border-color);
+}
+
+.simple-dropdown-trigger.disabled .dropdown-arrow {
+    color: var(--text-muted);
+}
+
 .simple-dropdown-trigger.placeholder .simple-dropdown-text {
     color: var(--text-muted);
 }
