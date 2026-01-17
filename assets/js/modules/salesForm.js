@@ -51,7 +51,16 @@ export function openAddSalesModal(context, existingOrderId = null) {
         label: c.short_name,
         subtitle: c.full_name || ''
     }));
-    const existingCustomerId = existingOrder?.customerId || '';
+    const existingCustomerId = existingOrder?.customerId || (() => {
+        const name = (existingOrder?.customerName || '').trim().toLowerCase();
+        if (!name) return '';
+        const match = customers.find(c => {
+            const shortName = (c.short_name || '').trim().toLowerCase();
+            const fullName = (c.full_name || '').trim().toLowerCase();
+            return shortName === name || fullName === name;
+        });
+        return match?.id || '';
+    })();
 
     // Generate supplier options for cost card dropdowns
     const suppliers = window.Store.getSuppliers();
@@ -297,7 +306,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div id="cost-summary-readonly" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                             <h5 style="color: var(--text-primary); margin: 0; font-size: 0.85rem;">Current Costs</h5>
-                            <button type="button" id="btn-edit-costs" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                            <button type="button" id="btn-edit-costs" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="App.__enableEditCosts && App.__enableEditCosts()">
                                 <ion-icon name="create-outline"></ion-icon> Edit Costs
                             </button>
                         </div>
@@ -647,23 +656,21 @@ export function openAddSalesModal(context, existingOrderId = null) {
         setTimeout(() => context.calculateSalesFinancials(), 100);
 
         // Add Edit Costs button handler
-        const editCostsBtn = document.getElementById('btn-edit-costs');
-        if (editCostsBtn) {
-            editCostsBtn.addEventListener('click', () => {
-                // Hide the read-only summary
-                const summary = document.getElementById('cost-summary-readonly');
-                if (summary) summary.style.display = 'none';
+        const enableCostEditing = () => {
+            // Hide the read-only summary
+            const summary = document.getElementById('cost-summary-readonly');
+            if (summary) summary.style.display = 'none';
 
-                // Show the cost buttons and cards container
-                const costButtons = document.getElementById('cost-buttons');
-                const cardsContainer = document.getElementById('cost-cards-container');
-                const costTotals = document.getElementById('cost-totals');
-                if (costButtons) costButtons.style.display = 'flex';
-                if (cardsContainer) cardsContainer.style.display = 'block';
-                if (costTotals) costTotals.style.display = 'block';
+            // Show the cost buttons and cards container
+            const costButtons = document.getElementById('cost-buttons');
+            const cardsContainer = document.getElementById('cost-cards-container');
+            const costTotals = document.getElementById('cost-totals');
+            if (costButtons) costButtons.style.display = 'flex';
+            if (cardsContainer) cardsContainer.style.display = 'block';
+            if (costTotals) costTotals.style.display = 'block';
 
-                // Auto-create cost cards with existing data
-                setTimeout(() => {
+            // Auto-create cost cards with existing data
+            setTimeout(() => {
                     // Helper to populate card field (for standard inputs)
                     const populateCardField = (selector, value, allowZero = false) => {
                         const field = document.querySelector(selector);
@@ -1042,7 +1049,27 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         }
                     }
                 }, 100);
+        };
+
+        context.__enableEditCosts = enableCostEditing;
+
+        const editCostsBtn = document.getElementById('btn-edit-costs');
+        if (editCostsBtn) {
+            editCostsBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                enableCostEditing();
             });
+        } else if (context.modalContainer) {
+            if (context._editCostsDelegateHandler) {
+                context.modalContainer.removeEventListener('click', context._editCostsDelegateHandler);
+            }
+            context._editCostsDelegateHandler = (event) => {
+                const target = event.target.closest('#btn-edit-costs');
+                if (!target) return;
+                event.preventDefault();
+                enableCostEditing();
+            };
+            context.modalContainer.addEventListener('click', context._editCostsDelegateHandler);
         }
     }
 }
@@ -2062,6 +2089,56 @@ export function attachSalesFormListeners(context) {
         setCostToggleState(type, hasCard);
     });
 
+    // ===== Sales Model Toggle (Lease vs IRU Revenue Fields) =====
+    const salesModelSelect = document.getElementById('sales-model-select');
+    const leaseRevenueFields = document.getElementById('lease-revenue-fields');
+    const iruRevenueFields = document.getElementById('iru-revenue-fields');
+    const salesModelContainer = document.getElementById('sales-model-select-container');
+    const salesModelTrigger = salesModelContainer?.querySelector('.simple-dropdown-trigger');
+    const salesModelText = salesModelContainer?.querySelector('.simple-dropdown-text');
+    const salesModelMenu = salesModelContainer?.querySelector('.simple-dropdown-menu');
+    const salesModelOptions = salesModelContainer?.querySelectorAll('.simple-dropdown-option');
+    let salesModelLocked = false;
+    let lastUnlockedSalesModel = salesModelSelect?.value || 'Lease';
+
+    const setSalesModel = (value) => {
+        if (!salesModelSelect) return;
+        salesModelSelect.value = value;
+        salesModelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        if (salesModelText) {
+            salesModelText.textContent = value === 'IRU' ? 'IRU (买断模式)' : 'Lease (月租模式)';
+        }
+        if (salesModelTrigger) {
+            salesModelTrigger.classList.remove('placeholder');
+        }
+        if (salesModelOptions) {
+            salesModelOptions.forEach(option => {
+                option.classList.toggle('selected', option.dataset.value === value);
+            });
+        }
+        if (salesModelMenu) {
+            salesModelMenu.style.display = 'none';
+        }
+    };
+
+    const updateRevenueFields = () => {
+        const model = salesModelSelect?.value;
+        if (leaseRevenueFields && iruRevenueFields) {
+            leaseRevenueFields.style.display = model === 'Lease' ? 'block' : 'none';
+            iruRevenueFields.style.display = model === 'IRU' ? 'block' : 'none';
+        }
+        context.calculateSalesFinancials();
+    };
+
+    if (salesModelSelect) {
+        salesModelSelect.addEventListener('change', updateRevenueFields);
+        salesModelSelect.addEventListener('change', () => {
+            if (!salesModelLocked) {
+                lastUnlockedSalesModel = salesModelSelect.value;
+            }
+        });
+    }
+
     // ===== Sales Type Smart Hints =====
     const salesTypeSelect = document.getElementById('sales-type-select');
     const addCableBtn = document.getElementById('add-cable-btn');
@@ -2171,56 +2248,6 @@ export function attachSalesFormListeners(context) {
         startDateInput.addEventListener('change', calculateEndDate);
         termInput.addEventListener('input', calculateEndDate);
         termInput.addEventListener('input', () => updateCostTotals());
-    }
-
-    // ===== Sales Model Toggle (Lease vs IRU Revenue Fields) =====
-    const salesModelSelect = document.getElementById('sales-model-select');
-    const leaseRevenueFields = document.getElementById('lease-revenue-fields');
-    const iruRevenueFields = document.getElementById('iru-revenue-fields');
-    const salesModelContainer = document.getElementById('sales-model-select-container');
-    const salesModelTrigger = salesModelContainer?.querySelector('.simple-dropdown-trigger');
-    const salesModelText = salesModelContainer?.querySelector('.simple-dropdown-text');
-    const salesModelMenu = salesModelContainer?.querySelector('.simple-dropdown-menu');
-    const salesModelOptions = salesModelContainer?.querySelectorAll('.simple-dropdown-option');
-    let salesModelLocked = false;
-    let lastUnlockedSalesModel = salesModelSelect?.value || 'Lease';
-
-    const setSalesModel = (value) => {
-        if (!salesModelSelect) return;
-        salesModelSelect.value = value;
-        salesModelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        if (salesModelText) {
-            salesModelText.textContent = value === 'IRU' ? 'IRU (买断模式)' : 'Lease (月租模式)';
-        }
-        if (salesModelTrigger) {
-            salesModelTrigger.classList.remove('placeholder');
-        }
-        if (salesModelOptions) {
-            salesModelOptions.forEach(option => {
-                option.classList.toggle('selected', option.dataset.value === value);
-            });
-        }
-        if (salesModelMenu) {
-            salesModelMenu.style.display = 'none';
-        }
-    };
-
-    const updateRevenueFields = () => {
-        const model = salesModelSelect?.value;
-        if (leaseRevenueFields && iruRevenueFields) {
-            leaseRevenueFields.style.display = model === 'Lease' ? 'block' : 'none';
-            iruRevenueFields.style.display = model === 'IRU' ? 'block' : 'none';
-        }
-        context.calculateSalesFinancials();
-    };
-
-    if (salesModelSelect) {
-        salesModelSelect.addEventListener('change', updateRevenueFields);
-        salesModelSelect.addEventListener('change', () => {
-            if (!salesModelLocked) {
-                lastUnlockedSalesModel = salesModelSelect.value;
-            }
-        });
     }
 
     // ===== IRU Revenue: Auto-calculate Annual O&M Fee =====

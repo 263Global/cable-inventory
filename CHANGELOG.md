@@ -25,6 +25,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Backhaul IRU Persistence** - Sales form now stores backhaul IRU fields via hidden inputs and reset mappings
 - **Swapped Out Handling** - Enforced IRU-only selection in UI with locked dropdown styling; calculations now force zero revenue/profit
 - **Inventory Revenue Context** - Added UI + docs note clarifying monthly revenue is the sum of linked sales (incl. IRU amortized)
+- **Sales Form Edit Flow** - Ensured Edit Costs always opens and pre-fills customer selection by mapping stored names to customer IDs
 
 ---
 
