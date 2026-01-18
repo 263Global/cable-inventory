@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Cable Inventory Manager</title>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="assets/css/bundle.css">
     <!-- Ionicons for Icons -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
@@ -111,144 +115,11 @@
     <div id="modal-container"></div>
 
     <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="assets/js/bundle.js" defer></script>
     <!-- Main Application (ES6 Module) -->
     <script type="module" src="assets/js/app.js"></script>
-
-    <script type="module">
-        // Check if this is a redirect from email link (invite/recovery)
-        (async () => {
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const type = hashParams.get('type');
-
-            // If coming from invite or recovery email, redirect to password setup page
-            if (type === 'invite' || type === 'recovery' || type === 'signup') {
-                window.location.href = 'reset-password.html' + window.location.hash;
-                return;
-            }
-
-            // Normal auth check - redirect to login if not authenticated
-            const isAuthed = await Auth.requireAuth();
-            if (isAuthed) {
-                // Show user section
-                const userSection = document.getElementById('user-section');
-                const userEmail = document.getElementById('user-email');
-                const mobileUserEmail = document.getElementById('mobile-user-email');
-                const user = await Auth.getCurrentUser();
-
-                if (user) {
-                    userEmail.textContent = user.email;
-                    if (mobileUserEmail) mobileUserEmail.textContent = user.email;
-                    userSection.style.display = 'block';
-                }
-
-                // Initialize Store (load data from Supabase)
-                await window.Store.init();
-
-                // Initialize app
-                App.init();
-            }
-        })();
-
-        // Mobile user menu toggle
-        document.getElementById('mobile-user-btn')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('mobile-user-dropdown')?.classList.toggle('open');
-        });
-
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('mobile-user-dropdown');
-            const btn = document.getElementById('mobile-user-btn');
-            if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-
-        // Mobile logout handler
-        document.getElementById('mobile-logout')?.addEventListener('click', async () => {
-            await Auth.signOut();
-            window.location.href = 'login.html';
-        });
-
-        // Mobile change password handler
-        document.getElementById('mobile-change-password')?.addEventListener('click', async () => {
-            document.getElementById('mobile-user-dropdown')?.classList.remove('open');
-            // Reuse existing change password logic
-            document.getElementById('change-password-btn')?.click();
-        });
-
-        // Mobile theme toggle handler
-        document.getElementById('mobile-theme-toggle')?.addEventListener('click', () => {
-            document.getElementById('mobile-user-dropdown')?.classList.remove('open');
-            // Reuse App's theme toggle
-            if (typeof App !== 'undefined' && App.toggleTheme) {
-                App.toggleTheme();
-            }
-        });
-
-        // Logout handler
-        document.getElementById('logout-btn')?.addEventListener('click', async () => {
-            await Auth.signOut();
-            window.location.href = 'login.html';
-        });
-
-        // Change password handler
-        document.getElementById('change-password-btn')?.addEventListener('click', async () => {
-            const newPassword = prompt('Enter new password (minimum 6 characters):');
-            if (!newPassword) return;
-
-            if (newPassword.length < 6) {
-                alert('Password must be at least 6 characters');
-                return;
-            }
-
-            const confirmPassword = prompt('Confirm new password:');
-            if (newPassword !== confirmPassword) {
-                alert('Passwords do not match');
-                return;
-            }
-
-            try {
-                const { error } = await window.SupabaseClient.auth.updateUser({
-                    password: newPassword
-                });
-
-                if (error) {
-                    alert('Failed to update password: ' + error.message);
-                    return;
-                }
-
-                alert('Password updated successfully! Please log in again.');
-                await Auth.signOut();
-                window.location.href = 'login.html';
-            } catch (err) {
-                alert('Error: ' + err.message);
-            }
-        });
-
-        // Auto logout after 10 minutes of inactivity
-        const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
-        let inactivityTimer;
-
-        function resetInactivityTimer() {
-            clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(async () => {
-                alert('You have been logged out due to inactivity.');
-                await Auth.signOut();
-                window.location.href = 'login.html';
-            }, INACTIVITY_TIMEOUT);
-        }
-
-        // Track user activity
-        ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
-            document.addEventListener(event, resetInactivityTimer, { passive: true });
-        });
-
-        // Start the timer
-        resetInactivityTimer();
-    </script>
+    <script src="assets/js/index-init.js" defer></script>
 </body>
 
 </html>

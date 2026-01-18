@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Login - Cable Manager</title>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="assets/css/base/variables.css">
     <link rel="stylesheet" href="assets/css/pages/login.css">
     <!-- Ionicons for Icons -->
@@ -66,98 +70,10 @@
     </div>
 
     <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/js/supabase.js"></script>
-    <script src="assets/js/auth.js"></script>
-
-    <script>
-        // Initialize theme
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-
-        // Redirect if already logged in
-        (async () => {
-            await Auth.redirectIfAuthenticated();
-        })();
-
-        // Handle form submission
-        const form = document.getElementById('login-form');
-        const btn = document.getElementById('login-btn');
-        const errorDiv = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Hide previous error
-            errorDiv.classList.remove('show');
-
-            // Get form data
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-
-            if (!email || !password) {
-                errorText.textContent = 'Please enter both email and password';
-                errorDiv.classList.add('show');
-                return;
-            }
-
-            // Show loading state
-            btn.classList.add('loading');
-            btn.disabled = true;
-
-            // Attempt sign in
-            const { user, error } = await Auth.signIn(email, password);
-
-            if (error) {
-                // Show error
-                errorText.textContent = error.message || 'Invalid email or password';
-                errorDiv.classList.add('show');
-                btn.classList.remove('loading');
-                btn.disabled = false;
-                return;
-            }
-
-            // Success - redirect to main app
-            window.location.href = 'index.html';
-        });
-
-        // Forgot password handler
-        const successDiv = document.getElementById('success-message');
-        const successText = document.getElementById('success-text');
-
-        document.getElementById('forgot-link').addEventListener('click', async (e) => {
-            e.preventDefault();
-
-            const email = document.getElementById('email').value.trim();
-            if (!email) {
-                errorText.textContent = 'Please enter your email first';
-                errorDiv.classList.add('show');
-                successDiv.classList.remove('show');
-                return;
-            }
-
-            errorDiv.classList.remove('show');
-
-            try {
-                const { error } = await window.SupabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + '/reset-password.html'
-                });
-
-                if (error) {
-                    errorText.textContent = error.message;
-                    errorDiv.classList.add('show');
-                    return;
-                }
-
-                successText.textContent = 'Password reset email sent! Check your inbox.';
-                successDiv.classList.add('show');
-            } catch (err) {
-                errorText.textContent = err.message || 'Failed to send reset email';
-                errorDiv.classList.add('show');
-            }
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="assets/js/supabase.js" defer></script>
+    <script src="assets/js/auth.js" defer></script>
+    <script src="assets/js/login-init.js" defer></script>
 </body>
 
 </html>
