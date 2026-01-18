@@ -432,11 +432,20 @@ const App = {
         ];
 
         // Generate rows
+        const customers = window.Store.getCustomers();
+        const customerMap = {};
+        customers.forEach(c => { customerMap[c.id] = c.short_name || c.full_name || c.id; });
+
         const rows = sales.map(s => {
             const computed = computeOrderFinancials(s);
+            const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
+            const aEndCity = s.location?.aEnd?.city || s.locationAEnd?.city || '';
+            const aEndPop = s.location?.aEnd?.pop || s.locationAEnd?.pop || '';
+            const zEndCity = s.location?.zEnd?.city || s.locationZEnd?.city || '';
+            const zEndPop = s.location?.zEnd?.pop || s.locationZEnd?.pop || '';
             return [
                 s.salesOrderId || '',
-                s.customerName || '',
+                customerName,
                 s.status || '',
                 s.salesModel || '',
                 s.salesType || '',
@@ -451,10 +460,10 @@ const App = {
                 computed.monthlyProfit ? (s.financials?.mrcSales || 0) - computed.monthlyProfit : 0,
                 computed.monthlyProfit || 0,
                 computed.marginPercent?.toFixed(1) || 0,
-                s.locationAEnd?.city || '',
-                s.locationAEnd?.pop || '',
-                s.locationZEnd?.city || '',
-                s.locationZEnd?.pop || '',
+                aEndCity,
+                aEndPop,
+                zEndCity,
+                zEndPop,
                 (s.notes || '').replace(/"/g, '""') // Escape quotes
             ].map(v => `"${v}"`).join(',');
         });
@@ -477,8 +486,12 @@ const App = {
             'Ownership', 'Supplier', 'Capacity', 'Unit',
             'A-End Country', 'A-End City', 'A-End PoP',
             'Z-End Country', 'Z-End City', 'Z-End PoP',
-            'MRC', 'OTC', 'Annual O&M', 'Contract Start', 'Contract End', 'Term (Months)'
+            'MRC', 'OTC/NRC', 'Annual O&M', 'Contract Start', 'Contract End', 'Term (Months)'
         ];
+
+        const suppliers = window.Store.getSuppliers();
+        const supplierMap = {};
+        suppliers.forEach(s => { supplierMap[s.id] = s.short_name || s.full_name || s.id; });
 
         // Generate rows
         const rows = inventory.map(i => [
@@ -488,7 +501,7 @@ const App = {
             i.segmentType || '',
             i.protection || '',
             i.acquisition?.ownership || '',
-            i.acquisition?.supplier || '',
+            i.acquisition?.supplierId ? (supplierMap[i.acquisition.supplierId] || i.acquisition?.supplierName || i.acquisition.supplierId) : (i.acquisition?.supplierName || ''),
             i.capacity?.value || 0,
             i.capacity?.unit || 'Gbps',
             i.location?.aEnd?.country || '',
@@ -498,7 +511,7 @@ const App = {
             i.location?.zEnd?.city || '',
             i.location?.zEnd?.pop || '',
             i.financials?.mrc || 0,
-            i.financials?.otc || 0,
+            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || 0,
             i.financials?.annualOmCost || 0,
             i.dates?.start || '',
             i.dates?.end || '',

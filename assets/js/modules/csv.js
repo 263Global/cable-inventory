@@ -58,6 +58,9 @@ function exportSalesToCSV() {
         // Resolve customer name from ID, fallback to legacy customerName
         const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
         const computed = computeOrderFinancials(s);
+        const aEndCity = s.location?.aEnd?.city || s.locationAEnd?.city || '';
+        const zEndCity = s.location?.zEnd?.city || s.locationZEnd?.city || '';
+        const route = [aEndCity, zEndCity].filter(Boolean).join(' -> ');
 
         return [
             s.salesOrderId || '',
@@ -66,7 +69,7 @@ function exportSalesToCSV() {
             s.status || '',
             s.salesModel || '',
             s.salesType || '',
-            s.route || '',
+            route,
             s.capacity?.value || '',
             s.dates?.start || '',
             s.dates?.end || '',
@@ -105,27 +108,38 @@ function exportInventoryToCSV() {
         'OTC/NRC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
     ];
 
+    const formatEndpoint = (endpoint) => {
+        if (!endpoint) return '';
+        const pop = endpoint.pop || '';
+        const city = endpoint.city || '';
+        if (!pop && !city) return '';
+        if (!city) return pop;
+        if (!pop) return city;
+        return `${pop} (${city})`;
+    };
+
     const rows = inventory.map(i => {
         // Resolve supplier name from ID, fallback to legacy supplierName
-        const supplierName = i.acquisition?.supplierId
-            ? (supplierMap[i.acquisition.supplierId] || i.acquisition?.supplierName || '')
+        const supplierId = i.acquisition?.supplierId;
+        const supplierName = supplierId
+            ? (supplierMap[supplierId] || i.acquisition?.supplierName || '')
             : (i.acquisition?.supplierName || '');
 
         return [
             i.resourceId || '',
             i.cableSystem || '',
             i.segmentType || '',
-            i.route || '',
+            i.routeDescription || '',
             i.status || '',
             i.capacity?.value || '',
-            i.endpoints?.aEnd || '',
-            i.endpoints?.zEnd || '',
+            formatEndpoint(i.location?.aEnd),
+            formatEndpoint(i.location?.zEnd),
             i.acquisition?.ownership || '',
             supplierName,
             i.dates?.start || '',
             i.dates?.end || '',
             i.financials?.term || '',
-            i.financials?.otc || '',
+            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || '',
             i.financials?.mrc || '',
             i.financials?.annualOmCost || '',
             i.acquisition?.supplierName || '' // Legacy field for reference

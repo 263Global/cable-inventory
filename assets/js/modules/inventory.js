@@ -19,6 +19,12 @@ const escapeHtml = (str) => {
         .replace(/'/g, '&#039;');
 };
 
+const resolveSupplierName = (supplierId, fallback = '') => {
+    if (!supplierId) return fallback || '';
+    const supplier = window.Store.getSuppliers().find(s => s.id === supplierId);
+    return supplier?.short_name || supplier?.full_name || fallback || supplierId;
+};
+
 const {
     buildSalesIndex,
     computeInventoryStatus,
@@ -192,7 +198,7 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                             </td>
                             <td class="col-cost-info">
                                 ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
-                                <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.financials?.otc || 0).toLocaleString()}</div>
+                                <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.acquisition?.ownership === 'IRU' ? item.financials?.otc : item.financials?.nrc || 0).toLocaleString()}</div>
                                 <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${item.dates?.end || 'N/A'}</div>
                             </td>
                             <td class="col-location" style="font-size:0.85rem">
@@ -421,7 +427,7 @@ export function viewInventoryDetails(context, resourceId) {
                     <table style="width:100%;">
                         <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
                         <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Supplier</td><td>${item.acquisition?.supplier || '-'}</td></tr>
+                        <tr><td style="${tdStyle}">Supplier</td><td>${resolveSupplierName(item.acquisition?.supplierId, item.acquisition?.supplierName) || '-'}</td></tr>
                         <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
                     </table>
                 </div>
@@ -441,7 +447,7 @@ export function viewInventoryDetails(context, resourceId) {
                     <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">Financials & Dates</h4>
                     <table style="width:100%;">
                         ${!isIRU ? `<tr><td style="${tdStyle}">MRC</td><td class="font-mono">$${(item.financials?.mrc || 0).toLocaleString()}</td></tr>` : ''}
-                        <tr><td style="${tdStyle}">OTC</td><td class="font-mono">$${(item.financials?.otc || 0).toLocaleString()}</td></tr>
+                        <tr><td style="${tdStyle}">${isIRU ? 'OTC' : 'NRC'}</td><td class="font-mono">$${(isIRU ? (item.financials?.otc || 0) : (item.financials?.nrc || 0)).toLocaleString()}</td></tr>
                         ${isIRU ? `
                         <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
                         <tr><td style="${tdStyle}">Annual O&M Cost</td><td class="font-mono" style="color:var(--accent-warning)">$${annualOmCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
@@ -487,7 +493,7 @@ export function openInventoryModal(context, resourceId = null) {
         label: s.short_name,
         subtitle: s.full_name || ''
     }));
-    const existingSupplier = item.acquisition?.supplier || '';
+    const existingSupplier = item.acquisition?.supplierId || '';
 
 
     const formHTML = `
@@ -621,7 +627,7 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label" id="otc-label">${item.acquisition?.ownership === 'IRU' ? 'OTC ($)' : 'NRC ($)'}</label>
-                                                                                                                                <input type="number" class="form-control" name="financials.otc" value="${item.financials?.otc || 0}">
+                                                                                                                                <input type="number" class="form-control" name="financials.otc" value="${item.acquisition?.ownership === 'IRU' ? (item.financials?.otc || 0) : (item.financials?.nrc || 0)}">
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Term (Months)</label>
@@ -665,7 +671,8 @@ export function openInventoryModal(context, resourceId = null) {
             acquisition: {
                 type: form.querySelector('[name="acquisition.type"]').value,
                 ownership: form.querySelector('[name="acquisition.ownership"]').value,
-                supplier: form.querySelector('[name="acquisition.supplier"]').value,
+                supplierId: form.querySelector('[name="acquisition.supplierId"]').value,
+                supplierName: resolveSupplierName(form.querySelector('[name="acquisition.supplierId"]').value),
                 contractRef: form.querySelector('[name="acquisition.contractRef"]').value,
             },
             cableSystem: form.querySelector('[name="cableSystem"]').value,
@@ -694,13 +701,18 @@ export function openInventoryModal(context, resourceId = null) {
                     device: form.querySelector('[name="location.zEnd.device"]').value
                 }
             },
-            financials: {
-                mrc: Number(form.querySelector('[name="financials.mrc"]').value),
-                otc: Number(form.querySelector('[name="financials.otc"]').value),
-                term: Number(form.querySelector('[name="financials.term"]').value),
-                omRate: Number(form.querySelector('[name="financials.omRate"]')?.value || 0),
-                annualOmCost: Number(form.querySelector('[name="financials.annualOmCost"]')?.value || 0)
-            },
+            financials: (() => {
+                const ownership = form.querySelector('[name="acquisition.ownership"]').value;
+                const oneTimeCost = Number(form.querySelector('[name="financials.otc"]').value);
+                return {
+                    mrc: Number(form.querySelector('[name="financials.mrc"]').value),
+                    nrc: ownership === 'IRU' ? 0 : oneTimeCost,
+                    otc: ownership === 'IRU' ? oneTimeCost : 0,
+                    term: Number(form.querySelector('[name="financials.term"]').value),
+                    omRate: Number(form.querySelector('[name="financials.omRate"]')?.value || 0),
+                    annualOmCost: Number(form.querySelector('[name="financials.annualOmCost"]')?.value || 0)
+                };
+            })(),
             dates: {
                 start: form.querySelector('[name="dates.start"]').value,
                 end: form.querySelector('[name="dates.end"]').value
@@ -722,7 +734,7 @@ export function openInventoryModal(context, resourceId = null) {
     const supplierDropdownPlaceholder = document.getElementById('inventory-supplier-dropdown-placeholder');
     if (supplierDropdownPlaceholder) {
         supplierDropdownPlaceholder.outerHTML = renderSearchableDropdown({
-            name: 'acquisition.supplier',
+            name: 'acquisition.supplierId',
             id: 'inventory-supplier-dropdown',
             options: supplierOptions,
             selectedValue: existingSupplier,

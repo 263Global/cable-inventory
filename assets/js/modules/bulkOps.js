@@ -137,7 +137,7 @@ function initBulkOpsModule(App) {
             i.capacity?.value || '',
             i.capacity?.unit || 'Gbps',
             i.financials?.mrc || 0,
-            i.financials?.otc || 0,
+            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || 0,
             i.location?.aEnd?.city || '',
             i.location?.zEnd?.city || '',
             i.dates?.start || '',

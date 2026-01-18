@@ -320,10 +320,14 @@ class Store {
             cableSystem: row.cable_system,
             segmentType: row.segment_type,
             protection: row.protection,
+            protectionCableSystem: row.protection_cable_system,
+            handoffType: row.handoff_type,
+            routeDescription: row.route_description,
             acquisition: {
                 type: row.acquisition_type,
                 ownership: row.ownership,
-                supplier: row.supplier,
+                supplierId: row.supplier_id,
+                supplierName: row.supplier,
                 contractRef: row.contract_ref
             },
             capacity: {
@@ -373,9 +377,13 @@ class Store {
             cable_system: item.cableSystem,
             segment_type: item.segmentType,
             protection: item.protection,
+            protection_cable_system: item.protectionCableSystem,
+            handoff_type: item.handoffType,
+            route_description: item.routeDescription,
             acquisition_type: item.acquisition?.type,
             ownership: item.acquisition?.ownership,
-            supplier: item.acquisition?.supplier,
+            supplier_id: item.acquisition?.supplierId,
+            supplier: item.acquisition?.supplierName,
             contract_ref: item.acquisition?.contractRef,
             capacity_value: item.capacity?.value,
             capacity_unit: item.capacity?.unit,
@@ -409,6 +417,7 @@ class Store {
             inventoryLink: row.inventory_link,
             status: row.status,
             customerName: row.customer_name,
+            customerId: row.customer_id,
             salesperson: row.salesperson,
             salesModel: row.sales_model,
             salesType: row.sales_type,
@@ -445,6 +454,7 @@ class Store {
             inventory_link: order.inventoryLink,
             status: order.status || 'Pending',
             customer_name: order.customerName,
+            customer_id: order.customerId,
             salesperson: order.salesperson,
             sales_model: order.salesModel,
             sales_type: order.salesType,
@@ -1177,6 +1187,9 @@ function exportSalesToCSV() {
         // Resolve customer name from ID, fallback to legacy customerName
         const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
         const computed = computeOrderFinancials(s);
+        const aEndCity = s.location?.aEnd?.city || s.locationAEnd?.city || '';
+        const zEndCity = s.location?.zEnd?.city || s.locationZEnd?.city || '';
+        const route = [aEndCity, zEndCity].filter(Boolean).join(' -> ');
 
         return [
             s.salesOrderId || '',
@@ -1185,7 +1198,7 @@ function exportSalesToCSV() {
             s.status || '',
             s.salesModel || '',
             s.salesType || '',
-            s.route || '',
+            route,
             s.capacity?.value || '',
             s.dates?.start || '',
             s.dates?.end || '',
@@ -1224,27 +1237,38 @@ function exportInventoryToCSV() {
         'OTC/NRC', 'MRC', 'Annual O&M Cost', 'Legacy Supplier Name'
     ];
 
+    const formatEndpoint = (endpoint) => {
+        if (!endpoint) return '';
+        const pop = endpoint.pop || '';
+        const city = endpoint.city || '';
+        if (!pop && !city) return '';
+        if (!city) return pop;
+        if (!pop) return city;
+        return `${pop} (${city})`;
+    };
+
     const rows = inventory.map(i => {
         // Resolve supplier name from ID, fallback to legacy supplierName
-        const supplierName = i.acquisition?.supplierId
-            ? (supplierMap[i.acquisition.supplierId] || i.acquisition?.supplierName || '')
+        const supplierId = i.acquisition?.supplierId;
+        const supplierName = supplierId
+            ? (supplierMap[supplierId] || i.acquisition?.supplierName || '')
             : (i.acquisition?.supplierName || '');
 
         return [
             i.resourceId || '',
             i.cableSystem || '',
             i.segmentType || '',
-            i.route || '',
+            i.routeDescription || '',
             i.status || '',
             i.capacity?.value || '',
-            i.endpoints?.aEnd || '',
-            i.endpoints?.zEnd || '',
+            formatEndpoint(i.location?.aEnd),
+            formatEndpoint(i.location?.zEnd),
             i.acquisition?.ownership || '',
             supplierName,
             i.dates?.start || '',
             i.dates?.end || '',
             i.financials?.term || '',
-            i.financials?.otc || '',
+            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || '',
             i.financials?.mrc || '',
             i.financials?.annualOmCost || '',
             i.acquisition?.supplierName || '' // Legacy field for reference
@@ -1823,7 +1847,7 @@ function initBulkOpsModule(App) {
             i.capacity?.value || '',
             i.capacity?.unit || 'Gbps',
             i.financials?.mrc || 0,
-            i.financials?.otc || 0,
+            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || 0,
             i.location?.aEnd?.city || '',
             i.location?.zEnd?.city || '',
             i.dates?.start || '',

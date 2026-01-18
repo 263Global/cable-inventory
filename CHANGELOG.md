@@ -4,9 +4,14 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ## [Unreleased]
 
+---
+
+## [1.8.1] - 2026-01-18
+
 ### Added
 - **Status Helper Test Page** - `docs/status-test.html` for browser-based helper checks
 - **Shared Status Helpers** - Inventory, sales, and alert UI helpers for consistent status rendering
+- **Full Supabase Schema Script** - `docs/supabase_schema.sql` now supports full fresh installs
 
 ### Changed
 - **Inventory Status Logic** - Centralized status computation and sales aggregation across inventory views
@@ -26,6 +31,9 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Swapped Out Handling** - Enforced IRU-only selection in UI with locked dropdown styling; calculations now force zero revenue/profit
 - **Inventory Revenue Context** - Added UI + docs note clarifying monthly revenue is the sum of linked sales (incl. IRU amortized)
 - **Sales Form Edit Flow** - Ensured Edit Costs always opens and pre-fills customer selection by mapping stored names to customer IDs
+- **Data Model Alignment** - Inventory now persists route/handoff/protection cable fields; sales orders store `customer_id`
+- **NRC/OTC Handling** - One-time costs now split by ownership (NRC for non-IRU, OTC for IRU) across views/exports
+- **CSV Exports** - Routes, endpoints, customer/supplier names, and one-time costs now export from current model fields
 
 ---
 
