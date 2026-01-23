@@ -529,11 +529,11 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Resource ID</label>
-                                                                                                                                <input type="text" class="form-control" name="resourceId" value="${item.resourceId || ''}" ${isEdit ? 'readonly' : ''} placeholder="Auto-generated if empty">
+                                                                                                                                <input type="text" class="form-control" name="resourceId" value="${escapeHtml(item.resourceId || '')}" ${isEdit ? 'readonly' : ''} placeholder="Auto-generated if empty">
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Status <small style="color:var(--text-muted)">(Auto-calculated)</small></label>
-                                                                                                                                <div id="inventory-status-dropdown-placeholder" data-selected="${calculatedStatus}"></div>
+                                                                                                                                <div id="inventory-status-dropdown-placeholder" data-selected="${escapeHtml(calculatedStatus)}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
 
@@ -542,11 +542,11 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-3">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Acquisition Type</label>
-                                                                                                                                <div id="inventory-acquisition-type-dropdown-placeholder" data-selected="${item.acquisition?.type || 'Purchased'}"></div>
+                                                                                                                                <div id="inventory-acquisition-type-dropdown-placeholder" data-selected="${escapeHtml(item.acquisition?.type || 'Purchased')}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Ownership</label>
-                                                                                                                                <div id="inventory-ownership-dropdown-placeholder" data-selected="${item.acquisition?.ownership || 'Leased'}"></div>
+                                                                                                                                <div id="inventory-ownership-dropdown-placeholder" data-selected="${escapeHtml(item.acquisition?.ownership || 'Leased')}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Supplier</label>
@@ -554,7 +554,7 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Contract Ref</label>
-                                                                                                                                <input type="text" class="form-control" name="acquisition.contractRef" value="${item.acquisition?.contractRef || ''}">
+                                                                                                                                <input type="text" class="form-control" name="acquisition.contractRef" value="${escapeHtml(item.acquisition?.contractRef || '')}">
                                                                                                                             </div>
                                                                                                                         </div>
 
@@ -563,27 +563,27 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Cable System</label>
-                                                                                                                                <input type="text" class="form-control" name="cableSystem" value="${item.cableSystem || ''}">
+                                                                                                                                <input type="text" class="form-control" name="cableSystem" value="${escapeHtml(item.cableSystem || '')}">
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Segment Type</label>
-                                                                                                                                <div id="inventory-segment-type-dropdown-placeholder" data-selected="${item.segmentType || 'Capacity'}"></div>
+                                                                                                                                <div id="inventory-segment-type-dropdown-placeholder" data-selected="${escapeHtml(item.segmentType || 'Capacity')}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Handoff Type</label>
-                                                                                                                                <div id="inventory-handoff-type-dropdown-placeholder" data-selected="${item.handoffType || 'OTU-4'}"></div>
+                                                                                                                                <div id="inventory-handoff-type-dropdown-placeholder" data-selected="${escapeHtml(item.handoffType || 'OTU-4')}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group" id="handoff-type-custom-container" style="display: ${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? 'block' : 'none'}">
                                                                                                                                 <label class="form-label">Custom Handoff Type</label>
-                                                                                                                                <input type="text" class="form-control" name="handoffTypeCustom" id="handoff-type-custom" value="${item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? item.handoffType : ''}" placeholder="Enter custom handoff type">
+                                                                                                                                <input type="text" class="form-control" name="handoffTypeCustom" id="handoff-type-custom" value="${escapeHtml(item.handoffType && !['OTU-4', '100GE', '400GE'].includes(item.handoffType) ? item.handoffType : '')}" placeholder="Enter custom handoff type">
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-1">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Route Description</label>
-                                                                                                                                <textarea class="form-control" name="routeDescription" rows="3" placeholder="Describe the cable routing path...">${item.routeDescription || ''}</textarea>
+                                                                                                                                <textarea class="form-control" name="routeDescription" rows="3" placeholder="Describe the cable routing path...">${escapeHtml(item.routeDescription || '')}</textarea>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-3">
@@ -593,17 +593,17 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Unit</label>
-                                                                                                                                <div id="inventory-capacity-unit-dropdown-placeholder" data-selected="${item.capacity?.unit || 'Gbps'}"></div>
+                                                                                                                                <div id="inventory-capacity-unit-dropdown-placeholder" data-selected="${escapeHtml(item.capacity?.unit || 'Gbps')}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Protection</label>
-                                                                                                                                <div id="inventory-protection-dropdown-placeholder" data-selected="${item.protection || 'Unprotected'}"></div>
+                                                                                                                                <div id="inventory-protection-dropdown-placeholder" data-selected="${escapeHtml(item.protection || 'Unprotected')}"></div>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-1" id="protection-cable-container" style="display: ${item.protection === 'Protected' ? 'block' : 'none'}">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Protection Cable System</label>
-                                                                                                                                <input type="text" class="form-control" name="protectionCableSystem" value="${item.protectionCableSystem || ''}" placeholder="Specify the cable system used for protection">
+                                                                                                                                <input type="text" class="form-control" name="protectionCableSystem" value="${escapeHtml(item.protectionCableSystem || '')}" placeholder="Specify the cable system used for protection">
                                                                                                                             </div>
                                                                                                                         </div>
 
@@ -612,19 +612,19 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-2">
                                                                                                                             <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
                                                                                                                                 <h5 class="mb-2" style="color:var(--accent-primary)">A-End</h5>
-                                                                                                                                <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.aEnd.country" value="${item.location?.aEnd?.country || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.aEnd.city" value="${item.location?.aEnd?.city || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.aEnd.pop" value="${item.location?.aEnd?.pop || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.aEnd.device" value="${item.location?.aEnd?.device || ''}" placeholder="e.g., Router-01, Switch-HK"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.aEnd.port" value="${item.location?.aEnd?.port || ''}" placeholder="e.g., Eth1/1/1"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.aEnd.country" value="${escapeHtml(item.location?.aEnd?.country || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.aEnd.city" value="${escapeHtml(item.location?.aEnd?.city || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.aEnd.pop" value="${escapeHtml(item.location?.aEnd?.pop || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.aEnd.device" value="${escapeHtml(item.location?.aEnd?.device || '')}" placeholder="e.g., Router-01, Switch-HK"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.aEnd.port" value="${escapeHtml(item.location?.aEnd?.port || '')}" placeholder="e.g., Eth1/1/1"></div>
                                                                                                                             </div>
                                                                                                                             <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
                                                                                                                                 <h5 class="mb-2" style="color:var(--accent-secondary)">Z-End</h5>
-                                                                                                                                <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.zEnd.country" value="${item.location?.zEnd?.country || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.zEnd.city" value="${item.location?.zEnd?.city || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.zEnd.pop" value="${item.location?.zEnd?.pop || ''}"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.zEnd.device" value="${item.location?.zEnd?.device || ''}" placeholder="e.g., Router-02, Switch-SG"></div>
-                                                                                                                                <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.zEnd.port" value="${item.location?.zEnd?.port || ''}" placeholder="e.g., Eth1/1/2"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.zEnd.country" value="${escapeHtml(item.location?.zEnd?.country || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" name="location.zEnd.city" value="${escapeHtml(item.location?.zEnd?.city || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">PoP Site</label><input type="text" class="form-control" name="location.zEnd.pop" value="${escapeHtml(item.location?.zEnd?.pop || '')}"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.zEnd.device" value="${escapeHtml(item.location?.zEnd?.device || '')}" placeholder="e.g., Router-02, Switch-SG"></div>
+                                                                                                                                <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.zEnd.port" value="${escapeHtml(item.location?.zEnd?.port || '')}" placeholder="e.g., Eth1/1/2"></div>
                                                                                                                             </div>
                                                                                                                         </div>
 
@@ -659,11 +659,11 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         <div class="grid-2 mt-4">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Start Date</label>
-                                                                                                                                <input type="date" class="form-control" id="start-date-input" name="dates.start" value="${item.dates?.start || ''}">
+                                                                                                                                <input type="date" class="form-control" id="start-date-input" name="dates.start" value="${escapeHtml(item.dates?.start || '')}">
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">End Date (Auto-calculated)</label>
-                                                                                                                                <input type="date" class="form-control" id="end-date-input" name="dates.end" value="${item.dates?.end || ''}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                                                                                                                                <input type="date" class="form-control" id="end-date-input" name="dates.end" value="${escapeHtml(item.dates?.end || '')}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         `;

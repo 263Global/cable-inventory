@@ -179,11 +179,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Model <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <div id="sales-model-dropdown-placeholder" data-selected="${existingOrder?.salesModel || 'Lease'}"></div>
+                            <div id="sales-model-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.salesModel || 'Lease')}"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sales Type <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <div id="sales-type-dropdown-placeholder" data-selected="${existingOrder?.salesType || 'Resale'}"></div>
+                            <div id="sales-type-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.salesType || 'Resale')}"></div>
                         </div>
                     </div>
 
@@ -191,11 +191,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Order ID <small style="color:var(--text-muted)">${isEditMode ? '(Read-only)' : '(Auto if blank)'}</small></label>
-                            <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001" value="${existingOrder?.salesOrderId || ''}" ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
+                            <input type="text" class="form-control font-mono" name="orderId" placeholder="e.g., ORD-001" value="${escapeHtml(existingOrder?.salesOrderId || '')}" ${isEditMode ? 'readonly style="background: var(--bg-card-hover);"' : ''}>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Customer <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <div id="customer-dropdown-placeholder" data-field="customerId" data-selected="${existingCustomerId}"></div>
+                            <div id="customer-dropdown-placeholder" data-field="customerId" data-selected="${escapeHtml(existingCustomerId)}"></div>
                             ${customers.length === 0 ? '<small style="color:var(--text-muted)">No customers yet. <a href="#" onclick="App.renderView(\'customers\'); App.closeModal(); return false;">Add one first</a>.</small>' : ''}
                         </div>
                     </div>
@@ -208,13 +208,13 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Unit</label>
-                            <div id="capacity-unit-dropdown-placeholder" data-selected="${existingOrder?.capacity?.unit || 'Gbps'}"></div>
+                            <div id="capacity-unit-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.capacity?.unit || 'Gbps')}"></div>
                         </div>
                     </div>
 
                     <div class="form-group" id="linked-resource-group">
                         <label class="form-label">Linked Resource (Available)</label>
-                        <div id="linked-resource-dropdown-placeholder" data-selected="${existingOrder?.inventoryLink || ''}"></div>
+                        <div id="linked-resource-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.inventoryLink || '')}"></div>
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 
@@ -222,7 +222,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Contract Start</label>
-                            <input type="date" class="form-control" name="dates.start" id="sales-start-date" required value="${existingOrder?.dates?.start || ''}">
+                            <input type="date" class="form-control" name="dates.start" id="sales-start-date" required value="${escapeHtml(existingOrder?.dates?.start || '')}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Term (Months)</label>
@@ -230,7 +230,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Contract End <small style="color:var(--text-muted)">(Auto)</small></label>
-                            <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);" value="${existingOrder?.dates?.end || ''}">
+                            <input type="date" class="form-control" name="dates.end" id="sales-end-date" readonly style="background: var(--bg-card-hover);" value="${escapeHtml(existingOrder?.dates?.end || '')}">
                         </div>
                     </div>
 
@@ -238,11 +238,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Status</label>
-                            <input type="text" class="form-control" id="sales-status-display" value="${existingOrder?.status || 'Pending'}" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                            <input type="text" class="form-control" id="sales-status-display" value="${escapeHtml(existingOrder?.status || 'Pending')}" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Salesperson <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
-                            <div id="salesperson-dropdown-placeholder" data-selected="${existingOrder?.salesperson || ''}"></div>
+                            <div id="salesperson-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.salesperson || '')}"></div>
                         </div>
                     </div>
 
@@ -254,11 +254,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         <div class="grid-2">
                             <div class="form-group">
                                 <label class="form-label">City</label>
-                                <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong" value="${existingOrder?.location?.aEnd?.city || ''}">
+                                <input type="text" class="form-control" name="location.aEnd.city" placeholder="e.g., Hong Kong" value="${escapeHtml(existingOrder?.location?.aEnd?.city || '')}">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">PoP</label>
-                                <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1" value="${existingOrder?.location?.aEnd?.pop || ''}">
+                                <input type="text" class="form-control" name="location.aEnd.pop" placeholder="e.g., Equinix HK1" value="${escapeHtml(existingOrder?.location?.aEnd?.pop || '')}">
                             </div>
                         </div>
                     </div>
@@ -268,11 +268,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         <div class="grid-2">
                             <div class="form-group">
                                 <label class="form-label">City</label>
-                                <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore" value="${existingOrder?.location?.zEnd?.city || ''}">
+                                <input type="text" class="form-control" name="location.zEnd.city" placeholder="e.g., Singapore" value="${escapeHtml(existingOrder?.location?.zEnd?.city || '')}">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">PoP</label>
-                                <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1" value="${existingOrder?.location?.zEnd?.pop || ''}">
+                                <input type="text" class="form-control" name="location.zEnd.pop" placeholder="e.g., Equinix SG1" value="${escapeHtml(existingOrder?.location?.zEnd?.pop || '')}">
                             </div>
                         </div>
                     </div>
@@ -423,50 +423,50 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                     <!-- Hidden inputs for form submission (will be populated by JS) -->
                     <!-- Cable Cost -->
-                    <input type="hidden" name="costs.cable.supplier" value="${existingOrder?.costs?.cable?.supplier || ''}">
-                    <input type="hidden" name="costs.cable.orderNo" value="${existingOrder?.costs?.cable?.orderNo || ''}">
-                    <input type="hidden" name="costs.cable.cableSystem" value="${existingOrder?.costs?.cable?.cableSystem || ''}">
-                    <input type="hidden" name="costs.cable.capacity" value="${existingOrder?.costs?.cable?.capacity || 0}">
-                    <input type="hidden" name="costs.cable.capacityUnit" value="${existingOrder?.costs?.cable?.capacityUnit || 'Gbps'}">
-                    <input type="hidden" name="costs.cable.model" value="${existingOrder?.costs?.cable?.model || 'Lease'}">
-                    <input type="hidden" name="costs.cable.protection" value="${existingOrder?.costs?.cable?.protection || 'Unprotected'}">
-                    <input type="hidden" name="costs.cable.protectionCableSystem" value="${existingOrder?.costs?.cable?.protectionCableSystem || ''}">
-                    <input type="hidden" name="costs.cable.mrc" value="${existingOrder?.costs?.cable?.mrc || 0}">
-                    <input type="hidden" name="costs.cable.nrc" value="${existingOrder?.costs?.cable?.nrc || 0}">
-                    <input type="hidden" name="costs.cable.otc" value="${existingOrder?.costs?.cable?.otc || 0}">
-                    <input type="hidden" name="costs.cable.omRate" value="${existingOrder?.costs?.cable?.omRate || 0}">
-                    <input type="hidden" name="costs.cable.annualOm" value="${existingOrder?.costs?.cable?.annualOm || 0}">
-                    <input type="hidden" name="costs.cable.startDate" value="${existingOrder?.costs?.cable?.startDate || ''}">
-                    <input type="hidden" name="costs.cable.termMonths" value="${existingOrder?.costs?.cable?.termMonths || 12}">
-                    <input type="hidden" name="costs.cable.endDate" value="${existingOrder?.costs?.cable?.endDate || ''}">
+                    <input type="hidden" name="costs.cable.supplier" value="${escapeHtml(existingOrder?.costs?.cable?.supplier || '')}">
+                    <input type="hidden" name="costs.cable.orderNo" value="${escapeHtml(existingOrder?.costs?.cable?.orderNo || '')}">
+                    <input type="hidden" name="costs.cable.cableSystem" value="${escapeHtml(existingOrder?.costs?.cable?.cableSystem || '')}">
+                    <input type="hidden" name="costs.cable.capacity" value="${escapeHtml(existingOrder?.costs?.cable?.capacity || 0)}">
+                    <input type="hidden" name="costs.cable.capacityUnit" value="${escapeHtml(existingOrder?.costs?.cable?.capacityUnit || 'Gbps')}">
+                    <input type="hidden" name="costs.cable.model" value="${escapeHtml(existingOrder?.costs?.cable?.model || 'Lease')}">
+                    <input type="hidden" name="costs.cable.protection" value="${escapeHtml(existingOrder?.costs?.cable?.protection || 'Unprotected')}">
+                    <input type="hidden" name="costs.cable.protectionCableSystem" value="${escapeHtml(existingOrder?.costs?.cable?.protectionCableSystem || '')}">
+                    <input type="hidden" name="costs.cable.mrc" value="${escapeHtml(existingOrder?.costs?.cable?.mrc || 0)}">
+                    <input type="hidden" name="costs.cable.nrc" value="${escapeHtml(existingOrder?.costs?.cable?.nrc || 0)}">
+                    <input type="hidden" name="costs.cable.otc" value="${escapeHtml(existingOrder?.costs?.cable?.otc || 0)}">
+                    <input type="hidden" name="costs.cable.omRate" value="${escapeHtml(existingOrder?.costs?.cable?.omRate || 0)}">
+                    <input type="hidden" name="costs.cable.annualOm" value="${escapeHtml(existingOrder?.costs?.cable?.annualOm || 0)}">
+                    <input type="hidden" name="costs.cable.startDate" value="${escapeHtml(existingOrder?.costs?.cable?.startDate || '')}">
+                    <input type="hidden" name="costs.cable.termMonths" value="${escapeHtml(existingOrder?.costs?.cable?.termMonths || 12)}">
+                    <input type="hidden" name="costs.cable.endDate" value="${escapeHtml(existingOrder?.costs?.cable?.endDate || '')}">
                     <!-- Backhaul -->
-                    <input type="hidden" name="costs.backhaul.aEnd.monthly" value="${existingOrder?.costs?.backhaul?.aEnd?.monthly || 0}">
-                    <input type="hidden" name="costs.backhaul.aEnd.nrc" value="${existingOrder?.costs?.backhaul?.aEnd?.nrc || 0}">
-                    <input type="hidden" name="costs.backhaulA.model" value="${existingOrder?.costs?.backhaul?.aEnd?.model || 'Lease'}">
-                    <input type="hidden" name="costs.backhaulA.otc" value="${existingOrder?.costs?.backhaul?.aEnd?.otc || 0}">
-                    <input type="hidden" name="costs.backhaulA.omRate" value="${existingOrder?.costs?.backhaul?.aEnd?.omRate || 0}">
-                    <input type="hidden" name="costs.backhaulA.annualOm" value="${existingOrder?.costs?.backhaul?.aEnd?.annualOm || 0}">
-                    <input type="hidden" name="costs.backhaulA.startDate" value="${existingOrder?.costs?.backhaul?.aEnd?.startDate || ''}">
-                    <input type="hidden" name="costs.backhaulA.termMonths" value="${existingOrder?.costs?.backhaul?.aEnd?.termMonths || 12}">
-                    <input type="hidden" name="costs.backhaulA.endDate" value="${existingOrder?.costs?.backhaul?.aEnd?.endDate || ''}">
-                    <input type="hidden" name="costs.backhaul.zEnd.monthly" value="${existingOrder?.costs?.backhaul?.zEnd?.monthly || 0}">
-                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="${existingOrder?.costs?.backhaul?.zEnd?.nrc || 0}">
-                    <input type="hidden" name="costs.backhaulZ.model" value="${existingOrder?.costs?.backhaul?.zEnd?.model || 'Lease'}">
-                    <input type="hidden" name="costs.backhaulZ.otc" value="${existingOrder?.costs?.backhaul?.zEnd?.otc || 0}">
-                    <input type="hidden" name="costs.backhaulZ.omRate" value="${existingOrder?.costs?.backhaul?.zEnd?.omRate || 0}">
-                    <input type="hidden" name="costs.backhaulZ.annualOm" value="${existingOrder?.costs?.backhaul?.zEnd?.annualOm || 0}">
-                    <input type="hidden" name="costs.backhaulZ.startDate" value="${existingOrder?.costs?.backhaul?.zEnd?.startDate || ''}">
-                    <input type="hidden" name="costs.backhaulZ.termMonths" value="${existingOrder?.costs?.backhaul?.zEnd?.termMonths || 12}">
-                    <input type="hidden" name="costs.backhaulZ.endDate" value="${existingOrder?.costs?.backhaul?.zEnd?.endDate || ''}">
+                    <input type="hidden" name="costs.backhaul.aEnd.monthly" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.monthly || 0)}">
+                    <input type="hidden" name="costs.backhaul.aEnd.nrc" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.nrc || 0)}">
+                    <input type="hidden" name="costs.backhaulA.model" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.model || 'Lease')}">
+                    <input type="hidden" name="costs.backhaulA.otc" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.otc || 0)}">
+                    <input type="hidden" name="costs.backhaulA.omRate" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.omRate || 0)}">
+                    <input type="hidden" name="costs.backhaulA.annualOm" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.annualOm || 0)}">
+                    <input type="hidden" name="costs.backhaulA.startDate" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.startDate || '')}">
+                    <input type="hidden" name="costs.backhaulA.termMonths" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.termMonths || 12)}">
+                    <input type="hidden" name="costs.backhaulA.endDate" value="${escapeHtml(existingOrder?.costs?.backhaul?.aEnd?.endDate || '')}">
+                    <input type="hidden" name="costs.backhaul.zEnd.monthly" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.monthly || 0)}">
+                    <input type="hidden" name="costs.backhaul.zEnd.nrc" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.nrc || 0)}">
+                    <input type="hidden" name="costs.backhaulZ.model" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.model || 'Lease')}">
+                    <input type="hidden" name="costs.backhaulZ.otc" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.otc || 0)}">
+                    <input type="hidden" name="costs.backhaulZ.omRate" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.omRate || 0)}">
+                    <input type="hidden" name="costs.backhaulZ.annualOm" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.annualOm || 0)}">
+                    <input type="hidden" name="costs.backhaulZ.startDate" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.startDate || '')}">
+                    <input type="hidden" name="costs.backhaulZ.termMonths" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.termMonths || 12)}">
+                    <input type="hidden" name="costs.backhaulZ.endDate" value="${escapeHtml(existingOrder?.costs?.backhaul?.zEnd?.endDate || '')}">
                     <!-- Cross Connect -->
-                    <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="${existingOrder?.costs?.crossConnect?.aEnd?.monthly || 0}">
-                    <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="${existingOrder?.costs?.crossConnect?.aEnd?.nrc || 0}">
-                    <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="${existingOrder?.costs?.crossConnect?.zEnd?.monthly || 0}">
-                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="${existingOrder?.costs?.crossConnect?.zEnd?.nrc || 0}">
+                    <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.monthly || 0)}">
+                    <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.nrc || 0)}">
+                    <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.monthly || 0)}">
+                    <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.nrc || 0)}">
                     <!-- Other Costs -->
-                    <input type="hidden" name="costs.otherCosts.description" value="${existingOrder?.costs?.otherCosts?.description || ''}">
-                    <input type="hidden" name="costs.otherCosts.oneOff" value="${existingOrder?.costs?.otherCosts?.oneOff || 0}">
-                    <input type="hidden" name="costs.otherCosts.monthly" value="${existingOrder?.costs?.otherCosts?.monthly || 0}">
+                    <input type="hidden" name="costs.otherCosts.description" value="${escapeHtml(existingOrder?.costs?.otherCosts?.description || '')}">
+                    <input type="hidden" name="costs.otherCosts.oneOff" value="${escapeHtml(existingOrder?.costs?.otherCosts?.oneOff || 0)}">
+                    <input type="hidden" name="costs.otherCosts.monthly" value="${escapeHtml(existingOrder?.costs?.otherCosts?.monthly || 0)}">
                         </div>
                     </div>
                     <!-- Close nested 2-column grid -->
@@ -476,7 +476,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
                             <ion-icon name="document-text-outline"></ion-icon> Order Notes
                         </h4>
-                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${existingOrder?.notes || ''}</textarea>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${escapeHtml(existingOrder?.notes || '')}</textarea>
                     </div>
                 </div>
                 <!-- Close Right Container -->
@@ -484,7 +484,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
             <!-- Close 2-Column Grid -->
             `;
 
-    context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
+    context.openModal(isEditMode ? `Edit Sales Order: ${escapeHtml(existingOrderId)}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
 
     // Initialize Sales Model simple dropdown
     const salesModelPlaceholder = document.getElementById('sales-model-dropdown-placeholder');

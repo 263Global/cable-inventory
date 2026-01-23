@@ -18,6 +18,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
+- **Dashboard Escaping** - Sanitized alert and leaderboard fields to prevent injection
 
 ## [1.8.1] - 2026-01-18
 

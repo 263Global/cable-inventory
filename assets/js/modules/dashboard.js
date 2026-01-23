@@ -9,6 +9,16 @@
  */
 const { getAlertBadgeClass, getAlertAccentColor, isExpiringWithin } = window.StatusUi;
 
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 export function renderDashboard(context) {
     const inventory = window.Store.getInventory();
     const sales = window.Store.getSalesOrders();
@@ -169,8 +179,8 @@ export function renderDashboard(context) {
                         ${expiringSales.slice(0, 5).map(s => {
         const days = getDaysDiff(s.dates?.end);
         return `<div class="alert-item">
-                                <span class="alert-item-id">${s.salesOrderId}</span>
-                                <span class="alert-item-name">${s.customerName}</span>
+                                <span class="alert-item-id">${escapeHtml(s.salesOrderId)}</span>
+                                <span class="alert-item-name">${escapeHtml(s.customerName)}</span>
                                 <span class="alert-item-days" style="color:${getAlertAccentColor('warning')}">${days}d</span>
                             </div>`;
     }).join('')}
@@ -192,8 +202,8 @@ export function renderDashboard(context) {
                         ${expiringInventory.slice(0, 5).map(i => {
         const days = getDaysDiff(i.dates?.end);
         return `<div class="alert-item">
-                                <span class="alert-item-id">${i.resourceId}</span>
-                                <span class="alert-item-name">${i.cableSystem}</span>
+                                <span class="alert-item-id">${escapeHtml(i.resourceId)}</span>
+                                <span class="alert-item-name">${escapeHtml(i.cableSystem)}</span>
                                 <span class="alert-item-days" style="color:${getAlertAccentColor('danger')}">${days}d</span>
                             </div>`;
     }).join('')}
@@ -288,7 +298,7 @@ export function renderDashboard(context) {
                                     <div class="leaderboard-item" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
                                         <div style="width:20px;text-align:center;">${medal}</div>
                                         <div style="flex:1;">
-                                            <div style="font-size:0.85rem;">${p.name}</div>
+                                            <div style="font-size:0.85rem;">${escapeHtml(p.name)}</div>
                                             <div style="background:var(--border-color);height:4px;border-radius:2px;margin-top:2px;">
                                                 <div style="width:${barWidth}%;height:100%;background:var(--accent-primary);border-radius:2px;"></div>
                                             </div>
