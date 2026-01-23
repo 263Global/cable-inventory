@@ -6,6 +6,19 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ---
 
+### Added
+- **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
+- **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
+
+### Changed
+- **Sales Ordering** - Avoid in-place sorting to keep store ordering stable
+- **Latest Sale Resolution** - Determine most recent sale using `created_at` or contract start date
+- **ID Validation** - Block duplicate external Order/Resource IDs on create
+- **Dropdown Escaping** - Searchable dropdown options and attributes are now sanitized
+
+### Security
+- **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
+
 ## [1.8.1] - 2026-01-18
 
 ### Added

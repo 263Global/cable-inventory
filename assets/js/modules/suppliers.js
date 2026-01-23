@@ -3,6 +3,25 @@
  * Supplier management functionality for CRM
  */
 
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+const escapeJsString = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+};
+
 /**
  * Initializes supplier management methods and binds them to the App object
  * @param {Object} App - The main application object
@@ -40,11 +59,14 @@ function initSuppliersModule(App) {
         addBtn.onclick = () => this.openSupplierModal();
         this.headerActions.appendChild(addBtn);
 
+        const safeSearchQuery = escapeHtml(searchQuery);
+        const safeSearchQueryJs = escapeJsString(searchQuery);
+
         const html = `
             <div class="filter-bar mb-4">
                 <div class="search-box">
                     <ion-icon name="search-outline"></ion-icon>
-                    <input type="text" id="supplier-search" placeholder="Search by name..." value="${searchQuery}">
+                    <input type="text" id="supplier-search" placeholder="Search by name..." value="${safeSearchQuery}">
                 </div>
             </div>
 
@@ -63,15 +85,15 @@ function initSuppliersModule(App) {
                             <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found. Add your first supplier!</td></tr>
                         ` : paginatedData.map(s => `
                             <tr>
-                                <td><strong>${s.short_name || ''}</strong></td>
-                                <td class="mobile-hidden">${s.full_name || '-'}</td>
-                                <td class="mobile-hidden">${s.contact_name || '-'}</td>
+                                <td><strong>${escapeHtml(s.short_name || '')}</strong></td>
+                                <td class="mobile-hidden">${escapeHtml(s.full_name || '-')}</td>
+                                <td class="mobile-hidden">${escapeHtml(s.contact_name || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
-                                        <button class="btn btn-icon" onclick="App.openSupplierModal('${s.id}')" title="Edit">
+                                        <button class="btn btn-icon" onclick="App.openSupplierModal('${escapeJsString(s.id)}')" title="Edit">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-icon" onclick="App.deleteSupplier('${s.id}')" title="Delete">
+                                        <button class="btn btn-icon" onclick="App.deleteSupplier('${escapeJsString(s.id)}')" title="Delete">
                                             <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
                                         </button>
                                     </div>
@@ -84,11 +106,11 @@ function initSuppliersModule(App) {
 
             ${totalPages > 1 ? `
                 <div class="pagination mt-4">
-                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page - 1}})">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${safeSearchQueryJs}',page:${page - 1}})">
                         <ion-icon name="chevron-back-outline"></ion-icon>
                     </button>
                     <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
-                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${searchQuery}',page:${page + 1}})">
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderSuppliers({search:'${safeSearchQueryJs}',page:${page + 1}})">
                         <ion-icon name="chevron-forward-outline"></ion-icon>
                     </button>
                 </div>
@@ -106,6 +128,7 @@ function initSuppliersModule(App) {
         const existing = supplierId ? window.Store.getSupplierById(supplierId) : null;
         const isEdit = !!existing;
 
+        const safeSupplierId = escapeJsString(supplierId || '');
         const modalHtml = `
             <div class="modal-backdrop" onclick="App.closeModal(event)">
                 <div class="modal" onclick="event.stopPropagation()">
@@ -117,41 +140,41 @@ function initSuppliersModule(App) {
                         <form id="supplier-form">
                             <div class="form-group">
                                 <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                                <input type="text" name="shortName" class="form-control" value="${escapeHtml(existing?.short_name || '')}" required>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Full Name <span class="required-indicator">*</span></label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
+                                <input type="text" name="fullName" class="form-control" value="${escapeHtml(existing?.full_name || '')}" placeholder="Company legal name" required>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Name</label>
-                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                    <input type="text" name="contactName" class="form-control" value="${escapeHtml(existing?.contact_name || '')}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Contact Email</label>
-                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                    <input type="email" name="contactEmail" class="form-control" value="${escapeHtml(existing?.contact_email || '')}">
                                 </div>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Phone</label>
-                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                    <input type="text" name="contactPhone" class="form-control" value="${escapeHtml(existing?.contact_phone || '')}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Portal URL</label>
-                                    <input type="url" name="portalUrl" class="form-control" value="${existing?.portal_url || ''}" placeholder="https://...">
+                                    <input type="url" name="portalUrl" class="form-control" value="${escapeHtml(existing?.portal_url || '')}" placeholder="https://...">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
+                                <textarea name="notes" class="form-control" rows="2">${escapeHtml(existing?.notes || '')}</textarea>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="App.saveSupplier('${supplierId || ''}')">${isEdit ? 'Save Changes' : 'Add Supplier'}</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveSupplier('${safeSupplierId}')">${isEdit ? 'Save Changes' : 'Add Supplier'}</button>
                     </div>
                 </div>
             </div>

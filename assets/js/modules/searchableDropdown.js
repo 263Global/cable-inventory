@@ -15,6 +15,16 @@
  * @returns {string} HTML string for the dropdown
  */
 export function renderSearchableDropdown(config) {
+    const escapeHtml = (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
     const {
         name,
         id,
@@ -27,25 +37,32 @@ export function renderSearchableDropdown(config) {
     const displayText = selectedOption ? selectedOption.label : '';
     const isPlaceholder = !selectedOption;
 
-    const optionsHtml = options.map(opt => `
+    const optionsHtml = options.map(opt => {
+        const safeValue = escapeHtml(opt.value);
+        const safeLabel = escapeHtml(opt.label);
+        const safeSubtitle = escapeHtml(opt.subtitle || '');
+        const safeSearch = escapeHtml((opt.label + ' ' + (opt.subtitle || '')).toLowerCase());
+
+        return `
         <div class="searchable-dropdown-option ${opt.value === selectedValue ? 'selected' : ''}" 
-             data-value="${opt.value}" 
-             data-label="${opt.label}"
-             data-search="${(opt.label + ' ' + (opt.subtitle || '')).toLowerCase()}">
-            <span class="option-label">${opt.label}</span>
-            ${opt.subtitle ? `<span class="option-subtitle">${opt.subtitle}</span>` : ''}
+             data-value="${safeValue}" 
+             data-label="${safeLabel}"
+             data-search="${safeSearch}">
+            <span class="option-label">${safeLabel}</span>
+            ${opt.subtitle ? `<span class="option-subtitle">${safeSubtitle}</span>` : ''}
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     return `
         <div class="searchable-dropdown" id="${id}-container">
-            <input type="hidden" name="${name}" id="${id}" value="${selectedValue}">
+            <input type="hidden" name="${name}" id="${id}" value="${escapeHtml(selectedValue)}">
             <div class="searchable-dropdown-input-wrapper">
                 <input type="text" 
                        class="form-control searchable-dropdown-input" 
-                       placeholder="${placeholder}"
-                       value="${displayText}"
-                       data-selected-value="${selectedValue}"
+                       placeholder="${escapeHtml(placeholder)}"
+                       value="${escapeHtml(displayText)}"
+                       data-selected-value="${escapeHtml(selectedValue)}"
                        autocomplete="off">
                 <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
             </div>

@@ -14,6 +14,17 @@ class Store {
         this.initialized = false;
     }
 
+    normalizeId(id) {
+        return String(id || '').trim();
+    }
+
+    isDuplicateId(list, key, candidateId) {
+        const normalized = this.normalizeId(candidateId);
+        if (!normalized) return false;
+        const needle = normalized.toLowerCase();
+        return list.some(item => this.normalizeId(item[key]).toLowerCase() === needle);
+    }
+
     // ============ Initialization ============
 
     async init() {
@@ -162,6 +173,7 @@ class Store {
             salesperson: row.salesperson,
             salesModel: row.sales_model,
             salesType: row.sales_type,
+            createdAt: row.created_at,
             capacity: {
                 value: parseFloat(row.capacity_value) || 0,
                 unit: row.capacity_unit
@@ -266,7 +278,15 @@ class Store {
     }
 
     async addInventory(item) {
-        if (!item.resourceId) item.resourceId = 'INV-' + generateId();
+        const normalizedId = this.normalizeId(item.resourceId);
+        if (!normalizedId) {
+            item.resourceId = 'INV-' + generateId();
+        } else {
+            item.resourceId = normalizedId;
+            if (this.isDuplicateId(this.inventory, 'resourceId', item.resourceId)) {
+                throw new Error(`Resource ID "${item.resourceId}" already exists.`);
+            }
+        }
 
         const dbRow = this.inventoryToDb(item);
         const { data, error } = await window.SupabaseClient
@@ -334,7 +354,15 @@ class Store {
     }
 
     async addSalesOrder(order) {
-        if (!order.salesOrderId) order.salesOrderId = 'SO-' + generateId();
+        const normalizedId = this.normalizeId(order.salesOrderId);
+        if (!normalizedId) {
+            order.salesOrderId = 'SO-' + generateId();
+        } else {
+            order.salesOrderId = normalizedId;
+            if (this.isDuplicateId(this.salesOrders, 'salesOrderId', order.salesOrderId)) {
+                throw new Error(`Sales Order ID "${order.salesOrderId}" already exists.`);
+            }
+        }
 
         const dbRow = this.salesOrderToDb(order);
         const { data, error } = await window.SupabaseClient
@@ -404,13 +432,40 @@ class Store {
         // Update linked inventory status
         if (orderToDelete?.inventoryLink) {
             const remainingSales = this.salesOrders.filter(s => s.inventoryLink === orderToDelete.inventoryLink);
-            const latestSale = remainingSales[remainingSales.length - 1];
+            const latestSale = this.getLatestSaleForResource(remainingSales);
 
             await this.updateResourceStatus(orderToDelete.inventoryLink, {
                 latestCustomer: latestSale?.customerName || null,
                 latestOrderId: latestSale?.salesOrderId || null
             });
         }
+    }
+
+    getLatestSaleForResource(sales) {
+        if (!sales || sales.length === 0) return null;
+        const getTimestamp = (sale) => {
+            if (sale.createdAt) {
+                const ts = new Date(sale.createdAt).getTime();
+                if (!Number.isNaN(ts)) return ts;
+            }
+            if (sale.dates?.start) {
+                const ts = new Date(sale.dates.start).getTime();
+                if (!Number.isNaN(ts)) return ts;
+            }
+            return 0;
+        };
+
+        let latest = sales[0];
+        let latestTs = getTimestamp(latest);
+        for (let i = 1; i < sales.length; i += 1) {
+            const candidate = sales[i];
+            const candidateTs = getTimestamp(candidate);
+            if (candidateTs > latestTs) {
+                latest = candidate;
+                latestTs = candidateTs;
+            }
+        }
+        return latest;
     }
 
     // ============ Customer Methods ============

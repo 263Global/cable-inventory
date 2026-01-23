@@ -19,6 +19,15 @@ const escapeHtml = (str) => {
         .replace(/'/g, '&#039;');
 };
 
+const escapeJsString = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+};
+
 const resolveSupplierName = (supplierId, fallback = '') => {
     if (!supplierId) return fallback || '';
     const supplier = window.Store.getSuppliers().find(s => s.id === supplierId);
@@ -89,11 +98,12 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
     addBtn.onclick = () => context.openInventoryModal();
     context.headerActions.appendChild(addBtn);
 
+    const safeSearchQuery = escapeHtml(searchQuery);
     const html = `
         <div class="filter-bar mb-4">
             <div class="search-box">
                 <ion-icon name="search-outline"></ion-icon>
-                <input type="text" id="inventory-search" placeholder="Search Resource ID or Cable..." value="${searchQuery}">
+                <input type="text" id="inventory-search" placeholder="Search Resource ID or Cable..." value="${safeSearchQuery}">
             </div>
             <select id="inventory-status-filter" class="form-control" style="max-width: 160px;">
                 <option value="">All Status</option>
@@ -164,8 +174,8 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
 
         return `
                         <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}" class="${context._selectedInventory.has(item.resourceId) ? 'row-selected' : ''}">
-                            ${context._inventorySelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${item.resourceId}" ${context._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>` : ''}
-                            <td class="font-mono" style="color: var(--accent-secondary); white-space: nowrap;">${item.resourceId}</td>
+                            ${context._inventorySelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${escapeHtml(item.resourceId)}" ${context._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>` : ''}
+                            <td class="font-mono" style="color: var(--accent-secondary); white-space: nowrap;">${escapeHtml(item.resourceId)}</td>
                             <td>
                                 <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
                                 <!-- Usage Progress Bar -->
@@ -180,8 +190,8 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                                 ${linkedSales.length > 0 ? `<div style="font-size:0.65rem; color:var(--accent-primary); margin-top:4px;">📋 ${linkedSales.length} order${linkedSales.length > 1 ? 's' : ''}</div>` : ''}
                             </td>
                             <td class="col-acquisition">
-                                <div style="font-weight:500">${item.acquisition?.type || 'Purchased'}</div>
-                                <div style="font-size:0.75rem; color:var(--text-muted)">${item.acquisition?.ownership || ''}</div>
+                                <div style="font-weight:500">${escapeHtml(item.acquisition?.type || 'Purchased')}</div>
+                                <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHtml(item.acquisition?.ownership || '')}</div>
                             </td>
                             <td>
                                 <div style="font-weight:600">${escapeHtml(item.cableSystem)}</div>
@@ -190,7 +200,7 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                                     ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
                                 </div>
                                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
-                                    ${item.segmentType || ''} (${item.protection || ''})
+                                    ${escapeHtml(item.segmentType || '')} (${escapeHtml(item.protection || '')})
                                 </div>
                                 <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-warning); margin-top:0.35rem; font-weight:500;">
                                     📊 已售 ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
@@ -199,21 +209,21 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                             <td class="col-cost-info">
                                 ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
                                 <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.acquisition?.ownership === 'IRU' ? item.financials?.otc : item.financials?.nrc || 0).toLocaleString()}</div>
-                                <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${item.dates?.end || 'N/A'}</div>
+                                <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${escapeHtml(item.dates?.end || 'N/A')}</div>
                             </td>
                             <td class="col-location" style="font-size:0.85rem">
-                                <div><strong style="color:var(--accent-primary)">A:</strong> ${item.location?.aEnd?.pop || '-'} (${item.location?.aEnd?.city || ''})</div>
-                                <div><strong style="color:var(--accent-secondary)">Z:</strong> ${item.location?.zEnd?.pop || '-'} (${item.location?.zEnd?.city || ''})</div>
+                                <div><strong style="color:var(--accent-primary)">A:</strong> ${escapeHtml(item.location?.aEnd?.pop || '-')} (${escapeHtml(item.location?.aEnd?.city || '')})</div>
+                                <div><strong style="color:var(--accent-secondary)">Z:</strong> ${escapeHtml(item.location?.zEnd?.pop || '-')} (${escapeHtml(item.location?.zEnd?.city || '')})</div>
                             </td>
                             <td>
                                 <div class="flex gap-4">
-                                    <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewInventoryDetails('${item.resourceId}')" title="View">
+                                    <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewInventoryDetails('${escapeJsString(item.resourceId)}')" title="View">
                                         <ion-icon name="eye-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-primary" style="padding:0.4rem" onclick="App.openInventoryModal('${item.resourceId}')" title="Edit">
+                                    <button class="btn btn-primary" style="padding:0.4rem" onclick="App.openInventoryModal('${escapeJsString(item.resourceId)}')" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteInventoryWithConfirm('${item.resourceId}')" title="Delete">
+                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteInventoryWithConfirm('${escapeJsString(item.resourceId)}')" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
                                 </div>
@@ -346,11 +356,11 @@ export function viewInventoryDetails(context, resourceId) {
         : linkedSales.map(s => `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
                 <div>
-                    <span class="font-mono" style="color: var(--accent-primary);">${s.salesOrderId}</span>
-                    <span style="margin-left: 0.5rem; font-weight: 600;">${s.customerName}</span>
-                    <span style="margin-left: 0.5rem; color: var(--text-muted);">${s.capacity?.value || 0} ${s.capacity?.unit || 'Gbps'}</span>
+                    <span class="font-mono" style="color: var(--accent-primary);">${escapeHtml(s.salesOrderId)}</span>
+                    <span style="margin-left: 0.5rem; font-weight: 600;">${escapeHtml(s.customerName)}</span>
+                    <span style="margin-left: 0.5rem; color: var(--text-muted);">${s.capacity?.value || 0} ${escapeHtml(s.capacity?.unit || 'Gbps')}</span>
                 </div>
-                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="App.closeModal(); App.viewSalesDetails('${s.salesOrderId}')">
+                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="App.closeModal(); App.viewSalesDetails('${escapeJsString(s.salesOrderId)}')">
                     <ion-icon name="eye-outline"></ion-icon> View
                 </button>
             </div>
@@ -411,24 +421,24 @@ export function viewInventoryDetails(context, resourceId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Resource Information</h4>
                     <table style="width:100%;">
-                        <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${item.resourceId}</td></tr>
+                        <tr><td style="${tdStyle}">Resource ID</td><td class="font-mono">${escapeHtml(item.resourceId)}</td></tr>
                         <tr><td style="${tdStyle}">Status</td><td><span class="badge ${statusBadgeClass}">${calculatedStatus}</span></td></tr>
-                        <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${item.cableSystem}</td></tr>
-                        <tr><td style="${tdStyle}">Segment Type</td><td>${item.segmentType || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Route Description</td><td>${item.routeDescription || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Handoff Type</td><td>${item.handoffType || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Protection</td><td>${item.protection || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Protection Cable</td><td>${item.protectionCableSystem || '-'}</td></tr>
+                        <tr><td style="${tdStyle}">Cable System</td><td style="font-weight:600">${escapeHtml(item.cableSystem)}</td></tr>
+                        <tr><td style="${tdStyle}">Segment Type</td><td>${escapeHtml(item.segmentType || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Route Description</td><td>${escapeHtml(item.routeDescription || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Handoff Type</td><td>${escapeHtml(item.handoffType || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Protection</td><td>${escapeHtml(item.protection || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Protection Cable</td><td>${escapeHtml(item.protectionCableSystem || '-')}</td></tr>
                     </table>
                 </div>
 
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem; font-size: 0.9rem;">Acquisition</h4>
                     <table style="width:100%;">
-                        <tr><td style="${tdStyle}">Type</td><td>${item.acquisition?.type || 'Purchased'}</td></tr>
-                        <tr><td style="${tdStyle}">Ownership</td><td>${item.acquisition?.ownership || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Supplier</td><td>${resolveSupplierName(item.acquisition?.supplierId, item.acquisition?.supplierName) || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${item.acquisition?.contractRef || '-'}</td></tr>
+                        <tr><td style="${tdStyle}">Type</td><td>${escapeHtml(item.acquisition?.type || 'Purchased')}</td></tr>
+                        <tr><td style="${tdStyle}">Ownership</td><td>${escapeHtml(item.acquisition?.ownership || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Supplier</td><td>${escapeHtml(resolveSupplierName(item.acquisition?.supplierId, item.acquisition?.supplierName) || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Contract Ref</td><td class="font-mono">${escapeHtml(item.acquisition?.contractRef || '-')}</td></tr>
                     </table>
                 </div>
             </div>
@@ -436,10 +446,10 @@ export function viewInventoryDetails(context, resourceId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">Location</h4>
                     <table style="width:100%;">
-                        <tr><td style="${tdStyle}">A-End</td><td>${item.location?.aEnd?.city || '-'} - ${item.location?.aEnd?.pop || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${item.location?.aEnd?.device || '-'} / ${item.location?.aEnd?.port || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Z-End</td><td>${item.location?.zEnd?.city || '-'} - ${item.location?.zEnd?.pop || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${item.location?.zEnd?.device || '-'} / ${item.location?.zEnd?.port || '-'}</td></tr>
+                        <tr><td style="${tdStyle}">A-End</td><td>${escapeHtml(item.location?.aEnd?.city || '-')} - ${escapeHtml(item.location?.aEnd?.pop || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">A-End Device/Port</td><td class="font-mono">${escapeHtml(item.location?.aEnd?.device || '-')} / ${escapeHtml(item.location?.aEnd?.port || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Z-End</td><td>${escapeHtml(item.location?.zEnd?.city || '-')} - ${escapeHtml(item.location?.zEnd?.pop || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">Z-End Device/Port</td><td class="font-mono">${escapeHtml(item.location?.zEnd?.device || '-')} / ${escapeHtml(item.location?.zEnd?.port || '-')}</td></tr>
                     </table>
                 </div>
 
@@ -452,9 +462,9 @@ export function viewInventoryDetails(context, resourceId) {
                         <tr><td style="${tdStyle}">O&M Rate</td><td class="font-mono">${omRate}%</td></tr>
                         <tr><td style="${tdStyle}">Annual O&M Cost</td><td class="font-mono" style="color:var(--accent-warning)">$${annualOmCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
                         ` : ''}
-                        <tr><td style="${tdStyle}">Term</td><td>${item.financials?.term || '-'} months</td></tr>
-                        <tr><td style="${tdStyle}">Start Date</td><td>${item.dates?.start || '-'}</td></tr>
-                        <tr><td style="${tdStyle}">End Date</td><td>${item.dates?.end || '-'}</td></tr>
+                        <tr><td style="${tdStyle}">Term</td><td>${escapeHtml(item.financials?.term || '-')} months</td></tr>
+                        <tr><td style="${tdStyle}">Start Date</td><td>${escapeHtml(item.dates?.start || '-')}</td></tr>
+                        <tr><td style="${tdStyle}">End Date</td><td>${escapeHtml(item.dates?.end || '-')}</td></tr>
                     </table>
                 </div>
 
@@ -469,7 +479,7 @@ export function viewInventoryDetails(context, resourceId) {
         </div>
     `;
 
-    context.openModal(`Resource: ${item.resourceId}`, detailsHtml, null, true);
+    context.openModal(`Resource: ${escapeHtml(item.resourceId)}`, detailsHtml, null, true);
 }
 
 export function openInventoryModal(context, resourceId = null) {
@@ -504,11 +514,11 @@ export function openInventoryModal(context, resourceId = null) {
                 <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
                     <div>
                         <span style="color: var(--text-muted); font-size: 0.85rem;">Customer:</span>
-                        <div style="font-weight: 600; font-size: 1.1rem;">${item.usage.currentUser}</div>
+                        <div style="font-weight: 600; font-size: 1.1rem;">${escapeHtml(item.usage.currentUser)}</div>
                     </div>
                     <div>
                         <span style="color: var(--text-muted); font-size: 0.85rem;">Sales Order:</span>
-                        <div class="font-mono" style="color: var(--accent-secondary);">${item.usage.orderLink || 'N/A'}</div>
+                        <div class="font-mono" style="color: var(--accent-secondary);">${escapeHtml(item.usage.orderLink || 'N/A')}</div>
                     </div>
                 </div>
             </div>

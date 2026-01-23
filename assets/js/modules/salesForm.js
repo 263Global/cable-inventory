@@ -10,6 +10,16 @@ import { renderSearchableDropdown, initSearchableDropdown, renderSimpleDropdown,
 
 const { computeSalesStatus } = window.SalesStatus;
 
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 export function openAddSalesModal(context, existingOrderId = null) {
     // Get existing order for edit mode
     const existingOrder = existingOrderId ? window.Store.getSales().find(s => s.salesOrderId === existingOrderId) : null;
@@ -64,9 +74,13 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
     // Generate supplier options for cost card dropdowns
     const suppliers = window.Store.getSuppliers();
-    const supplierOptionsHTML = suppliers.map(s =>
-        `<option value="${s.id}">${s.short_name}${s.full_name ? ' (' + s.full_name + ')' : ''}</option>`
-    ).join('');
+    const supplierOptionsHTML = suppliers.map(s => {
+        const safeId = escapeHtml(s.id);
+        const safeShort = escapeHtml(s.short_name || '');
+        const safeFull = escapeHtml(s.full_name || '');
+        const label = safeFull ? `${safeShort} (${safeFull})` : safeShort;
+        return `<option value="${safeId}">${label}</option>`;
+    }).join('');
 
     const modalContent = `
             <!-- 2-Column Layout: Profitability (sticky) | Right Container -->

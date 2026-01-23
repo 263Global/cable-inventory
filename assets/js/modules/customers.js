@@ -3,6 +3,25 @@
  * Customer management functionality for CRM
  */
 
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+const escapeJsString = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+};
+
 /**
  * Initializes customer management methods and binds them to the App object
  * @param {Object} App - The main application object
@@ -41,11 +60,14 @@ function initCustomersModule(App) {
         addBtn.onclick = () => this.openCustomerModal();
         this.headerActions.appendChild(addBtn);
 
+        const safeSearchQuery = escapeHtml(searchQuery);
+        const safeSearchQueryJs = escapeJsString(searchQuery);
+
         const html = `
             <div class="filter-bar mb-4">
                 <div class="search-box">
                     <ion-icon name="search-outline"></ion-icon>
-                    <input type="text" id="customer-search" placeholder="Search by name or email..." value="${searchQuery}">
+                    <input type="text" id="customer-search" placeholder="Search by name or email..." value="${safeSearchQuery}">
                 </div>
             </div>
 
@@ -65,16 +87,16 @@ function initCustomersModule(App) {
                             <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No customers found. Add your first customer!</td></tr>
                         ` : paginatedData.map(c => `
                             <tr>
-                                <td><strong>${c.short_name || ''}</strong></td>
-                                <td class="mobile-hidden">${c.full_name || '-'}</td>
-                                <td class="mobile-hidden">${c.contact_name || '-'}</td>
-                                <td class="mobile-hidden">${c.contact_email || '-'}</td>
+                                <td><strong>${escapeHtml(c.short_name || '')}</strong></td>
+                                <td class="mobile-hidden">${escapeHtml(c.full_name || '-')}</td>
+                                <td class="mobile-hidden">${escapeHtml(c.contact_name || '-')}</td>
+                                <td class="mobile-hidden">${escapeHtml(c.contact_email || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
-                                        <button class="btn btn-icon" onclick="App.openCustomerModal('${c.id}')" title="Edit">
+                                        <button class="btn btn-icon" onclick="App.openCustomerModal('${escapeJsString(c.id)}')" title="Edit">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>
-                                        <button class="btn btn-icon" onclick="App.deleteCustomer('${c.id}')" title="Delete">
+                                        <button class="btn btn-icon" onclick="App.deleteCustomer('${escapeJsString(c.id)}')" title="Delete">
                                             <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
                                         </button>
                                     </div>
@@ -87,11 +109,11 @@ function initCustomersModule(App) {
 
             ${totalPages > 1 ? `
                 <div class="pagination mt-4">
-                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page - 1}})">
+                    <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="App.renderCustomers({search:'${safeSearchQueryJs}',page:${page - 1}})">
                         <ion-icon name="chevron-back-outline"></ion-icon>
                     </button>
                     <span style="padding: 0 1rem;">Page ${page} of ${totalPages}</span>
-                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderCustomers({search:'${searchQuery}',page:${page + 1}})">
+                    <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="App.renderCustomers({search:'${safeSearchQueryJs}',page:${page + 1}})">
                         <ion-icon name="chevron-forward-outline"></ion-icon>
                     </button>
                 </div>
@@ -111,6 +133,7 @@ function initCustomersModule(App) {
 
         const companyTypes = ['Enterprise', 'Carrier', 'OTT', 'Other'];
 
+        const safeCustomerId = escapeJsString(customerId || '');
         const modalHtml = `
             <div class="modal-backdrop" onclick="App.closeModal(event)">
                 <div class="modal" onclick="event.stopPropagation()">
@@ -123,49 +146,49 @@ function initCustomersModule(App) {
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                    <input type="text" name="shortName" class="form-control" value="${existing?.short_name || ''}" required>
+                                    <input type="text" name="shortName" class="form-control" value="${escapeHtml(existing?.short_name || '')}" required>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Company Type</label>
                                     <select name="companyType" class="form-control">
                                         <option value="">Select Type</option>
-                                        ${companyTypes.map(t => `<option value="${t}" ${existing?.company_type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                        ${companyTypes.map(t => `<option value="${escapeHtml(t)}" ${existing?.company_type === t ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
                                     </select>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Full Name <span class="required-indicator">*</span></label>
-                                <input type="text" name="fullName" class="form-control" value="${existing?.full_name || ''}" placeholder="Company legal name" required>
+                                <input type="text" name="fullName" class="form-control" value="${escapeHtml(existing?.full_name || '')}" placeholder="Company legal name" required>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Name</label>
-                                    <input type="text" name="contactName" class="form-control" value="${existing?.contact_name || ''}">
+                                    <input type="text" name="contactName" class="form-control" value="${escapeHtml(existing?.contact_name || '')}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Contact Email</label>
-                                    <input type="email" name="contactEmail" class="form-control" value="${existing?.contact_email || ''}">
+                                    <input type="email" name="contactEmail" class="form-control" value="${escapeHtml(existing?.contact_email || '')}">
                                 </div>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Phone</label>
-                                    <input type="text" name="contactPhone" class="form-control" value="${existing?.contact_phone || ''}">
+                                    <input type="text" name="contactPhone" class="form-control" value="${escapeHtml(existing?.contact_phone || '')}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Website</label>
-                                    <input type="url" name="website" class="form-control" value="${existing?.website || ''}" placeholder="https://...">
+                                    <input type="url" name="website" class="form-control" value="${escapeHtml(existing?.website || '')}" placeholder="https://...">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2">${existing?.notes || ''}</textarea>
+                                <textarea name="notes" class="form-control" rows="2">${escapeHtml(existing?.notes || '')}</textarea>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="App.saveCustomer('${customerId || ''}')">${isEdit ? 'Save Changes' : 'Add Customer'}</button>
+                        <button type="button" class="btn btn-primary" onclick="App.saveCustomer('${safeCustomerId}')">${isEdit ? 'Save Changes' : 'Add Customer'}</button>
                     </div>
                 </div>
             </div>

@@ -17,6 +17,15 @@ const escapeHtml = (str) => {
         .replace(/'/g, '&#039;');
 };
 
+const escapeJsString = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+};
+
 const { getSalesStatusBadgeClass } = window.SalesStatus;
 
 export function renderSales(context, filters = {}) {
@@ -26,7 +35,7 @@ export function renderSales(context, filters = {}) {
         context._pendingFilter = null;
     }
 
-    let data = window.Store.getSales();
+    let data = window.Store.getSales().slice();
 
     // Sort by contract start date (newest first), orders without date go to end
     data.sort((a, b) => {
@@ -91,15 +100,19 @@ export function renderSales(context, filters = {}) {
     addBtn.onclick = () => context.openAddSalesModal();
     context.headerActions.appendChild(addBtn);
 
+    const safeSearchQuery = escapeHtml(searchQuery);
     const html = `
         <div class="filter-bar mb-4">
             <div class="search-box">
                 <ion-icon name="search-outline"></ion-icon>
-                <input type="text" id="sales-search" placeholder="Search Order ID or Customer..." value="${searchQuery}">
+                <input type="text" id="sales-search" placeholder="Search Order ID or Customer..." value="${safeSearchQuery}">
             </div>
             <select id="sales-salesperson-filter" class="form-control" style="max-width: 180px;">
                 <option value="">All Salespersons</option>
-                ${salespersons.map(s => `<option value="${s}" ${s === salespersonValue ? 'selected' : ''}>${s}</option>`).join('')}
+                ${salespersons.map(s => {
+        const safeSalesperson = escapeHtml(s);
+        return `<option value="${safeSalesperson}" ${s === salespersonValue ? 'selected' : ''}>${safeSalesperson}</option>`;
+    }).join('')}
             </select>
             <select id="sales-status-filter" class="form-control" style="max-width: 160px;">
                 <option value="">All Status</option>
@@ -220,8 +233,8 @@ export function renderSales(context, filters = {}) {
         ` : `<span class="margin-badge ${marginClass}">${marginPercent}%</span>`;
 
         return `
-                        <tr class="${context._selectedSales.has(item.salesOrderId) ? 'row-selected' : ''}">
-                            ${context._salesSelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${item.salesOrderId}" ${context._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>` : ''}
+                            <tr class="${context._selectedSales.has(item.salesOrderId) ? 'row-selected' : ''}">
+                            ${context._salesSelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="sales-row-checkbox" data-id="${escapeHtml(item.salesOrderId)}" ${context._selectedSales.has(item.salesOrderId) ? 'checked' : ''}></td>` : ''}
                             <td class="font-mono order-id-cell">${escapeHtml(item.salesOrderId)}</td>
                             <td>
                                 <div class="customer-name" style="font-weight:600" title="${escapeHtml(item.customerName)}">${escapeHtml(item.customerName)}</div>
@@ -237,19 +250,19 @@ export function renderSales(context, filters = {}) {
                             <td class="col-revenue font-mono" style="text-align:right; color: var(--accent-success)">$${mrr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td class="col-margin-percent" style="text-align:right">${marginPercentCell}</td>
-                            <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${item.salesperson || '-'}</td>
+                            <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${escapeHtml(item.salesperson || '-')}</td>
                             <td>
                                 <div class="flex gap-4">
-                                    <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${item.salesOrderId}')" title="View">
+                                    <button class="btn btn-secondary" style="padding:0.4rem" onclick="App.viewSalesDetails('${escapeJsString(item.salesOrderId)}')" title="View">
                                         <ion-icon name="eye-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-primary" style="padding:0.4rem" onclick="App.editSalesOrder('${item.salesOrderId}')" title="Edit">
+                                    <button class="btn btn-primary" style="padding:0.4rem" onclick="App.editSalesOrder('${escapeJsString(item.salesOrderId)}')" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-warning" style="padding:0.4rem" onclick="App.openRenewModal('${item.salesOrderId}')" title="Renew">
+                                    <button class="btn btn-warning" style="padding:0.4rem" onclick="App.openRenewModal('${escapeJsString(item.salesOrderId)}')" title="Renew">
                                         <ion-icon name="refresh-outline"></ion-icon>
                                     </button>
-                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteSalesOrderWithConfirm('${item.salesOrderId}')" title="Delete">
+                                    <button class="btn btn-danger" style="padding:0.4rem" onclick="App.deleteSalesOrderWithConfirm('${escapeJsString(item.salesOrderId)}')" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
                                 </div>
