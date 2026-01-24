@@ -26,7 +26,7 @@ const escapeJsString = (str) => {
  * Initializes supplier management methods and binds them to the App object
  * @param {Object} App - The main application object
  */
-function initSuppliersModule(App) {
+export function initSuppliersModule(App) {
 
     App.renderSuppliers = function (filters = {}) {
         const searchQuery = filters.search || '';
@@ -222,6 +222,3 @@ function initSuppliersModule(App) {
         }
     };
 }
-
-// Export initializer to global scope
-window.initSuppliersModule = initSuppliersModule;

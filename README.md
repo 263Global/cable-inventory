@@ -62,7 +62,7 @@ A professional Telecom Resource and P&L Management System for managing submarine
 2. Configure Supabase:
    - Create a new Supabase project
    - Run the schema from `docs/supabase_schema.sql` in SQL Editor
-   - Copy your project URL and anon key to `assets/js/config.js`
+   - Copy your project URL and anon key to `assets/js/supabase.js`
 
 3. Serve the application:
    ```bash
@@ -107,7 +107,8 @@ cable-inventory/
 │           ├── dashboard.js    # Dashboard view (~290 lines)
 │           ├── inventory.js    # Inventory management (~860 lines)
 │           ├── sales.js        # Sales list view (~550 lines)
-│           ├── salesForm.js    # Sales form + financials (~1,780 lines)
+│           ├── salesForm.js    # Sales form facade (re-exports)
+│           ├── salesForm/      # Sales form submodules (modal, listeners, financials, submit)
 │           ├── financials.js   # Financial calculations
 │           ├── validation.js   # Form validation utilities
 │           ├── csv.js          # CSV export functions
