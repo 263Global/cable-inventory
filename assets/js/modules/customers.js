@@ -26,7 +26,7 @@ const escapeJsString = (str) => {
  * Initializes customer management methods and binds them to the App object
  * @param {Object} App - The main application object
  */
-function initCustomersModule(App) {
+export function initCustomersModule(App) {
 
     App.renderCustomers = function (filters = {}) {
         const searchQuery = filters.search || '';
@@ -237,6 +237,3 @@ function initCustomersModule(App) {
         }
     };
 }
-
-// Export initializer to global scope
-window.initCustomersModule = initCustomersModule;

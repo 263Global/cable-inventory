@@ -1,4 +1,19 @@
 // App bootstrapping and UI handlers.
+const reportAppError = (error, context = {}) => {
+    if (window.App && typeof window.App.handleError === 'function') {
+        window.App.handleError(error, context);
+    } else {
+        console.error('Unhandled app error:', error, context);
+    }
+};
+
+window.addEventListener('error', (event) => {
+    reportAppError(event.error || event.message, { source: 'window.error' });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    reportAppError(event.reason || 'Unhandled promise rejection', { source: 'unhandledrejection' });
+});
 (async () => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const type = hashParams.get('type');

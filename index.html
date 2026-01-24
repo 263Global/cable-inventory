@@ -116,7 +116,17 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="assets/js/bundle.js" defer></script>
+    <!-- Core scripts (split from bundle.js) -->
+    <script src="assets/js/supabase.js" defer></script>
+    <script src="assets/js/auth.js" defer></script>
+    <script src="assets/js/inventoryStatus.js" defer></script>
+    <script src="assets/js/salesStatus.js" defer></script>
+    <script src="assets/js/statusUi.js" defer></script>
+    <script src="assets/js/store.js" defer></script>
+    <script src="assets/js/modules/financials.js" defer></script>
+    <script src="assets/js/modules/validation.js" defer></script>
+    <script src="assets/js/modules/csv.js" defer></script>
+    <script src="assets/js/modules/bulkOps.js" defer></script>
     <!-- Main Application (ES6 Module) -->
     <script type="module" src="assets/js/app.js"></script>
     <script src="assets/js/index-init.js" defer></script>
