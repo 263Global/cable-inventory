@@ -21,26 +21,25 @@
  * - modules/dashboard.js: renderDashboard() [ES6 Module]
  */
 
-// ES6 Module Imports
-import { renderDashboard as renderDashboardModule } from './modules/dashboard.js';
-import {
-    renderInventory as renderInventoryModule,
-    viewInventoryDetails as viewInventoryDetailsModule,
-    openInventoryModal as openInventoryModalModule,
-    attachInventoryFormListeners as attachInventoryFormListenersModule
-} from './modules/inventory.js';
-import {
-    renderSales as renderSalesModule,
-    viewSalesDetails as viewSalesDetailsModule,
-    editSalesOrder as editSalesOrderModule
-} from './modules/sales.js';
-import {
-    openAddSalesModal as openAddSalesModalModule,
-    attachSalesFormListeners as attachSalesFormListenersModule,
-    calculateSalesFinancials as calculateSalesFinancialsModule,
-    handleSalesSubmit as handleSalesSubmitModule,
-    openRenewModal as openRenewModalModule
-} from './modules/salesForm.js';
+// ES module lazy loaders (native code splitting, no build step)
+const moduleLoaders = {
+    dashboard: () => import('./modules/dashboard.js'),
+    inventory: () => import('./modules/inventory.js'),
+    sales: () => import('./modules/sales.js'),
+    salesForm: () => import('./modules/salesForm.js'),
+    customers: () => import('./modules/customers.js'),
+    suppliers: () => import('./modules/suppliers.js')
+};
+
+const moduleCache = {};
+
+const loadModule = (name) => {
+    if (!moduleCache[name]) {
+        moduleCache[name] = moduleLoaders[name]();
+    }
+    return moduleCache[name];
+};
+
 
 // ============================================================================
 // REGION: App Object Definition
@@ -63,8 +62,6 @@ if (window.visualViewport) {
 const App = {
     init() {
         // Initialize external modules
-        if (window.initCustomersModule) window.initCustomersModule(this);
-        if (window.initSuppliersModule) window.initSuppliersModule(this);
         if (window.initBulkOpsModule) window.initBulkOpsModule(this);
         this.cacheDOM();
         this.bindEvents();
@@ -158,38 +155,134 @@ const App = {
         await this.deleteSalesOrder(id);
     },
 
-    renderView(viewName) {
-        this.container.innerHTML = ''; // Clear container
-        this.headerActions.innerHTML = ''; // Clear actions
+    async renderView(viewName) {
+        try {
+            this.container.innerHTML = ''; // Clear container
+            this.headerActions.innerHTML = ''; // Clear actions
 
-        // Manage FAB based on view
-        this.updateFAB(viewName);
+            // Manage FAB based on view
+            this.updateFAB(viewName);
 
-        switch (viewName) {
-            case 'dashboard':
-                this.pageTitle.textContent = 'Operational Dashboard';
-                this.renderDashboard();
-                break;
-            case 'inventory':
-                this.pageTitle.textContent = 'Inventory Resources';
-                this.renderInventory();
-                break;
-            case 'sales':
-                this.pageTitle.textContent = 'Sales & Revenue';
-                this.renderSales();
-                break;
-            case 'customers':
-                this.pageTitle.textContent = 'Customers';
-                this.renderCustomers();
-                break;
-            case 'suppliers':
-                this.pageTitle.textContent = 'Suppliers';
-                this.renderSuppliers();
-                break;
-            default:
-                this.pageTitle.textContent = 'Operational Dashboard';
-                this.renderDashboard();
+            switch (viewName) {
+                case 'dashboard':
+                    this.pageTitle.textContent = 'Operational Dashboard';
+                    await this.renderDashboard();
+                    break;
+                case 'inventory':
+                    this.pageTitle.textContent = 'Inventory Resources';
+                    await this.renderInventory();
+                    break;
+                case 'sales':
+                    this.pageTitle.textContent = 'Sales & Revenue';
+                    await this.renderSales();
+                    break;
+                case 'customers':
+                    this.pageTitle.textContent = 'Customers';
+                    if (!this._customersModuleInitialized) {
+                        const mod = await loadModule('customers');
+                        const initCustomers = mod.initCustomersModule || mod.default || window.initCustomersModule;
+                        if (typeof initCustomers !== 'function') {
+                            throw new Error('Customers module not available');
+                        }
+                        initCustomers(this);
+                        this._customersModuleInitialized = true;
+                    }
+                    if (typeof this.renderCustomers !== 'function') {
+                        throw new Error('Customers module not available');
+                    }
+                    await this.renderCustomers();
+                    break;
+                case 'suppliers':
+                    this.pageTitle.textContent = 'Suppliers';
+                    if (!this._suppliersModuleInitialized) {
+                        const mod = await loadModule('suppliers');
+                        const initSuppliers = mod.initSuppliersModule || mod.default || window.initSuppliersModule;
+                        if (typeof initSuppliers !== 'function') {
+                            throw new Error('Suppliers module not available');
+                        }
+                        initSuppliers(this);
+                        this._suppliersModuleInitialized = true;
+                    }
+                    if (typeof this.renderSuppliers !== 'function') {
+                        throw new Error('Suppliers module not available');
+                    }
+                    await this.renderSuppliers();
+                    break;
+                default:
+                    this.pageTitle.textContent = 'Operational Dashboard';
+                    await this.renderDashboard();
+            }
+        } catch (err) {
+            this.handleError(err, { viewName });
         }
+    },
+
+    handleError(error, context = {}) {
+        const err = error instanceof Error ? error : new Error(String(error || 'Unknown error'));
+        console.error('App error:', { err, context });
+        this.renderErrorView(err, context);
+    },
+
+    renderErrorView(error, context = {}) {
+        if (!this.container) return;
+
+        this.updateFAB('');
+        this.headerActions.innerHTML = '';
+        this.pageTitle.textContent = 'Something went wrong';
+
+        const card = document.createElement('div');
+        card.className = 'section-card';
+        card.style.cssText = 'max-width: 760px; margin: 2rem auto; border: 1px solid var(--accent-danger);';
+
+        const title = document.createElement('h3');
+        title.textContent = 'We hit an unexpected error';
+        title.style.marginBottom = '0.5rem';
+
+        const message = document.createElement('p');
+        message.textContent = error?.message || 'Please try again.';
+        message.style.color = 'var(--text-secondary)';
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;';
+
+        const reloadBtn = document.createElement('button');
+        reloadBtn.className = 'btn btn-secondary';
+        reloadBtn.type = 'button';
+        reloadBtn.textContent = 'Reload page';
+        reloadBtn.addEventListener('click', () => window.location.reload());
+
+        const dashboardBtn = document.createElement('button');
+        dashboardBtn.className = 'btn btn-primary';
+        dashboardBtn.type = 'button';
+        dashboardBtn.textContent = 'Go to dashboard';
+        dashboardBtn.addEventListener('click', () => this.renderView('dashboard'));
+
+        actions.appendChild(reloadBtn);
+        actions.appendChild(dashboardBtn);
+
+        const details = document.createElement('details');
+        details.style.marginTop = '1rem';
+
+        const summary = document.createElement('summary');
+        summary.textContent = 'Error details';
+        summary.style.cursor = 'pointer';
+
+        const pre = document.createElement('pre');
+        pre.textContent = [error?.stack || error?.message, context?.viewName ? `View: ${context.viewName}` : null]
+            .filter(Boolean)
+            .join('\n');
+        pre.style.cssText = 'white-space: pre-wrap; font-size: 0.75rem; margin-top: 0.5rem; color: var(--text-muted);';
+
+        details.appendChild(summary);
+        details.appendChild(pre);
+
+        card.appendChild(title);
+        card.appendChild(message);
+        card.appendChild(actions);
+        card.appendChild(details);
+
+        this.container.innerHTML = '';
+        this.container.appendChild(card);
     },
 
     // Floating Action Button management
@@ -256,9 +349,9 @@ const App = {
     // ========================================================================
     //#region Dashboard
 
-    renderDashboard() {
-        // Delegated to ES6 module: modules/dashboard.js
-        renderDashboardModule(this);
+    async renderDashboard() {
+        const mod = await loadModule('dashboard');
+        mod.renderDashboard(this);
     },
     //#endregion Dashboard
 
@@ -271,20 +364,24 @@ const App = {
 
     /* ================= Sales Form (Delegated to ES6 Module) ================= */
 
-    openAddSalesModal(existingOrderId = null) {
-        openAddSalesModalModule(this, existingOrderId);
+    async openAddSalesModal(existingOrderId = null) {
+        const mod = await loadModule('salesForm');
+        mod.openAddSalesModal(this, existingOrderId);
     },
 
-    attachSalesFormListeners() {
-        attachSalesFormListenersModule(this);
+    async attachSalesFormListeners() {
+        const mod = await loadModule('salesForm');
+        mod.attachSalesFormListeners(this);
     },
 
-    calculateSalesFinancials() {
-        calculateSalesFinancialsModule(this);
+    async calculateSalesFinancials() {
+        const mod = await loadModule('salesForm');
+        mod.calculateSalesFinancials(this);
     },
 
     async handleSalesSubmit(form) {
-        return await handleSalesSubmitModule(this, form);
+        const mod = await loadModule('salesForm');
+        return await mod.handleSalesSubmit(this, form);
     },
 
 
@@ -327,15 +424,21 @@ const App = {
         closeBtn.addEventListener('click', close);
         cancelBtn.addEventListener('click', close);
 
-        saveBtn.addEventListener('click', async () => {
-            if (onSave && typeof onSave === 'function') {
-                const result = await onSave(form);
-                // Only close if onSave returns true or undefined (not explicitly false)
-                if (result !== false) {
-                    close();
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                if (onSave && typeof onSave === 'function') {
+                    try {
+                        const result = await onSave(form);
+                        // Only close if onSave returns true or undefined (not explicitly false)
+                        if (result !== false) {
+                            close();
+                        }
+                    } catch (err) {
+                        this.handleError(err, { source: 'modal-save' });
+                    }
                 }
-            }
-        });
+            });
+        }
 
         backdrop.addEventListener('click', (e) => {
             if (e.target.id === 'modal-backdrop') {
@@ -346,7 +449,6 @@ const App = {
 
     closeModal() {
         this.modalContainer.innerHTML = '';
-        this.renderView('inventory'); // Re-render to show updates
     },
     //#endregion Modal System
 
@@ -356,20 +458,24 @@ const App = {
     // ========================================================================
     //#region Inventory
 
-    renderInventory(searchQuery = '', page = 1, statusFilter = '') {
-        renderInventoryModule(this, searchQuery, page, statusFilter);
+    async renderInventory(searchQuery = '', page = 1, statusFilter = '') {
+        const mod = await loadModule('inventory');
+        mod.renderInventory(this, searchQuery, page, statusFilter);
     },
 
-    viewInventoryDetails(resourceId) {
-        viewInventoryDetailsModule(this, resourceId);
+    async viewInventoryDetails(resourceId) {
+        const mod = await loadModule('inventory');
+        mod.viewInventoryDetails(this, resourceId);
     },
 
-    openInventoryModal(resourceId = null) {
-        openInventoryModalModule(this, resourceId);
+    async openInventoryModal(resourceId = null) {
+        const mod = await loadModule('inventory');
+        mod.openInventoryModal(this, resourceId);
     },
 
-    attachInventoryFormListeners() {
-        attachInventoryFormListenersModule(this);
+    async attachInventoryFormListeners() {
+        const mod = await loadModule('inventory');
+        mod.attachInventoryFormListeners(this);
     },
     //#endregion Inventory
 
@@ -378,20 +484,24 @@ const App = {
     // ========================================================================
     //#region Sales
 
-    renderSales(filters = {}) {
-        renderSalesModule(this, filters);
+    async renderSales(filters = {}) {
+        const mod = await loadModule('sales');
+        mod.renderSales(this, filters);
     },
 
-    viewSalesDetails(salesOrderId) {
-        viewSalesDetailsModule(this, salesOrderId);
+    async viewSalesDetails(salesOrderId) {
+        const mod = await loadModule('sales');
+        mod.viewSalesDetails(this, salesOrderId);
     },
 
-    editSalesOrder(salesOrderId) {
-        editSalesOrderModule(this, salesOrderId);
+    async editSalesOrder(salesOrderId) {
+        const mod = await loadModule('sales');
+        mod.editSalesOrder(this, salesOrderId);
     },
 
-    openRenewModal(salesOrderId) {
-        openRenewModalModule(this, salesOrderId);
+    async openRenewModal(salesOrderId) {
+        const mod = await loadModule('salesForm');
+        mod.openRenewModal(this, salesOrderId);
     },
     //#endregion Sales
 
@@ -402,11 +512,9 @@ const App = {
     // ========================================================================
 
     // ========================================================================
-    // CRM Modules (Customers & Suppliers) - Loaded from external modules:
+    // CRM Modules (Customers & Suppliers) - Loaded on demand:
     // - modules/customers.js
     // - modules/suppliers.js
-    // These are initialized in App.init() via window.initCustomersModule()
-    // and window.initSuppliersModule()
     // ========================================================================
 
     // ========================================================================

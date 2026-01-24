@@ -9,12 +9,21 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Added
 - **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
 - **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
+- **Regression Checklist** - `docs/regression-checklist.md` for manual QA coverage
 
 ### Changed
 - **Sales Ordering** - Avoid in-place sorting to keep store ordering stable
 - **Latest Sale Resolution** - Determine most recent sale using `created_at` or contract start date
 - **ID Validation** - Block duplicate external Order/Resource IDs on create
 - **Dropdown Escaping** - Searchable dropdown options and attributes are now sanitized
+- **Sales Form Split** - `salesForm.js` decomposed into focused modules with a re-export facade
+- **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
+- **Script Loading** - Replaced `bundle.js` usage with explicit script imports
+
+### Fixed
+- **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
+- **Modal Save Guard** - Prevent null save button errors in close-only modals
+- **Modal Close View** - Avoid forcing inventory view when closing non-inventory modals
 
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
