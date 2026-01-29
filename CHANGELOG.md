@@ -10,6 +10,10 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
 - **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
 - **Regression Checklist** - `docs/regression-checklist.md` for manual QA coverage
+- **Inventory Batch Mode** - Batch-based cost tracking with base cost pool + staged lighting batches
+- **Batch Allocation** - Sales orders can auto-allocate (or manually override) capacity across active batches
+- **Batch Data Tables** - New `inventory_batches` and `sales_order_batches` tables in Supabase schema
+- **Incremental Migration** - `docs/migrations/2026-01-29-add-om-rate.sql` for O&M rate columns
 
 ### Changed
 - **Sales Ordering** - Avoid in-place sorting to keep store ordering stable
@@ -19,7 +23,8 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Sales Form Split** - `salesForm.js` decomposed into focused modules with a re-export facade
 - **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
-- **Swapped Out Accounting** - Swapped Out now records inventory-based monthly revenue with zero profit (independent of salesModel), requires Inventory linkage, and updates UI hints/docs/regression checklist
+- **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
+- **Inventory Costing** - Base O&M is now derived from O&M Rate (auto-calculated), not manual Annual O&M entry
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs

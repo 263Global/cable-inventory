@@ -15,7 +15,20 @@
     };
 
     const computeInventoryStatus = (item, totalSoldCapacity, now) => {
-        const totalCapacity = item.capacity?.value || 0;
+        const baseCapacity = item.capacity?.value || 0;
+        let totalCapacity = baseCapacity;
+        if (item.costMode === 'batches' && Array.isArray(item.batches)) {
+            const activeCapacity = item.batches.reduce((sum, batch) => {
+                const status = batch.status || '';
+                if (status === 'Ended' || status === 'Planned') return sum;
+                if (batch.startDate) {
+                    const start = new Date(batch.startDate);
+                    if (Number.isNaN(start.getTime()) || start > now) return sum;
+                }
+                return sum + (batch.capacity?.value || 0);
+            }, 0);
+            totalCapacity = activeCapacity;
+        }
         const startDate = item.dates?.start ? new Date(item.dates.start) : null;
         const endDate = item.dates?.end ? new Date(item.dates.end) : null;
 

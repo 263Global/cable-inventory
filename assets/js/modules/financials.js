@@ -34,30 +34,10 @@ function computeOrderFinancials(order) {
     // Calculate Inventory Monthly Cost (if applicable)
     let inventoryMonthlyCost = 0;
     if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid' || salesType === 'Swapped Out')) {
-        const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
-        if (invOwnership === 'IRU') {
-            const invOtc = linkedResource.financials?.otc || 0;
-            const invTerm = linkedResource.financials?.term || 1;
-            const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
-            inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
-        } else {
-            inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
-        }
+        inventoryMonthlyCost = computeInventoryMonthlyCost(order, linkedResource, capacityRatio);
     }
 
-    // Swapped Out: always zero profit, revenue equals linked inventory cost
-    if (salesType === 'Swapped Out') {
-        return {
-            monthlyRevenue: inventoryMonthlyCost,
-            monthlyProfit: 0,
-            marginPercent: 0,
-            isIruResale: false,
-            firstMonthProfit: 0,
-            firstMonthMargin: 0,
-            recurringMonthlyProfit: 0,
-            recurringMargin: 0
-        };
-    }
+    // Swapped Out: revenue uses market price fields, cost uses linked inventory
 
     // Get Operating Costs (Backhaul, XC, Other)
     const costs = order.costs || {};
@@ -113,6 +93,9 @@ function computeOrderFinancials(order) {
             case 'Hybrid':
                 monthlyProfit = mrcSales - inventoryMonthlyCost - cableMRC - operatingCosts;
                 break;
+            case 'Swapped Out':
+                monthlyProfit = mrcSales - inventoryMonthlyCost - operatingCosts;
+                break;
             default:
                 monthlyProfit = mrcSales - operatingCosts;
         }
@@ -167,9 +150,10 @@ function computeOrderFinancials(order) {
                 break;
 
             case 'Swapped Out':
-                // Swapped Out: revenue equals cost from linked inventory (profit = 0)
-                monthlyRevenue = inventoryMonthlyCost;
-                monthlyProfit = 0;
+                // Swapped Out: revenue uses market price fields; cost from linked inventory
+                const swapMonthlyOtcRevenue = otcRevenue / salesTerm;
+                monthlyRevenue = swapMonthlyOtcRevenue + monthlyOmRevenue;
+                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - operatingCosts;
                 break;
 
             default:
@@ -194,3 +178,76 @@ function computeOrderFinancials(order) {
 
 // Export to global scope for use by App
 window.computeOrderFinancials = computeOrderFinancials;
+window.computeInventoryMonthlyCost = computeInventoryMonthlyCost;
+
+function computeInventoryMonthlyCost(order, linkedResource, capacityRatioOverride = null) {
+    if (!linkedResource) return 0;
+
+    const salesCapacity = order.capacity?.value || 1;
+    const inventoryCapacity = linkedResource.capacity?.value || 1;
+    const capacityRatio = capacityRatioOverride !== null
+        ? capacityRatioOverride
+        : (inventoryCapacity > 0 ? (salesCapacity / inventoryCapacity) : 0);
+
+    if (linkedResource.costMode === 'batches') {
+        let totalCost = 0;
+        const baseCost = linkedResource.baseCost || {};
+        const baseModel = baseCost.model || 'IRU';
+        let baseMonthly = 0;
+        if (baseModel === 'IRU') {
+            const baseTerm = baseCost.termMonths || 1;
+            const baseOtc = baseCost.otc || 0;
+            const baseAnnualOm = (baseCost.annualOm || 0) || (baseOtc * (baseCost.omRate || 0) / 100);
+            baseMonthly = (baseOtc / baseTerm) + (baseAnnualOm / 12);
+        } else {
+            baseMonthly = baseCost.mrc || 0;
+        }
+        totalCost += baseMonthly * capacityRatio;
+
+        const allocations = order.batchAllocations?.length
+            ? order.batchAllocations
+            : (window.Store?.getSalesOrderBatches(order.salesOrderId) || []);
+
+        const batches = linkedResource.batches || (window.Store?.getInventoryBatches(linkedResource.resourceId) || []);
+        const refDate = (() => {
+            if (order.dates?.start) {
+                const parsed = new Date(order.dates.start);
+                if (!Number.isNaN(parsed.getTime())) return parsed;
+            }
+            return new Date();
+        })();
+
+        allocations.forEach(allocation => {
+            const batch = batches.find(b => b.batchId === allocation.batchId);
+            if (!batch) return;
+            if (batch.status === 'Planned' || batch.status === 'Ended') return;
+            if (batch.startDate) {
+                const start = new Date(batch.startDate);
+                if (!Number.isNaN(start.getTime()) && start > refDate) return;
+            }
+            const batchCapacity = batch.capacity?.value || 0;
+            if (batchCapacity <= 0) return;
+            const ratio = (allocation.capacityAllocated || 0) / batchCapacity;
+            let batchMonthly = 0;
+            if ((batch.model || 'IRU') === 'IRU') {
+                const term = batch.financials?.termMonths || 1;
+                const batchOtc = batch.financials?.otc || 0;
+                const batchAnnualOm = (batch.financials?.annualOm || 0) || (batchOtc * (batch.financials?.omRate || 0) / 100);
+                batchMonthly = (batchOtc / term) + (batchAnnualOm / 12);
+            } else {
+                batchMonthly = batch.financials?.mrc || 0;
+            }
+            totalCost += batchMonthly * ratio;
+        });
+        return totalCost;
+    }
+
+    const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
+    if (invOwnership === 'IRU') {
+        const invOtc = linkedResource.financials?.otc || 0;
+        const invTerm = linkedResource.financials?.term || 1;
+        const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
+        return ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
+    }
+    return (linkedResource.financials?.mrc || 0) * capacityRatio;
+}

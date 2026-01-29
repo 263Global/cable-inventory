@@ -278,50 +278,57 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 
 ---
 
-### 4. IRU + Swapped Out（资源置换）
-用自有 Inventory 资源与对方等价交换，双方成本和 O&M Rate 相同。
+### 4. Swapped Out（资源置换）
+Swapped Out 的价格为**市场认定价**（销售侧收入字段），与实际成本（链接 Inventory 的成本）可能不同，因此会产生利润/亏损。
 
-**前提条件：**
-- 双方资源 OTC 成本相同
-- 双方 Annual O&M Rate 相同
-- 无现金交易
+**收入（市场价）字段：**
+- Lease：`financials.mrcSales`（月收入），`financials.nrcSales`（一次性）
+- IRU：`financials.otc`（按月摊销）+ `financials.annualOm`（按月）
 
-**收入（按月分摊）：**
-```
-月 OTC 收入 = (Inventory OTC ÷ Inventory Term) × 分摊比例
-月 O&M 收入 = (Inventory Annual O&M ÷ 12) × 分摊比例
-```
-
-**成本（按月分摊）：**
-```
-月 OTC 成本 = (Inventory OTC ÷ Inventory Term) × 分摊比例
-月 O&M 成本 = (Inventory Annual O&M ÷ 12) × 分摊比例
-```
+**成本（真实成本）：**
+- Inventory 月成本（按分摊比例）
+- 运营成本（Backhaul / XC / Other Monthly）
 
 **月利润：**
 ```
-月利润 = (月OTC收入 + 月O&M收入) - (月OTC成本 + 月O&M成本) = 0
-利润率 = 0%
+月利润 = 月收入（市场价） - Inventory 月成本 - 运营成本
 ```
 
-**示例：**
-- Inventory（IRU）：OTC=120,000；Term=180；Annual O&M=12,000
-- 分摊比例=0.1（10G / 100G）
+**示例（IRU）：**
+- 市场价：OTC=180,000；Term=180；Annual O&M=18,000 → 月收入=100 + 150 = 250
+- Inventory（IRU）成本：OTC=120,000；Term=180；Annual O&M=12,000 → 月成本=66.67 + 100 = 166.67
 ```
-月OTC收入 = (120,000 ÷ 180) × 0.1 = 66.67
-月O&M收入 = (12,000 ÷ 12) × 0.1 = 100
-月收入合计 = 166.67
-
-月OTC成本 = 66.67
-月O&M成本 = 100
-月成本合计 = 166.67
-
-月利润 = 166.67 - 166.67 = 0
+月利润 = 250 - 166.67 = 83.33
 ```
 
-> **说明：** 虽然利润为零，但收入和成本需完整记录用于财务报表。置换获得的资源（Swapped In）在 Inventory 模块单独入账。
->
-> **补充：** Swapped Out 的计算与 salesModel 无关，按本节逻辑处理。
+> **说明：** 若市场价=真实成本，则利润为 0；但系统不再强制归零。置换获得的资源（Swapped In）在 Inventory 模块单独入账。
+
+---
+
+### 5. Inventory Batch Mode（分期点亮）
+适用于“同一条光纤资源，多次点亮、分批成本”的场景。
+
+**成本构成：**
+1) **Base Cost Pool（整条光纤固定成本）**
+```
+Base 月成本 = (Base OTC ÷ Base Term) + (Base Annual O&M ÷ 12)
+订单分摊 = Base 月成本 × (销售容量 ÷ 资源总容量)
+```
+
+2) **Batch 成本（点亮批次）**
+```
+Batch 月成本（IRU）= (Batch OTC ÷ Batch Term) + (Batch Annual O&M ÷ 12)
+Batch 月成本（Lease）= Batch MRC
+订单分摊 = Batch 月成本 × (分配容量 ÷ Batch 容量)
+```
+> Batch Annual O&M 由 Batch OTC × O&M Rate 计算。
+
+**月利润：**
+```
+月利润 = 月收入 - Base分摊 - ΣBatch分摊 - 运营成本
+```
+
+> **规则：** 仅计入“已点亮（Active）且生效日期 ≤ 订单开始日”的批次；销售容量必须完全由批次分配覆盖。
 
 ---
 
@@ -351,6 +358,7 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 | Resale | ❌ | ✅ | MRC收入 - Cable MRC - 运营成本 |
 | Inventory | ✅ | ❌ | MRC收入 - Inventory月成本 - 运营成本 |
 | Hybrid | ✅ | ✅ | MRC收入 - Inventory月成本 - Cable MRC - 运营成本 |
+| Swapped Out | ✅ | ❌ | MRC收入（市场价） - Inventory月成本 - 运营成本 |
 
 ### IRU Model
 
@@ -359,7 +367,7 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 | Resale | ❌ | ✅ | 一次性（第1月） | 第1月含OTC毛利，后续仅O&M差 |
 | Inventory | ✅ | ❌ | 按月分摊 | 月OTC+月O&M - Inventory成本 - 运营成本 |
 | Hybrid | ✅ | ✅ | 按月分摊 | 月OTC+月O&M - Inventory成本 - Cable成本 - 运营成本 |
-| Swapped Out | ✅ | ❌ | 按月分摊 | 月OTC+月O&M收入 - 月OTC+月O&M成本 = 0 |
+| Swapped Out | ✅ | ❌ | 按月分摊 | 月OTC+月O&M（市场价） - Inventory成本 - 运营成本 |
 
 ---
 

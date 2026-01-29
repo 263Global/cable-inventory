@@ -1082,6 +1082,150 @@ export function attachSalesFormListeners(context) {
     const linkedResourceGroup = document.getElementById('linked-resource-group');
     const inventoryLinkSelect = document.getElementById('inventory-link-select');
     const linkedResourceHint = document.getElementById('linked-resource-hint');
+    const batchGroup = document.getElementById('batch-allocation-group');
+    const batchTable = document.getElementById('batch-allocation-table');
+    const batchSummary = document.getElementById('batch-allocation-summary');
+    const batchAllocInput = document.getElementById('batch-allocations-input');
+    const batchModeInput = document.getElementById('batch-allocation-mode');
+    const batchAutoBtn = document.getElementById('batch-auto-btn');
+    const batchClearBtn = document.getElementById('batch-clear-btn');
+    const batchErrorEl = document.getElementById('batch-allocation-error');
+
+    const getSelectedInventory = () => {
+        const id = inventoryLinkSelect?.value;
+        if (!id) return null;
+        return window.Store.getInventory().find(i => i.resourceId === id) || null;
+    };
+
+    const isBatchActive = (batch, refDate) => {
+        if (!batch) return false;
+        if (batch.status === 'Planned' || batch.status === 'Ended') return false;
+        if (batch.startDate) {
+            const start = new Date(batch.startDate);
+            if (!Number.isNaN(start.getTime()) && start > refDate) return false;
+        }
+        return true;
+    };
+
+    const readAllocationsFromInputs = () => {
+        if (!batchTable) return [];
+        return Array.from(batchTable.querySelectorAll('input[data-batch-id]'))
+            .map(input => ({
+                batchId: input.dataset.batchId,
+                capacityAllocated: Number(input.value || 0)
+            }))
+            .filter(a => a.capacityAllocated > 0);
+    };
+
+    const updateBatchSummary = (salesCapacity, allocations) => {
+        const total = allocations.reduce((sum, a) => sum + (a.capacityAllocated || 0), 0);
+        const remaining = Math.max(0, (salesCapacity || 0) - total);
+        if (batchSummary) {
+            batchSummary.textContent = `Allocated ${total} / ${salesCapacity || 0} (${remaining} remaining).`;
+        }
+    };
+
+    const setBatchAllocations = (allocations, mode) => {
+        if (batchAllocInput) {
+            batchAllocInput.value = JSON.stringify(allocations);
+        }
+        if (batchModeInput) {
+            batchModeInput.value = mode;
+        }
+        updateBatchSummary(Number(document.querySelector('[name="capacity.value"]')?.value || 0), allocations);
+        if (batchErrorEl) {
+            batchErrorEl.style.display = 'none';
+            batchErrorEl.textContent = '';
+        }
+    };
+
+    const renderBatchTable = (batches, allocations, salesCapacity) => {
+        if (!batchTable) return;
+        const allocationMap = new Map(allocations.map(a => [a.batchId, a.capacityAllocated]));
+        const now = new Date();
+        const orderId = context._editingOrderId || null;
+        const rows = batches.map(batch => {
+            const active = isBatchActive(batch, now);
+            const allocated = allocationMap.get(batch.batchId) || 0;
+            const allocatedByOthers = window.Store.getBatchAllocatedCapacity(batch.batchId, orderId);
+            const available = Math.max(0, (batch.capacity?.value || 0) - allocatedByOthers);
+            const disabled = active ? '' : 'disabled';
+            const statusText = active ? 'Active' : (batch.status || 'Planned');
+            return `
+                <tr>
+                    <td>${batch.orderId || batch.batchId}</td>
+                    <td>${batch.startDate || '-'}</td>
+                    <td>${batch.model || 'IRU'}</td>
+                    <td>${batch.capacity?.value || 0}</td>
+                    <td>${available}</td>
+                    <td>
+                        <input type="number" class="form-control" data-batch-id="${batch.batchId}" value="${allocated}" min="0" max="${available}" ${disabled}>
+                    </td>
+                    <td>${statusText}</td>
+                </tr>
+            `;
+        }).join('');
+
+        batchTable.innerHTML = `
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align:left; font-size:0.75rem; color:var(--text-muted);">
+                        <th style="padding:6px 4px;">Order ID</th>
+                        <th style="padding:6px 4px;">Start Date</th>
+                        <th style="padding:6px 4px;">Model</th>
+                        <th style="padding:6px 4px;">Capacity</th>
+                        <th style="padding:6px 4px;">Available</th>
+                        <th style="padding:6px 4px;">Allocated</th>
+                        <th style="padding:6px 4px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>${rows || '<tr><td colspan="7" style="padding: 0.75rem; color: var(--text-muted);">No batches found.</td></tr>'}</tbody>
+            </table>
+        `;
+
+        batchTable.querySelectorAll('input[data-batch-id]').forEach(input => {
+            input.addEventListener('input', () => {
+                if (batchModeInput) batchModeInput.value = 'manual';
+                const current = readAllocationsFromInputs();
+                setBatchAllocations(current, 'manual');
+                context.calculateSalesFinancials();
+            });
+        });
+    };
+
+    const autoAllocateBatches = () => {
+        const inventory = getSelectedInventory();
+        const salesCapacity = Number(document.querySelector('[name="capacity.value"]')?.value || 0);
+        if (!inventory || inventory.costMode !== 'batches') return;
+
+        const now = new Date();
+        const batches = (window.Store.getInventoryBatches(inventory.resourceId) || [])
+            .slice()
+            .sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
+
+        let remaining = salesCapacity;
+        const allocations = [];
+        const orderId = context._editingOrderId || null;
+        batches.forEach(batch => {
+            if (!isBatchActive(batch, now)) return;
+            if (remaining <= 0) return;
+            const available = Math.max(0, (batch.capacity?.value || 0) - window.Store.getBatchAllocatedCapacity(batch.batchId, orderId));
+            if (available <= 0) return;
+            const allocate = Math.min(available, remaining);
+            if (allocate > 0) {
+                allocations.push({ batchId: batch.batchId, capacityAllocated: allocate });
+                remaining -= allocate;
+            }
+        });
+
+        renderBatchTable(batches, allocations, salesCapacity);
+        setBatchAllocations(allocations, 'auto');
+        if (batchErrorEl && remaining > 0) {
+            batchErrorEl.textContent = `Insufficient active batch capacity. Remaining ${remaining}.`;
+            batchErrorEl.style.display = 'block';
+        }
+        context.calculateSalesFinancials();
+    };
 
     const updateSmartHints = () => {
         const type = salesTypeSelect?.value;
@@ -1157,12 +1301,75 @@ export function attachSalesFormListeners(context) {
                 }
             }
         }
+
+        const inventory = getSelectedInventory();
+        if (batchGroup) {
+            if (inventory && inventory.costMode === 'batches' && type !== 'Resale') {
+                batchGroup.style.display = '';
+                const salesCapacity = Number(document.querySelector('[name="capacity.value"]')?.value || 0);
+                const batches = (window.Store.getInventoryBatches(inventory.resourceId) || [])
+                    .slice()
+                    .sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
+                let allocations = [];
+                if (batchModeInput?.value === 'manual' && batchAllocInput?.value) {
+                    try {
+                        allocations = JSON.parse(batchAllocInput.value) || [];
+                    } catch {
+                        allocations = [];
+                    }
+                }
+                if (allocations.length === 0) {
+                    autoAllocateBatches();
+                } else {
+                    renderBatchTable(batches, allocations, salesCapacity);
+                    setBatchAllocations(allocations, 'manual');
+                    context.calculateSalesFinancials();
+                }
+            } else {
+                batchGroup.style.display = 'none';
+                if (batchAllocInput) batchAllocInput.value = '[]';
+                if (batchModeInput) batchModeInput.value = 'auto';
+            }
+        }
     };
 
     if (salesTypeSelect) {
         salesTypeSelect.addEventListener('change', updateSmartHints);
         // Initial check
         updateSmartHints();
+    }
+
+    if (inventoryLinkSelect) {
+        inventoryLinkSelect.addEventListener('change', updateSmartHints);
+    }
+
+    const capacityInput = document.querySelector('[name="capacity.value"]');
+    if (capacityInput) {
+        capacityInput.addEventListener('input', () => {
+            if (batchGroup && batchGroup.style.display !== 'none' && batchModeInput?.value === 'auto') {
+                autoAllocateBatches();
+            } else if (batchGroup && batchGroup.style.display !== 'none') {
+                const allocations = readAllocationsFromInputs();
+                setBatchAllocations(allocations, 'manual');
+                context.calculateSalesFinancials();
+            }
+        });
+    }
+
+    if (batchAutoBtn) {
+        batchAutoBtn.addEventListener('click', () => {
+            autoAllocateBatches();
+        });
+    }
+
+    if (batchClearBtn) {
+        batchClearBtn.addEventListener('click', () => {
+            if (batchTable) {
+                batchTable.querySelectorAll('input[data-batch-id]').forEach(input => { input.value = 0; });
+            }
+            setBatchAllocations([], 'manual');
+            context.calculateSalesFinancials();
+        });
     }
 
     // ===== Status Auto-calc =====

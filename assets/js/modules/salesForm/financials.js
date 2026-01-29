@@ -13,7 +13,6 @@ export function calculateSalesFinancials(context) {
     const salesType = getVal('salesType');     // 'Resale', 'Inventory', 'Hybrid', 'Swapped Out'
     const salesTerm = getValue('dates.term') || 12;  // Sales contract term in months
     const salesCapacity = getValue('capacity.value') || 1;
-    const isSwappedOut = salesType === 'Swapped Out';
 
     // ===== Get Linked Inventory (for Inventory/Hybrid types) =====
     const inventoryLink = getVal('inventoryLink');
@@ -24,16 +23,29 @@ export function calculateSalesFinancials(context) {
     // ===== Calculate Inventory Monthly Cost (if applicable) =====
     let inventoryMonthlyCost = 0;
     if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid' || salesType === 'Swapped Out')) {
-        const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
-        if (invOwnership === 'IRU') {
-            // IRU Inventory: (OTC / Term + Annual O&M / 12) × capacity ratio
-            const invOtc = linkedResource.financials?.otc || 0;
-            const invTerm = linkedResource.financials?.term || 1;
-            const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
-            inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
+        const rawAllocations = document.getElementById('batch-allocations-input')?.value || '[]';
+        let batchAllocations = [];
+        try {
+            batchAllocations = JSON.parse(rawAllocations) || [];
+        } catch {
+            batchAllocations = [];
+        }
+        if (window.computeInventoryMonthlyCost) {
+            inventoryMonthlyCost = window.computeInventoryMonthlyCost({
+                capacity: { value: salesCapacity },
+                dates: { start: getVal('dates.start') },
+                batchAllocations
+            }, linkedResource, capacityRatio);
         } else {
-            // Leased Inventory: MRC × capacity ratio
-            inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
+            const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
+            if (invOwnership === 'IRU') {
+                const invOtc = linkedResource.financials?.otc || 0;
+                const invTerm = linkedResource.financials?.term || 1;
+                const invAnnualOm = linkedResource.financials?.annualOmCost || 0;
+                inventoryMonthlyCost = ((invOtc / invTerm) + (invAnnualOm / 12)) * capacityRatio;
+            } else {
+                inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
+            }
         }
     }
 
@@ -61,13 +73,7 @@ export function calculateSalesFinancials(context) {
     let ongoingMonthlyProfit = 0;  // For IRU Resale (subsequent months)
     let isIruResale = false;
 
-    if (isSwappedOut) {
-        monthlyRevenue = inventoryMonthlyCost;
-        monthlyProfit = 0;
-        firstMonthProfit = 0;
-        ongoingMonthlyProfit = 0;
-        isIruResale = false;
-    } else if (salesModel === 'Lease') {
+    if (salesModel === 'Lease') {
         // ========== LEASE MODEL ==========
         const mrcSales = getValue('financials.mrcSales');
         const nrcSales = getValue('financials.nrcSales');
@@ -94,6 +100,9 @@ export function calculateSalesFinancials(context) {
                 break;
             case 'Hybrid':
                 monthlyProfit = mrcSales - inventoryMonthlyCost - cableMRC - operatingCosts;
+                break;
+            case 'Swapped Out':
+                monthlyProfit = mrcSales - inventoryMonthlyCost - operatingCosts;
                 break;
             default:
                 monthlyProfit = mrcSales - operatingCosts;
@@ -140,9 +149,10 @@ export function calculateSalesFinancials(context) {
                 break;
 
             case 'Swapped Out':
-                // Swapped Out: No profit calculation
-                monthlyRevenue = 0;
-                monthlyProfit = 0;
+                // Swapped Out: market price revenue minus linked inventory cost
+                const swapMonthlyOtcRevenue = otcRevenue / salesTerm;
+                monthlyRevenue = swapMonthlyOtcRevenue + monthlyOmRevenue;
+                monthlyProfit = monthlyRevenue - inventoryMonthlyCost - operatingCosts;
                 break;
 
             default:
@@ -194,10 +204,7 @@ export function calculateSalesFinancials(context) {
 
     // NRC Profit display - for IRU Resale show first month profit, otherwise show regular NRC
     const nrcEl = document.getElementById('disp-nrc-profit');
-    if (isSwappedOut) {
-        nrcEl.textContent = fmt(0);
-        nrcEl.style.color = 'var(--text-muted)';
-    } else if (isIruResale) {
+    if (isIruResale) {
         nrcEl.textContent = fmt(firstMonthProfit) + ' (1st Mo)';
         nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
     } else {

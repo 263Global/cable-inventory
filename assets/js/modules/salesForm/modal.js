@@ -204,6 +204,21 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 
+                    <div class="form-group" id="batch-allocation-group" style="display:none;">
+                        <label class="form-label">Batch Allocation</label>
+                        <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <small id="batch-allocation-summary" style="color: var(--text-muted);">Auto allocation by batch start date.</small>
+                            <div style="display:flex; gap: 0.5rem;">
+                                <button type="button" class="btn btn-secondary" id="batch-auto-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">Auto Allocate</button>
+                                <button type="button" class="btn btn-secondary" id="batch-clear-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">Clear</button>
+                            </div>
+                        </div>
+                        <div id="batch-allocation-table"></div>
+                        <input type="hidden" name="batchAllocations" id="batch-allocations-input" value='${escapeHtml(JSON.stringify(existingOrder?.batchAllocations || []))}'>
+                        <input type="hidden" name="batchAllocationMode" id="batch-allocation-mode" value="${existingOrder?.batchAllocations?.length ? 'manual' : 'auto'}">
+                        <small id="batch-allocation-error" style="color: var(--accent-danger); display:none; margin-top: 0.5rem;"></small>
+                    </div>
+
                     <!-- Contract Period -->
                     <div class="grid-3">
                         <div class="form-group">

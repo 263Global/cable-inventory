@@ -8,7 +8,9 @@ const generateId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 class Store {
     constructor() {
         this.inventory = [];
+        this.inventoryBatches = [];
         this.salesOrders = [];
+        this.salesOrderBatches = [];
         this.customers = [];
         this.suppliers = [];
         this.initialized = false;
@@ -32,11 +34,13 @@ class Store {
 
         try {
             // Fetch all data from Supabase
-            const [invResult, salesResult, custResult, suppResult] = await Promise.all([
+            const [invResult, salesResult, custResult, suppResult, batchResult, salesBatchResult] = await Promise.all([
                 window.SupabaseClient.from('inventory').select('*').order('created_at', { ascending: false }),
                 window.SupabaseClient.from('sales_orders').select('*').order('created_at', { ascending: false }),
                 window.SupabaseClient.from('customers').select('*').order('short_name', { ascending: true }),
-                window.SupabaseClient.from('suppliers').select('*').order('short_name', { ascending: true })
+                window.SupabaseClient.from('suppliers').select('*').order('short_name', { ascending: true }),
+                window.SupabaseClient.from('inventory_batches').select('*').order('start_date', { ascending: true }),
+                window.SupabaseClient.from('sales_order_batches').select('*')
             ]);
 
             if (invResult.error) throw invResult.error;
@@ -44,19 +48,28 @@ class Store {
             // Customers/Suppliers tables may not exist yet - handle gracefully
             if (custResult.error && !custResult.error.message.includes('does not exist')) throw custResult.error;
             if (suppResult.error && !suppResult.error.message.includes('does not exist')) throw suppResult.error;
+            if (batchResult.error && !batchResult.error.message.includes('does not exist')) throw batchResult.error;
+            if (salesBatchResult.error && !salesBatchResult.error.message.includes('does not exist')) throw salesBatchResult.error;
 
             // Transform flat DB rows to nested JS objects
             this.inventory = (invResult.data || []).map(row => this.dbToInventory(row));
+            this.inventoryBatches = (batchResult?.data || []).map(row => this.dbToInventoryBatch(row));
             this.salesOrders = (salesResult.data || []).map(row => this.dbToSalesOrder(row));
+            this.salesOrderBatches = (salesBatchResult?.data || []).map(row => this.dbToSalesOrderBatch(row));
             this.customers = custResult.data || [];
             this.suppliers = suppResult.data || [];
+
+            this.attachBatchesToInventory();
+            this.attachBatchAllocationsToSales();
 
             this.initialized = true;
             console.log('Store initialized with Supabase data');
         } catch (err) {
             console.error('Failed to initialize store:', err);
             this.inventory = [];
+            this.inventoryBatches = [];
             this.salesOrders = [];
+            this.salesOrderBatches = [];
             this.customers = [];
             this.suppliers = [];
         }
@@ -110,6 +123,16 @@ class Store {
                 annualOmCost: parseFloat(row.annual_om_cost) || 0,
                 term: row.term_months
             },
+            costMode: row.cost_mode || 'single',
+            baseCost: {
+                orderId: row.base_order_id || '',
+                model: row.base_model || 'IRU',
+                mrc: parseFloat(row.base_mrc) || 0,
+                otc: parseFloat(row.base_otc) || 0,
+                omRate: parseFloat(row.base_om_rate) || 0,
+                annualOm: parseFloat(row.base_annual_om) || 0,
+                termMonths: row.base_term_months || 0
+            },
             dates: {
                 start: row.start_date,
                 end: row.end_date
@@ -155,6 +178,14 @@ class Store {
             om_rate: item.financials?.omRate,
             annual_om_cost: item.financials?.annualOmCost,
             term_months: item.financials?.term,
+            cost_mode: item.costMode || 'single',
+            base_order_id: item.baseCost?.orderId,
+            base_model: item.baseCost?.model,
+            base_mrc: item.baseCost?.mrc,
+            base_otc: item.baseCost?.otc,
+            base_om_rate: item.baseCost?.omRate,
+            base_annual_om: item.baseCost?.annualOm,
+            base_term_months: item.baseCost?.termMonths,
             start_date: item.dates?.start,
             end_date: item.dates?.end,
             current_user_name: item.usage?.currentUser,
@@ -197,6 +228,62 @@ class Store {
             },
             costs: row.costs || {},
             notes: row.notes || ''
+        };
+    }
+
+    dbToInventoryBatch(row) {
+        return {
+            batchId: row.batch_id,
+            resourceId: row.resource_id,
+            orderId: row.order_id || '',
+            model: row.model || 'IRU',
+            capacity: {
+                value: parseFloat(row.capacity_value) || 0,
+                unit: row.capacity_unit
+            },
+            financials: {
+                mrc: parseFloat(row.mrc) || 0,
+                otc: parseFloat(row.otc) || 0,
+                omRate: parseFloat(row.om_rate) || 0,
+                annualOm: parseFloat(row.annual_om) || 0,
+                termMonths: row.term_months || 0
+            },
+            startDate: row.start_date,
+            status: row.status || 'Planned'
+        };
+    }
+
+    inventoryBatchToDb(batch) {
+        return {
+            batch_id: batch.batchId,
+            resource_id: batch.resourceId,
+            order_id: batch.orderId,
+            model: batch.model || 'IRU',
+            capacity_value: batch.capacity?.value,
+            capacity_unit: batch.capacity?.unit,
+            mrc: batch.financials?.mrc,
+            otc: batch.financials?.otc,
+            om_rate: batch.financials?.omRate,
+            annual_om: batch.financials?.annualOm,
+            term_months: batch.financials?.termMonths,
+            start_date: batch.startDate,
+            status: batch.status || 'Planned'
+        };
+    }
+
+    dbToSalesOrderBatch(row) {
+        return {
+            salesOrderId: row.sales_order_id,
+            batchId: row.batch_id,
+            capacityAllocated: parseFloat(row.capacity_allocated) || 0
+        };
+    }
+
+    salesOrderBatchToDb(allocation) {
+        return {
+            sales_order_id: allocation.salesOrderId,
+            batch_id: allocation.batchId,
+            capacity_allocated: allocation.capacityAllocated
         };
     }
 
@@ -266,6 +353,46 @@ class Store {
         return this.inventory;
     }
 
+    getInventoryBatches(resourceId) {
+        return this.inventoryBatches.filter(b => b.resourceId === resourceId);
+    }
+
+    getSalesOrderBatches(salesOrderId) {
+        return this.salesOrderBatches.filter(b => b.salesOrderId === salesOrderId);
+    }
+
+    getBatchAllocatedCapacity(batchId, excludeSalesOrderId = null) {
+        return this.salesOrderBatches
+            .filter(b => b.batchId === batchId && b.salesOrderId !== excludeSalesOrderId)
+            .reduce((total, b) => total + (b.capacityAllocated || 0), 0);
+    }
+
+    attachBatchesToInventory() {
+        const batchesByResource = new Map();
+        this.inventoryBatches.forEach(batch => {
+            const list = batchesByResource.get(batch.resourceId) || [];
+            list.push(batch);
+            batchesByResource.set(batch.resourceId, list);
+        });
+        this.inventory = this.inventory.map(item => ({
+            ...item,
+            batches: batchesByResource.get(item.resourceId) || []
+        }));
+    }
+
+    attachBatchAllocationsToSales() {
+        const batchesBySales = new Map();
+        this.salesOrderBatches.forEach(batch => {
+            const list = batchesBySales.get(batch.salesOrderId) || [];
+            list.push(batch);
+            batchesBySales.set(batch.salesOrderId, list);
+        });
+        this.salesOrders = this.salesOrders.map(order => ({
+            ...order,
+            batchAllocations: batchesBySales.get(order.salesOrderId) || []
+        }));
+    }
+
     getAvailableResources() {
         const now = new Date();
         const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(this.salesOrders);
@@ -302,6 +429,7 @@ class Store {
 
         const newItem = this.dbToInventory(data);
         this.inventory.unshift(newItem);
+        this.attachBatchesToInventory();
         return newItem;
     }
 
@@ -326,6 +454,7 @@ class Store {
 
         const updated = this.dbToInventory(data);
         this.inventory[index] = updated;
+        this.attachBatchesToInventory();
         return updated;
     }
 
@@ -341,6 +470,7 @@ class Store {
         }
 
         this.inventory = this.inventory.filter(i => i.resourceId !== id);
+        this.inventoryBatches = this.inventoryBatches.filter(b => b.resourceId !== id);
     }
 
     // ============ Sales Methods ============
@@ -378,6 +508,9 @@ class Store {
 
         const newOrder = this.dbToSalesOrder(data);
         this.salesOrders.unshift(newOrder);
+        if (order.batchAllocations?.length) {
+            await this.replaceSalesOrderBatches(newOrder.salesOrderId, order.batchAllocations);
+        }
 
         // Update linked inventory status
         if (order.inventoryLink) {
@@ -411,6 +544,9 @@ class Store {
 
         const updated = this.dbToSalesOrder(data);
         this.salesOrders[index] = updated;
+        if (Array.isArray(updates.batchAllocations)) {
+            await this.replaceSalesOrderBatches(id, updates.batchAllocations);
+        }
         return updated;
     }
 
@@ -428,6 +564,7 @@ class Store {
         }
 
         this.salesOrders = this.salesOrders.filter(s => s.salesOrderId !== id);
+        this.salesOrderBatches = this.salesOrderBatches.filter(b => b.salesOrderId !== id);
 
         // Update linked inventory status
         if (orderToDelete?.inventoryLink) {
@@ -439,6 +576,67 @@ class Store {
                 latestOrderId: latestSale?.salesOrderId || null
             });
         }
+    }
+
+    async replaceInventoryBatches(resourceId, batches) {
+        await window.SupabaseClient
+            .from('inventory_batches')
+            .delete()
+            .eq('resource_id', resourceId);
+
+        if (batches.length === 0) {
+            this.inventoryBatches = this.inventoryBatches.filter(b => b.resourceId !== resourceId);
+            this.attachBatchesToInventory();
+            return;
+        }
+
+        const payload = batches.map(batch => this.inventoryBatchToDb(batch));
+        const { data, error } = await window.SupabaseClient
+            .from('inventory_batches')
+            .insert(payload)
+            .select();
+
+        if (error) {
+            console.error('Failed to update inventory batches:', error);
+            throw error;
+        }
+
+        this.inventoryBatches = this.inventoryBatches.filter(b => b.resourceId !== resourceId);
+        this.inventoryBatches.push(...data.map(row => this.dbToInventoryBatch(row)));
+        this.attachBatchesToInventory();
+    }
+
+    async replaceSalesOrderBatches(salesOrderId, allocations) {
+        await window.SupabaseClient
+            .from('sales_order_batches')
+            .delete()
+            .eq('sales_order_id', salesOrderId);
+
+        if (allocations.length === 0) {
+            this.salesOrderBatches = this.salesOrderBatches.filter(b => b.salesOrderId !== salesOrderId);
+            this.attachBatchAllocationsToSales();
+            return;
+        }
+
+        const payload = allocations.map(allocation => this.salesOrderBatchToDb({
+            salesOrderId,
+            batchId: allocation.batchId,
+            capacityAllocated: allocation.capacityAllocated
+        }));
+
+        const { data, error } = await window.SupabaseClient
+            .from('sales_order_batches')
+            .insert(payload)
+            .select();
+
+        if (error) {
+            console.error('Failed to update sales order batches:', error);
+            throw error;
+        }
+
+        this.salesOrderBatches = this.salesOrderBatches.filter(b => b.salesOrderId !== salesOrderId);
+        this.salesOrderBatches.push(...data.map(row => this.dbToSalesOrderBatch(row)));
+        this.attachBatchAllocationsToSales();
     }
 
     getLatestSaleForResource(sales) {

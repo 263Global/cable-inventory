@@ -121,7 +121,7 @@ export function renderDashboard(context) {
 
     // Margin Distribution
     const marginDist = { high: 0, mid: 0, low: 0 };
-    sales.filter(s => s.salesType !== 'Swapped Out').forEach(s => {
+    sales.forEach(s => {
         const computed = computeOrderFinancials(s);
         const m = computed.marginPercent || 0;
         if (m >= 50) marginDist.high++;

@@ -630,9 +630,58 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                         </div>
 
-                                                                                                                        <!--Financials -->
-                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Financials & Terms</h4>
-                                                                                                                        <div class="grid-3" id="financials-grid">
+                                                                                                                        <!-- Cost Mode -->
+                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Cost Mode</h4>
+                                                                                                                        <div class="grid-2">
+                                                                                                                            <div class="form-group">
+                                                                                                                                <label class="form-label">Cost Mode</label>
+                                                                                                                                <div id="inventory-cost-mode-dropdown-placeholder" data-selected="${escapeHtml(item.costMode || 'single')}"></div>
+                                                                                                                                <small style="color:var(--text-muted)">Single = legacy cost; Batches = staged lighting + base cost pool.</small>
+                                                                                                                            </div>
+                                                                                                                            <div class="form-group">
+                                                                                                                                <label class="form-label">Base Order ID</label>
+                                                                                                                                <input type="text" class="form-control" name="baseCost.orderId" value="${escapeHtml(item.baseCost?.orderId || '')}">
+                                                                                                                            </div>
+                                                                                                                        </div>
+
+                                                                                                                        <!-- Base Cost (Batch Mode) -->
+                                                                                                                        <div id="inventory-base-cost-section" style="display:${item.costMode === 'batches' ? 'block' : 'none'}; background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:6px; margin-bottom:1rem;">
+                                                                                                                            <h5 style="color:var(--accent-secondary); margin:0 0 0.5rem 0; font-size:0.85rem;">Base Cost Pool</h5>
+                                                                                                                            <div class="grid-3">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Base Model</label>
+                                                                                                                                    <div id="inventory-base-model-dropdown-placeholder" data-selected="${escapeHtml(item.baseCost?.model || 'IRU')}"></div>
+                                                                                                                                </div>
+                                                                                                                               <div class="form-group" id="base-mrc-container" style="display:${item.baseCost?.model === 'Lease' ? 'block' : 'none'};">
+                                                                                                                                    <label class="form-label">Base MRC ($)</label>
+                                                                                                                                    <input type="number" class="form-control" name="baseCost.mrc" value="${item.baseCost?.mrc || 0}">
+                                                                                                                                </div>
+                                                                                                                               <div class="form-group" id="base-term-container" style="display:${item.baseCost?.model === 'IRU' ? 'block' : 'none'};">
+                                                                                                                                    <label class="form-label">Base Term (Months)</label>
+                                                                                                                                    <input type="number" class="form-control" name="baseCost.termMonths" value="${item.baseCost?.termMonths || 0}">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2" id="base-iru-container" style="display:${item.baseCost?.model === 'IRU' ? 'grid' : 'none'};">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Base OTC ($)</label>
+                                                                                                                                    <input type="number" class="form-control" name="baseCost.otc" value="${item.baseCost?.otc || 0}">
+                                                                                                                                </div>
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Base O&amp;M Rate (%)</label>
+                                                                                                                                    <input type="number" class="form-control" id="base-om-rate-input" name="baseCost.omRate" value="${item.baseCost?.omRate || 0}" step="0.1" min="0" max="100">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                            <div class="grid-2" id="base-annual-om-container" style="display:${item.baseCost?.model === 'IRU' ? 'grid' : 'none'};">
+                                                                                                                                <div class="form-group">
+                                                                                                                                    <label class="form-label">Base Annual O&amp;M ($)</label>
+                                                                                                                                    <input type="number" class="form-control" id="base-annual-om-input" name="baseCost.annualOm" value="${item.baseCost?.annualOm || 0}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                        </div>
+
+                                                                                                                        <!--Financials (Single Mode) -->
+                                                                                                                        <h4 class="mb-4 mt-4" id="single-financials-title" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; display:${item.costMode === 'batches' ? 'none' : 'block'};">Financials & Terms</h4>
+                                                                                                                        <div class="grid-3" id="financials-grid" style="display:${item.costMode === 'batches' ? 'none' : 'grid'};">
                                                                                                                             <div class="form-group" id="mrc-container" style="display: ${item.acquisition?.ownership === 'IRU' ? 'none' : 'block'}">
                                                                                                                                 <label class="form-label">MRC Cost ($)</label>
                                                                                                                                 <input type="number" class="form-control" name="financials.mrc" value="${item.financials?.mrc || 0}">
@@ -667,6 +716,74 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                                 <label class="form-label">End Date (Auto-calculated)</label>
                                                                                                                                 <input type="date" class="form-control" id="end-date-input" name="dates.end" value="${escapeHtml(item.dates?.end || '')}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
                                                                                                                             </div>
+                                                                                                                        </div>
+                                                                                                                        <div id="inventory-batch-section" style="display:${item.costMode === 'batches' ? 'block' : 'none'}; margin-top: 1rem;">
+                                                                                                                            <h4 class="mb-3" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Inventory Batches</h4>
+                                                                                                                            <div id="inventory-batch-rows">
+                                                                                                                                ${(item.batches || []).map(batch => `
+                                                                                                                                    <div class="batch-row" data-batch-id="${escapeHtml(batch.batchId || '')}" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem;">
+                                                                                                                                        <div class="grid-4">
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Batch Order ID</label>
+                                                                                                                                                <input type="text" class="form-control batch-input" data-field="orderId" value="${escapeHtml(batch.orderId || '')}">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Model</label>
+                                                                                                                                                <select class="form-control batch-input" data-field="model">
+                                                                                                                                                    <option value="IRU" ${batch.model === 'IRU' ? 'selected' : ''}>IRU</option>
+                                                                                                                                                    <option value="Lease" ${batch.model === 'Lease' ? 'selected' : ''}>Lease</option>
+                                                                                                                                                </select>
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Start Date</label>
+                                                                                                                                                <input type="date" class="form-control batch-input" data-field="startDate" value="${escapeHtml(batch.startDate || '')}">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Status</label>
+                                                                                                                                                <select class="form-control batch-input" data-field="status">
+                                                                                                                                                    <option value="Planned" ${batch.status === 'Planned' ? 'selected' : ''}>Planned</option>
+                                                                                                                                                    <option value="Active" ${batch.status === 'Active' ? 'selected' : ''}>Active</option>
+                                                                                                                                                    <option value="Ended" ${batch.status === 'Ended' ? 'selected' : ''}>Ended</option>
+                                                                                                                                                </select>
+                                                                                                                                            </div>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="grid-4">
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Capacity (${escapeHtml(item.capacity?.unit || 'Gbps')})</label>
+                                                                                                                                                <input type="number" class="form-control batch-input" data-field="capacity" value="${batch.capacity?.value || 0}">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group batch-iru-field">
+                                                                                                                                                <label class="form-label">OTC ($)</label>
+                                                                                                                                                <input type="number" class="form-control batch-input" data-field="otc" value="${batch.financials?.otc || 0}">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group batch-iru-field">
+                                                                                                                                                <label class="form-label">O&amp;M Rate (%)</label>
+                                                                                                                                                <input type="number" class="form-control batch-input batch-om-rate" data-field="omRate" value="${batch.financials?.omRate || 0}" step="0.1" min="0" max="100">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group batch-iru-field">
+                                                                                                                                                <label class="form-label">Term (Months)</label>
+                                                                                                                                                <input type="number" class="form-control batch-input" data-field="termMonths" value="${batch.financials?.termMonths || 0}">
+                                                                                                                                            </div>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="grid-2 batch-iru-field">
+                                                                                                                                            <div class="form-group">
+                                                                                                                                                <label class="form-label">Annual O&amp;M ($)</label>
+                                                                                                                                                <input type="number" class="form-control batch-input batch-annual-om" data-field="annualOm" value="${batch.financials?.annualOm || 0}" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                                                                                                                                            </div>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="grid-2">
+                                                                                                                                            <div class="form-group batch-lease-field">
+                                                                                                                                                <label class="form-label">MRC ($)</label>
+                                                                                                                                                <input type="number" class="form-control batch-input" data-field="mrc" value="${batch.financials?.mrc || 0}">
+                                                                                                                                            </div>
+                                                                                                                                            <div class="form-group" style="display:flex; align-items:flex-end;">
+                                                                                                                                                <button type="button" class="btn btn-secondary batch-remove-btn" style="font-size:0.75rem;">Remove Batch</button>
+                                                                                                                                            </div>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                `).join('')}
+                                                                                                                            </div>
+                                                                                                                            <button type="button" class="btn btn-secondary" id="add-batch-btn" style="font-size:0.8rem; padding:0.4rem 0.75rem;">+ Add Batch</button>
                                                                                                                         </div>
                                                                                                                         `;
 
@@ -725,16 +842,57 @@ export function openInventoryModal(context, resourceId = null) {
                     annualOmCost: Number(form.querySelector('[name="financials.annualOmCost"]')?.value || 0)
                 };
             })(),
+            costMode: form.querySelector('[name="costMode"]')?.value || 'single',
+            baseCost: {
+                orderId: form.querySelector('[name="baseCost.orderId"]')?.value || '',
+                model: form.querySelector('[name="baseCost.model"]')?.value || 'IRU',
+                mrc: Number(form.querySelector('[name="baseCost.mrc"]')?.value || 0),
+                otc: Number(form.querySelector('[name="baseCost.otc"]')?.value || 0),
+                omRate: Number(form.querySelector('[name="baseCost.omRate"]')?.value || 0),
+                annualOm: Number(form.querySelector('[name="baseCost.annualOm"]')?.value || 0),
+                termMonths: Number(form.querySelector('[name="baseCost.termMonths"]')?.value || 0)
+            },
             dates: {
                 start: form.querySelector('[name="dates.start"]').value,
                 end: form.querySelector('[name="dates.end"]').value
             }
         };
 
+        const batchRows = Array.from(form.querySelectorAll('.batch-row'));
+        const batches = batchRows.map(row => {
+            const getField = (field) => row.querySelector(`[data-field="${field}"]`)?.value || '';
+            const model = getField('model') || 'IRU';
+            return {
+                batchId: row.dataset.batchId || `BAT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+                resourceId: newItem.resourceId,
+                orderId: getField('orderId'),
+                model,
+                capacity: {
+                    value: Number(getField('capacity') || 0),
+                    unit: newItem.capacity.unit
+                },
+                financials: {
+                    mrc: Number(getField('mrc') || 0),
+                    otc: Number(getField('otc') || 0),
+                    omRate: Number(getField('omRate') || 0),
+                    annualOm: Number(getField('annualOm') || 0),
+                    termMonths: Number(getField('termMonths') || 0)
+                },
+                startDate: getField('startDate'),
+                status: getField('status') || 'Planned'
+            };
+        }).filter(b => b.capacity.value > 0);
+
         if (isEdit) {
             await window.Store.updateInventory(newItem.resourceId, newItem);
         } else {
             await window.Store.addInventory(newItem);
+        }
+
+        if (newItem.costMode === 'batches') {
+            await window.Store.replaceInventoryBatches(newItem.resourceId, batches);
+        } else {
+            await window.Store.replaceInventoryBatches(newItem.resourceId, []);
         }
 
         // Refresh the inventory view to show updated data
@@ -808,6 +966,40 @@ export function openInventoryModal(context, resourceId = null) {
         initSimpleDropdown('inventory-ownership-container');
     }
 
+    // Initialize Cost Mode simple dropdown
+    const costModePlaceholder = document.getElementById('inventory-cost-mode-dropdown-placeholder');
+    if (costModePlaceholder) {
+        const selectedMode = costModePlaceholder.dataset.selected || 'single';
+        costModePlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'costMode',
+            id: 'inventory-cost-mode',
+            options: [
+                { value: 'single', label: 'Single Cost' },
+                { value: 'batches', label: 'Batches + Base Cost' }
+            ],
+            selectedValue: selectedMode,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-cost-mode-container');
+    }
+
+    // Initialize Base Model dropdown
+    const baseModelPlaceholder = document.getElementById('inventory-base-model-dropdown-placeholder');
+    if (baseModelPlaceholder) {
+        const selectedBaseModel = baseModelPlaceholder.dataset.selected || 'IRU';
+        baseModelPlaceholder.outerHTML = renderSimpleDropdown({
+            name: 'baseCost.model',
+            id: 'inventory-base-model',
+            options: [
+                { value: 'IRU', label: 'IRU' },
+                { value: 'Lease', label: 'Lease' }
+            ],
+            selectedValue: selectedBaseModel,
+            placeholder: 'Select...'
+        });
+        initSimpleDropdown('inventory-base-model-container');
+    }
+
     // Initialize Segment Type simple dropdown
     const segmentTypePlaceholder = document.getElementById('inventory-segment-type-dropdown-placeholder');
     if (segmentTypePlaceholder) {
@@ -825,6 +1017,193 @@ export function openInventoryModal(context, resourceId = null) {
             placeholder: 'Select...'
         });
         initSimpleDropdown('inventory-segment-type-container');
+    }
+
+    const singleFinancialsTitle = document.getElementById('single-financials-title');
+    const financialsGrid = document.getElementById('financials-grid');
+    const baseCostSection = document.getElementById('inventory-base-cost-section');
+    const batchSection = document.getElementById('inventory-batch-section');
+    const costModeInput = document.getElementById('inventory-cost-mode');
+    const baseModelInput = document.getElementById('inventory-base-model');
+    const baseMrcContainer = document.getElementById('base-mrc-container');
+    const baseIruContainer = document.getElementById('base-iru-container');
+    const baseAnnualOmContainer = document.getElementById('base-annual-om-container');
+    const baseTermContainer = document.getElementById('base-term-container');
+
+    const updateCostModeDisplay = () => {
+        const mode = costModeInput?.value || 'single';
+        if (mode === 'batches') {
+            if (singleFinancialsTitle) singleFinancialsTitle.style.display = 'none';
+            if (financialsGrid) financialsGrid.style.display = 'none';
+            if (baseCostSection) baseCostSection.style.display = 'block';
+            if (batchSection) batchSection.style.display = 'block';
+        } else {
+            if (singleFinancialsTitle) singleFinancialsTitle.style.display = 'block';
+            if (financialsGrid) financialsGrid.style.display = 'grid';
+            if (baseCostSection) baseCostSection.style.display = 'none';
+            if (batchSection) batchSection.style.display = 'none';
+        }
+    };
+
+    const updateBaseModelDisplay = () => {
+        const model = baseModelInput?.value || 'IRU';
+        if (model === 'Lease') {
+            if (baseMrcContainer) baseMrcContainer.style.display = 'block';
+            if (baseIruContainer) baseIruContainer.style.display = 'none';
+            if (baseAnnualOmContainer) baseAnnualOmContainer.style.display = 'none';
+            if (baseTermContainer) baseTermContainer.style.display = 'none';
+        } else {
+            if (baseMrcContainer) baseMrcContainer.style.display = 'none';
+            if (baseIruContainer) baseIruContainer.style.display = 'grid';
+            if (baseAnnualOmContainer) baseAnnualOmContainer.style.display = 'grid';
+            if (baseTermContainer) baseTermContainer.style.display = 'block';
+        }
+    };
+
+    if (costModeInput) {
+        costModeInput.addEventListener('change', updateCostModeDisplay);
+        updateCostModeDisplay();
+    }
+
+    if (baseModelInput) {
+        baseModelInput.addEventListener('change', updateBaseModelDisplay);
+        updateBaseModelDisplay();
+    }
+
+    const baseOtcInput = document.querySelector('[name="baseCost.otc"]');
+    const baseOmRateInput = document.getElementById('base-om-rate-input');
+    const baseAnnualOmInput = document.getElementById('base-annual-om-input');
+
+    const calculateBaseOmCost = () => {
+        if (!baseOtcInput || !baseOmRateInput || !baseAnnualOmInput) return;
+        const otcVal = parseFloat(baseOtcInput.value) || 0;
+        const omRateVal = parseFloat(baseOmRateInput.value) || 0;
+        const annualCost = (otcVal * omRateVal / 100);
+        baseAnnualOmInput.value = annualCost.toFixed(2);
+    };
+
+    if (baseOtcInput && baseOmRateInput) {
+        baseOtcInput.addEventListener('input', calculateBaseOmCost);
+        baseOmRateInput.addEventListener('input', calculateBaseOmCost);
+        calculateBaseOmCost();
+    }
+
+    const batchRowsContainer = document.getElementById('inventory-batch-rows');
+    const addBatchBtn = document.getElementById('add-batch-btn');
+    const generateBatchId = () => `BAT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+    const syncBatchRowFields = (row) => {
+        const modelSelect = row.querySelector('[data-field="model"]');
+        const iruFields = row.querySelectorAll('.batch-iru-field');
+        const leaseFields = row.querySelectorAll('.batch-lease-field');
+        if (!modelSelect) return;
+        const isLease = modelSelect.value === 'Lease';
+        iruFields.forEach(el => { el.style.display = isLease ? 'none' : 'block'; });
+        leaseFields.forEach(el => { el.style.display = isLease ? 'block' : 'none'; });
+    };
+
+    const calculateBatchOmCost = (row) => {
+        const otcInput = row.querySelector('[data-field="otc"]');
+        const rateInput = row.querySelector('[data-field="omRate"]');
+        const annualInput = row.querySelector('[data-field="annualOm"]');
+        if (!otcInput || !rateInput || !annualInput) return;
+        const otcVal = parseFloat(otcInput.value) || 0;
+        const rateVal = parseFloat(rateInput.value) || 0;
+        const annual = (otcVal * rateVal / 100);
+        annualInput.value = annual.toFixed(2);
+    };
+
+    const attachBatchRowListeners = (row) => {
+        const modelSelect = row.querySelector('[data-field="model"]');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', () => syncBatchRowFields(row));
+        }
+        const otcInput = row.querySelector('[data-field="otc"]');
+        const rateInput = row.querySelector('[data-field="omRate"]');
+        if (otcInput) otcInput.addEventListener('input', () => calculateBatchOmCost(row));
+        if (rateInput) rateInput.addEventListener('input', () => calculateBatchOmCost(row));
+        const removeBtn = row.querySelector('.batch-remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => row.remove());
+        }
+        syncBatchRowFields(row);
+        calculateBatchOmCost(row);
+    };
+
+    if (batchRowsContainer) {
+        batchRowsContainer.querySelectorAll('.batch-row').forEach(row => attachBatchRowListeners(row));
+    }
+
+    if (addBatchBtn && batchRowsContainer) {
+        addBatchBtn.addEventListener('click', () => {
+            const unit = document.querySelector('[name="capacity.unit"]')?.value || 'Gbps';
+            const row = document.createElement('div');
+            row.className = 'batch-row';
+            row.dataset.batchId = generateBatchId();
+            row.style.cssText = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem;';
+            row.innerHTML = `
+                <div class="grid-4">
+                    <div class="form-group">
+                        <label class="form-label">Batch Order ID</label>
+                        <input type="text" class="form-control batch-input" data-field="orderId" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Model</label>
+                        <select class="form-control batch-input" data-field="model">
+                            <option value="IRU" selected>IRU</option>
+                            <option value="Lease">Lease</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control batch-input" data-field="startDate" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control batch-input" data-field="status">
+                            <option value="Planned" selected>Planned</option>
+                            <option value="Active">Active</option>
+                            <option value="Ended">Ended</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-4">
+                    <div class="form-group">
+                        <label class="form-label">Capacity (${escapeJsString(unit)})</label>
+                        <input type="number" class="form-control batch-input" data-field="capacity" value="0">
+                    </div>
+                    <div class="form-group batch-iru-field">
+                        <label class="form-label">OTC ($)</label>
+                        <input type="number" class="form-control batch-input" data-field="otc" value="0">
+                    </div>
+                    <div class="form-group batch-iru-field">
+                        <label class="form-label">O&amp;M Rate (%)</label>
+                        <input type="number" class="form-control batch-input batch-om-rate" data-field="omRate" value="0" step="0.1" min="0" max="100">
+                    </div>
+                    <div class="form-group batch-iru-field">
+                        <label class="form-label">Term (Months)</label>
+                        <input type="number" class="form-control batch-input" data-field="termMonths" value="0">
+                    </div>
+                </div>
+                <div class="grid-2 batch-iru-field">
+                    <div class="form-group">
+                        <label class="form-label">Annual O&amp;M ($)</label>
+                        <input type="number" class="form-control batch-input batch-annual-om" data-field="annualOm" value="0" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group batch-lease-field">
+                        <label class="form-label">MRC ($)</label>
+                        <input type="number" class="form-control batch-input" data-field="mrc" value="0">
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:flex-end;">
+                        <button type="button" class="btn btn-secondary batch-remove-btn" style="font-size:0.75rem;">Remove Batch</button>
+                    </div>
+                </div>
+            `;
+            batchRowsContainer.appendChild(row);
+            attachBatchRowListeners(row);
+        });
     }
 
     // Initialize Handoff Type simple dropdown

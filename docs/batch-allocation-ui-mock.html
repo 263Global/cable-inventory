@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Batch Allocation UI Mock</title>
+  <link rel="stylesheet" href="../assets/css/bundle.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/utilities.css" />
+  <style>
+    body { background: radial-gradient(1200px 600px at 10% -10%, #2a3a5a, #0f172a 55%, #0b1020); }
+    .mock-wrap { max-width: 1200px; margin: 40px auto; padding: 0 24px; }
+    .mock-card { background: rgba(255,255,255,0.95); border-radius: 14px; box-shadow: 0 24px 60px rgba(5,10,30,0.35); padding: 24px; }
+    .mock-title { font-size: 1.1rem; font-weight: 700; color: #1f2937; }
+    .mock-sub { color: #6b7280; font-size: 0.85rem; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 0.75rem; }
+    .table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .table th, .table td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
+    .table th { text-align: left; color: #6b7280; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.02em; text-transform: uppercase; }
+    .alloc-ok { color: #059669; font-weight: 600; }
+    .alloc-warn { color: #b45309; font-weight: 600; }
+    .row-muted { color: #6b7280; }
+    .section { background: rgba(15,23,42,0.03); border: 1px solid rgba(15,23,42,0.08); border-radius: 10px; padding: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: linear-gradient(90deg,#22c55e,#16a34a); }
+    .hint { font-size: 0.75rem; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="mock-wrap">
+    <div class="mock-card">
+      <div style="display:flex; justify-content: space-between; align-items:center;">
+        <div>
+          <div class="mock-title">New Sales Order · Batch Allocation (Mock)</div>
+          <div class="mock-sub">Auto allocation by batch start date (earliest first)</div>
+        </div>
+        <div class="pill">Auto Allocation: A-End Start Date ↑</div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 18px;">
+        <div class="section">
+          <div style="font-weight: 600; margin-bottom: 10px;">Sales Information</div>
+          <div class="grid-2">
+            <div>
+              <label class="form-label">Sales Model</label>
+              <div class="form-control">IRU</div>
+            </div>
+            <div>
+              <label class="form-label">Sales Type</label>
+              <div class="form-control">Swapped Out</div>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 10px;">
+            <div>
+              <label class="form-label">Sales Capacity</label>
+              <div class="form-control">6,000 Gbps</div>
+              <div class="hint">Enter total contract capacity</div>
+            </div>
+            <div>
+              <label class="form-label">Inventory</label>
+              <div class="form-control">ADC Main Trunk</div>
+              <div class="hint">Batch mode enabled</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div style="font-weight: 600; margin-bottom: 10px;">Allocation Summary</div>
+          <div class="grid-3">
+            <div>
+              <div class="mock-sub">Capacity Needed</div>
+              <div style="font-weight: 700;">6,000 Gbps</div>
+            </div>
+            <div>
+              <div class="mock-sub">Allocated</div>
+              <div style="font-weight: 700;">6,000 Gbps</div>
+            </div>
+            <div>
+              <div class="mock-sub">Remaining</div>
+              <div class="alloc-ok">0 Gbps</div>
+            </div>
+          </div>
+          <div style="margin-top: 10px;" class="bar"><span style="width: 100%;"></span></div>
+          <div class="hint" style="margin-top: 8px;">System fills batches by start date until capacity is covered.</div>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top: 18px;">
+        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 6px;">
+          <div style="font-weight: 600;">Inventory Batches (Auto Allocation)</div>
+          <div class="pill">Sorted by Start Date</div>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Batch</th>
+              <th>Start Date</th>
+              <th>Capacity</th>
+              <th>Available</th>
+              <th>Allocated</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Batch A</td>
+              <td>2026-01-01</td>
+              <td>1,000 Gbps</td>
+              <td>1,000 Gbps</td>
+              <td class="alloc-ok">1,000 Gbps</td>
+              <td>Auto-filled</td>
+            </tr>
+            <tr>
+              <td>Batch B</td>
+              <td>2028-06-01</td>
+              <td>5,000 Gbps</td>
+              <td>5,000 Gbps</td>
+              <td class="alloc-ok">5,000 Gbps</td>
+              <td>Auto-filled</td>
+            </tr>
+            <tr class="row-muted">
+              <td>Batch C</td>
+              <td>2029-01-01</td>
+              <td>3,000 Gbps</td>
+              <td>3,000 Gbps</td>
+              <td>0 Gbps</td>
+              <td>Not needed</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="hint" style="margin-top: 8px;">If capacity is insufficient, the system will prompt you to select another batch.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

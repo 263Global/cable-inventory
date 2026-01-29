@@ -438,9 +438,7 @@ export function viewSalesDetails(context, salesOrderId) {
         totalRevenue = mrrDisplay * term;
     }
     let totalProfit = 0;
-    if (salesType === 'Swapped Out') {
-        totalProfit = 0;
-    } else if (salesModel === 'IRU') {
+    if (salesModel === 'IRU') {
         if (salesType === 'Resale') {
             const firstMonthProfit = computed.firstMonthProfit || 0;
             const recurringMonthlyProfit = computed.recurringMonthlyProfit || 0;

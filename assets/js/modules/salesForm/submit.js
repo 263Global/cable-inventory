@@ -14,6 +14,15 @@ export async function handleSalesSubmit(context, form) {
     const formData = new FormData(form);
     const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value;
     const getNum = (name) => Number(getVal(name) || 0);
+    const getJson = (name) => {
+        const raw = getVal(name);
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return [];
+        }
+    };
 
     // Check if we're editing an existing order
     const isEditMode = !!context._editingOrderId;
@@ -126,6 +135,14 @@ export async function handleSalesSubmit(context, form) {
         },
         notes: getVal('notes') || ''
     };
+    const batchAllocations = getJson('batchAllocations');
+    const inventoryId = getVal('inventoryLink');
+    const inventory = inventoryId ? window.Store.getInventory().find(i => i.resourceId === inventoryId) : null;
+    if (inventory?.costMode === 'batches') {
+        orderData.batchAllocations = batchAllocations;
+    } else if (batchAllocations.length) {
+        orderData.batchAllocations = batchAllocations;
+    }
 
     // Calculate and store financial metrics using unified engine
     const computed = computeOrderFinancials(orderData);
