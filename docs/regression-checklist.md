@@ -29,6 +29,10 @@ Use this checklist after changes that may impact UI, data entry, or calculations
   - Cost card amounts and supplier dropdowns.
 - Open the Renew modal and confirm fields prefill correctly.
 - Save the renewal and confirm the order updates.
+- Swapped Out order with missing/Lease salesModel:
+  - Set salesType = Swapped Out, leave salesModel empty or set to Lease.
+  - Link an Inventory resource.
+  - Verify monthly revenue equals linked inventory monthly cost and profit = 0.
 
 ## Cost Structure (Edit Mode)
 - For each cost type (cable, backhaul A/Z, XC A/Z, other):

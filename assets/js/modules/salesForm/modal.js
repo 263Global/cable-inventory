@@ -200,6 +200,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <div class="form-group" id="linked-resource-group">
                         <label class="form-label">Linked Resource (Available)</label>
                         <div id="linked-resource-dropdown-placeholder" data-selected="${escapeHtml(existingOrder?.inventoryLink || '')}"></div>
+                        <small id="linked-resource-hint" style="color:var(--text-muted)"></small>
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 

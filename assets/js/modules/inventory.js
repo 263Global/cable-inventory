@@ -342,9 +342,11 @@ export function viewInventoryDetails(context, resourceId) {
         const computed = computeOrderFinancials(sale);
         const monthlyRevenue = computed.monthlyRevenue || 0;
         const termMonths = sale.dates?.term || 12;
-        const oneTimeRevenue = sale.salesModel === 'IRU'
+        const isIru = sale.salesModel === 'IRU';
+        const isIruResale = isIru && sale.salesType === 'Resale';
+        const oneTimeRevenue = isIruResale
             ? (sale.financials?.otc || 0)
-            : (sale.financials?.nrcSales || 0);
+            : (isIru ? 0 : (sale.financials?.nrcSales || 0));
         totalMonthlyRevenue += monthlyRevenue;
         totalContractRevenue += (monthlyRevenue * termMonths) + oneTimeRevenue;
     });

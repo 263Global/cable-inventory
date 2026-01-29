@@ -433,9 +433,7 @@ export function viewSalesDetails(context, salesOrderId) {
 
     // Contract totals (align with unified financial logic)
     let totalRevenue = (mrrDisplay * term) + nrcDisplay;
-    if (salesType === 'Swapped Out') {
-        totalRevenue = 0;
-    } else if (salesModel === 'IRU' && salesType !== 'Resale') {
+    if (salesModel === 'IRU' && salesType !== 'Resale') {
         // IRU Inventory/Hybrid: monthly revenue already amortizes OTC
         totalRevenue = mrrDisplay * term;
     }

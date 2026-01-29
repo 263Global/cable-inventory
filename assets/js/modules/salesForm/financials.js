@@ -23,7 +23,7 @@ export function calculateSalesFinancials(context) {
 
     // ===== Calculate Inventory Monthly Cost (if applicable) =====
     let inventoryMonthlyCost = 0;
-    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid')) {
+    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid' || salesType === 'Swapped Out')) {
         const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
         if (invOwnership === 'IRU') {
             // IRU Inventory: (OTC / Term + Annual O&M / 12) × capacity ratio
@@ -62,7 +62,7 @@ export function calculateSalesFinancials(context) {
     let isIruResale = false;
 
     if (isSwappedOut) {
-        monthlyRevenue = 0;
+        monthlyRevenue = inventoryMonthlyCost;
         monthlyProfit = 0;
         firstMonthProfit = 0;
         ongoingMonthlyProfit = 0;

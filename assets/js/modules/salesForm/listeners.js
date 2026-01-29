@@ -1081,6 +1081,7 @@ export function attachSalesFormListeners(context) {
     const addCableBtn = document.getElementById('add-cable-btn');
     const linkedResourceGroup = document.getElementById('linked-resource-group');
     const inventoryLinkSelect = document.getElementById('inventory-link-select');
+    const linkedResourceHint = document.getElementById('linked-resource-hint');
 
     const updateSmartHints = () => {
         const type = salesTypeSelect?.value;
@@ -1116,14 +1117,19 @@ export function attachSalesFormListeners(context) {
                 linkedResourceGroup.style.display = 'none';
                 inventoryLinkSelect.removeAttribute('required');
                 inventoryLinkSelect.value = ''; // Clear selection
-            } else if (type === 'Swapped Out') {
-                // Show but optional for Swapped Out
-                linkedResourceGroup.style.display = '';
-                inventoryLinkSelect.removeAttribute('required');
             } else {
-                // Required for Inventory and Hybrid
+                // Required for Inventory / Hybrid / Swapped Out
                 linkedResourceGroup.style.display = '';
                 inventoryLinkSelect.setAttribute('required', 'required');
+            }
+        }
+        if (linkedResourceHint) {
+            if (type === 'Resale') {
+                linkedResourceHint.textContent = '';
+            } else if (type === 'Swapped Out') {
+                linkedResourceHint.textContent = 'Required for Swapped Out.';
+            } else {
+                linkedResourceHint.textContent = 'Required for Inventory and Hybrid.';
             }
         }
 

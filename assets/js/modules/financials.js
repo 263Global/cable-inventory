@@ -25,19 +25,6 @@ function computeOrderFinancials(order) {
     const salesTerm = order.dates?.term || 12;
     const salesCapacity = order.capacity?.value || 1;
 
-    if (salesType === 'Swapped Out') {
-        return {
-            monthlyRevenue: 0,
-            monthlyProfit: 0,
-            marginPercent: 0,
-            isIruResale: false,
-            firstMonthProfit: 0,
-            firstMonthMargin: 0,
-            recurringMonthlyProfit: 0,
-            recurringMargin: 0
-        };
-    }
-
     // Get linked inventory for Inventory/Hybrid types
     const inventoryLink = order.inventoryLink;
     const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
@@ -46,7 +33,7 @@ function computeOrderFinancials(order) {
 
     // Calculate Inventory Monthly Cost (if applicable)
     let inventoryMonthlyCost = 0;
-    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid')) {
+    if (linkedResource && (salesType === 'Inventory' || salesType === 'Hybrid' || salesType === 'Swapped Out')) {
         const invOwnership = linkedResource.acquisition?.ownership || 'Leased';
         if (invOwnership === 'IRU') {
             const invOtc = linkedResource.financials?.otc || 0;
@@ -56,6 +43,20 @@ function computeOrderFinancials(order) {
         } else {
             inventoryMonthlyCost = (linkedResource.financials?.mrc || 0) * capacityRatio;
         }
+    }
+
+    // Swapped Out: always zero profit, revenue equals linked inventory cost
+    if (salesType === 'Swapped Out') {
+        return {
+            monthlyRevenue: inventoryMonthlyCost,
+            monthlyProfit: 0,
+            marginPercent: 0,
+            isIruResale: false,
+            firstMonthProfit: 0,
+            firstMonthMargin: 0,
+            recurringMonthlyProfit: 0,
+            recurringMargin: 0
+        };
     }
 
     // Get Operating Costs (Backhaul, XC, Other)
@@ -166,8 +167,8 @@ function computeOrderFinancials(order) {
                 break;
 
             case 'Swapped Out':
-                // Swapped Out: No profit
-                monthlyRevenue = 0;
+                // Swapped Out: revenue equals cost from linked inventory (profit = 0)
+                monthlyRevenue = inventoryMonthlyCost;
                 monthlyProfit = 0;
                 break;
 

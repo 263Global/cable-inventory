@@ -19,6 +19,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Sales Form Split** - `salesForm.js` decomposed into focused modules with a re-export facade
 - **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
+- **Swapped Out Accounting** - Swapped Out now records inventory-based monthly revenue with zero profit (independent of salesModel), requires Inventory linkage, and updates UI hints/docs/regression checklist
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs

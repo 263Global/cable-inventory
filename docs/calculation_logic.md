@@ -278,13 +278,50 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 
 ---
 
-### 4. IRU + Swapped Out（置换）
-用自己的资源换取对方的资源，无现金交易。
+### 4. IRU + Swapped Out（资源置换）
+用自有 Inventory 资源与对方等价交换，双方成本和 O&M Rate 相同。
 
-**利润：**
+**前提条件：**
+- 双方资源 OTC 成本相同
+- 双方 Annual O&M Rate 相同
+- 无现金交易
+
+**收入（按月分摊）：**
 ```
-月利润 = 0（不计算利润，仅做记录）
+月 OTC 收入 = (Inventory OTC ÷ Inventory Term) × 分摊比例
+月 O&M 收入 = (Inventory Annual O&M ÷ 12) × 分摊比例
 ```
+
+**成本（按月分摊）：**
+```
+月 OTC 成本 = (Inventory OTC ÷ Inventory Term) × 分摊比例
+月 O&M 成本 = (Inventory Annual O&M ÷ 12) × 分摊比例
+```
+
+**月利润：**
+```
+月利润 = (月OTC收入 + 月O&M收入) - (月OTC成本 + 月O&M成本) = 0
+利润率 = 0%
+```
+
+**示例：**
+- Inventory（IRU）：OTC=120,000；Term=180；Annual O&M=12,000
+- 分摊比例=0.1（10G / 100G）
+```
+月OTC收入 = (120,000 ÷ 180) × 0.1 = 66.67
+月O&M收入 = (12,000 ÷ 12) × 0.1 = 100
+月收入合计 = 166.67
+
+月OTC成本 = 66.67
+月O&M成本 = 100
+月成本合计 = 166.67
+
+月利润 = 166.67 - 166.67 = 0
+```
+
+> **说明：** 虽然利润为零，但收入和成本需完整记录用于财务报表。置换获得的资源（Swapped In）在 Inventory 模块单独入账。
+>
+> **补充：** Swapped Out 的计算与 salesModel 无关，按本节逻辑处理。
 
 ---
 
@@ -322,7 +359,7 @@ Cable O&M月成本 = 6,000 ÷ 12 = 500
 | Resale | ❌ | ✅ | 一次性（第1月） | 第1月含OTC毛利，后续仅O&M差 |
 | Inventory | ✅ | ❌ | 按月分摊 | 月OTC+月O&M - Inventory成本 - 运营成本 |
 | Hybrid | ✅ | ✅ | 按月分摊 | 月OTC+月O&M - Inventory成本 - Cable成本 - 运营成本 |
-| Swapped Out | ✅ | ❌ | 不计算 | 0 |
+| Swapped Out | ✅ | ❌ | 按月分摊 | 月OTC+月O&M收入 - 月OTC+月O&M成本 = 0 |
 
 ---
 

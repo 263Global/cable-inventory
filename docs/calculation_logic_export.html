@@ -182,7 +182,14 @@ Cable O&amp;M月成本 = 6,000 ÷ 12 = 500
 
     <h3>4) IRU + Swapped Out（置换）</h3>
     <ul>
-      <li>月利润：0（不计算利润，仅做记录）</li>
+      <li>前提：双方资源 OTC 成本相同、Annual O&amp;M Rate 相同，无现金交易。</li>
+      <li>月 OTC 收入 = (Inventory OTC ÷ Inventory Term) × 分摊比例</li>
+      <li>月 O&amp;M 收入 = (Inventory Annual O&amp;M ÷ 12) × 分摊比例</li>
+      <li>月 OTC 成本 = (Inventory OTC ÷ Inventory Term) × 分摊比例</li>
+      <li>月 O&amp;M 成本 = (Inventory Annual O&amp;M ÷ 12) × 分摊比例</li>
+      <li>月利润 = (月OTC收入 + 月O&amp;M收入) - (月OTC成本 + 月O&amp;M成本) = 0</li>
+      <li>说明：利润为零，但收入与成本需记录用于财务报表。</li>
+      <li>补充：Swapped Out 的计算与 salesModel 无关。</li>
     </ul>
   </div>
 </body>
