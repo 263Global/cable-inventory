@@ -6,6 +6,25 @@
  * throughout the application for computing order profitability metrics.
  */
 
+const CAPACITY_UNIT_FACTORS = {
+    Gbps: 1,
+    Tbps: 1000
+};
+
+const normalizeCapacity = (value, unit) => {
+    const factor = CAPACITY_UNIT_FACTORS[unit] || 1;
+    return (Number(value) || 0) * factor;
+};
+
+const computeCapacityRatio = (salesCapacity, salesUnit, inventoryCapacity, inventoryUnit) => {
+    const normalizedInventory = normalizeCapacity(inventoryCapacity, inventoryUnit);
+    if (normalizedInventory <= 0) return 0;
+    const normalizedSales = normalizeCapacity(salesCapacity, salesUnit);
+    return normalizedSales / normalizedInventory;
+};
+
+window.computeCapacityRatio = computeCapacityRatio;
+
 /**
  * Computes financial metrics for a sales order based on Mixed Recognition Model
  * @param {object} order - Sales order object
@@ -24,12 +43,16 @@ function computeOrderFinancials(order) {
     const salesType = order.salesType || 'Resale';
     const salesTerm = order.dates?.term || 12;
     const salesCapacity = order.capacity?.value || 1;
+    const salesUnit = order.capacity?.unit || '';
 
     // Get linked inventory for Inventory/Hybrid types
     const inventoryLink = order.inventoryLink;
     const linkedResource = inventoryLink ? window.Store?.getInventory()?.find(r => r.resourceId === inventoryLink) : null;
-    const inventoryCapacity = linkedResource?.capacity?.value || 1;
-    const capacityRatio = salesCapacity / inventoryCapacity;
+    const inventoryCapacity = linkedResource?.capacity?.value || 0;
+    const inventoryUnit = linkedResource?.capacity?.unit || '';
+    const capacityRatio = linkedResource
+        ? computeCapacityRatio(salesCapacity, salesUnit, inventoryCapacity, inventoryUnit)
+        : 0;
 
     // Calculate Inventory Monthly Cost (if applicable)
     let inventoryMonthlyCost = 0;
@@ -187,7 +210,12 @@ function computeInventoryMonthlyCost(order, linkedResource, capacityRatioOverrid
     const inventoryCapacity = linkedResource.capacity?.value || 1;
     const capacityRatio = capacityRatioOverride !== null
         ? capacityRatioOverride
-        : (inventoryCapacity > 0 ? (salesCapacity / inventoryCapacity) : 0);
+        : computeCapacityRatio(
+            salesCapacity,
+            order.capacity?.unit || '',
+            inventoryCapacity,
+            linkedResource.capacity?.unit || ''
+        );
 
     if (linkedResource.costMode === 'batches') {
         let totalCost = 0;

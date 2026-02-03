@@ -25,6 +25,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
 - **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
 - **Inventory Costing** - Base O&M is now derived from O&M Rate (auto-calculated), not manual Annual O&M entry
+- **Batch Cost Allocation** - Base + batch costs now share a unified capacity ratio in the profit engine and sales form
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
@@ -34,6 +35,9 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
 - **Dashboard Escaping** - Sanitized alert and leaderboard fields to prevent injection
+
+### Tests
+- **Batch Allocation Coverage** - Added a test for base + batch cost allocation by capacity
 
 ## [1.8.1] - 2026-01-18
 

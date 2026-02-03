@@ -18,7 +18,14 @@ export function calculateSalesFinancials(context) {
     const inventoryLink = getVal('inventoryLink');
     const linkedResource = inventoryLink ? window.Store.getInventory().find(r => r.resourceId === inventoryLink) : null;
     const inventoryCapacity = linkedResource?.capacity?.value || 1;
-    const capacityRatio = salesCapacity / inventoryCapacity; // Capacity allocation ratio
+    const capacityRatio = window.computeCapacityRatio
+        ? window.computeCapacityRatio(
+            salesCapacity,
+            getVal('capacity.unit'),
+            inventoryCapacity,
+            linkedResource?.capacity?.unit || ''
+        )
+        : (inventoryCapacity > 0 ? (salesCapacity / inventoryCapacity) : 0);
 
     // ===== Calculate Inventory Monthly Cost (if applicable) =====
     let inventoryMonthlyCost = 0;
