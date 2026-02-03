@@ -113,6 +113,7 @@ Inventory月成本 = (300,000 ÷ 180 + 18,000 ÷ 12) × 0.1
 ```
 月利润 = MRC收入 - Inventory月成本 - Cable MRC - Backhaul MRC - XC MRC - Other Monthly
 ```
+> 注：Cable MRC 为所有 Cable 段合计；若某段为 IRU，则该段月成本 = Annual O&M ÷ 12。
 
 **示例 A（Inventory = Leased）：**
 - Inventory：MRC=8,000 → 分摊=800
@@ -336,7 +337,7 @@ Batch 月成本（Lease）= Batch MRC
 
 | 成本类型 | 月租字段 (MRC) | 一次性字段 (NRC/OTC) |
 |---------|---------------|---------------------|
-| **3rd Party Cable** | `costs.cable.mrc` | `costs.cable.nrc` / `costs.cable.otc` |
+| **3rd Party Cable** | `costs.cableSegments[].mrc` | `costs.cableSegments[].nrc` / `costs.cableSegments[].otc` |
 | **Backhaul A-End** | `costs.backhaul.aEnd.monthly` | `costs.backhaul.aEnd.nrc` |
 | **Backhaul Z-End** | `costs.backhaul.zEnd.monthly` | `costs.backhaul.zEnd.nrc` |
 | **Cross Connect A** | `costs.crossConnect.aEnd.monthly` | `costs.crossConnect.aEnd.nrc` |
@@ -344,6 +345,8 @@ Batch 月成本（Lease）= Batch MRC
 | **Other Costs** | `costs.otherCosts.monthly` | `costs.otherCosts.oneOff` |
 
 > 说明：当 Backhaul 为 IRU 时，月成本按 `OTC ÷ termMonths + Annual O&M ÷ 12` 计算，字段为 `costs.backhaul.aEnd.otc` / `costs.backhaul.aEnd.annualOm` / `costs.backhaul.aEnd.termMonths`（Z-End 同理）。
+
+> 说明：`costs.cableSegments` 支持多段海缆成本，系统会自动合计；`costs.cable.*` 作为首段兼容字段保留。
 
 > 说明：Inventory 详情页的 “Monthly Revenue” 指所有关联销售订单的月收入合计；IRU 订单按 OTC 摊销 + 月 O&M 口径计算。
 
