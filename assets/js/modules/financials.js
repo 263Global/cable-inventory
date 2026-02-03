@@ -25,6 +25,41 @@ const computeCapacityRatio = (salesCapacity, salesUnit, inventoryCapacity, inven
 
 window.computeCapacityRatio = computeCapacityRatio;
 
+const getCableSegments = (costs = {}) => {
+    if (Array.isArray(costs.cableSegments) && costs.cableSegments.length) {
+        return costs.cableSegments;
+    }
+    const legacy = costs.cable || costs.cableCost;
+    return legacy ? [legacy] : [];
+};
+
+const summarizeCableSegments = (segments, defaultTerm) => {
+    const summary = {
+        leaseMonthly: 0,
+        iruMonthlyOtc: 0,
+        iruMonthlyOm: 0,
+        totalOtc: 0,
+        totalNrc: 0
+    };
+    const termFallback = defaultTerm || 12;
+    segments.forEach(seg => {
+        const model = seg.model || 'Lease';
+        const annualOm = Number(seg.annualOm || 0);
+        const otc = Number(seg.otc || 0);
+        const term = Number(seg.termMonths || termFallback || 1);
+        summary.totalOtc += otc;
+        summary.totalNrc += Number(seg.nrc || 0);
+        if (model === 'IRU') {
+            summary.leaseMonthly += annualOm / 12;
+        } else {
+            summary.leaseMonthly += Number(seg.mrc || 0);
+        }
+        summary.iruMonthlyOtc += term > 0 ? (otc / term) : 0;
+        summary.iruMonthlyOm += annualOm / 12;
+    });
+    return summary;
+};
+
 /**
  * Computes financial metrics for a sales order based on Mixed Recognition Model
  * @param {object} order - Sales order object
@@ -64,6 +99,8 @@ function computeOrderFinancials(order) {
 
     // Get Operating Costs (Backhaul, XC, Other)
     const costs = order.costs || {};
+    const cableSegments = getCableSegments(costs);
+    const cableSummary = summarizeCableSegments(cableSegments, salesTerm);
     const getBackhaulMonthlyCost = (backhaul) => {
         if (!backhaul) return 0;
         if (backhaul.model === 'IRU') {
@@ -98,12 +135,7 @@ function computeOrderFinancials(order) {
         // Get Cable MRC (for Resale and Hybrid)
         let cableMRC = 0;
         if (salesType === 'Resale' || salesType === 'Hybrid') {
-            const cableModel = costs.cable?.model || 'Lease';
-            if (cableModel === 'Lease') {
-                cableMRC = costs.cable?.mrc || 0;
-            } else {
-                cableMRC = (costs.cable?.annualOm || 0) / 12;
-            }
+            cableMRC = cableSummary.leaseMonthly;
         }
 
         switch (salesType) {
@@ -130,11 +162,9 @@ function computeOrderFinancials(order) {
         const monthlyOmRevenue = annualOmRevenue / 12;
 
         // Get Cable costs (for Resale and Hybrid)
-        const cableOtc = costs.cable?.otc || 0;
-        const cableAnnualOm = costs.cable?.annualOm || 0;
-        const cableTerm = costs.cable?.termMonths || salesTerm;
-        const cableMonthlyOtc = cableOtc / cableTerm;
-        const cableMonthlyOm = cableAnnualOm / 12;
+        const cableOtc = cableSummary.totalOtc;
+        const cableMonthlyOtc = cableSummary.iruMonthlyOtc;
+        const cableMonthlyOm = cableSummary.iruMonthlyOm;
 
         switch (salesType) {
             case 'Resale':

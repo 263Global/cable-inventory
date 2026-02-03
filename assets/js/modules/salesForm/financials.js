@@ -7,6 +7,54 @@ export function calculateSalesFinancials(context) {
     const getValue = (name) => Number(document.querySelector(`[name="${name}"]`)?.value || 0);
     const getVal = (name) => document.querySelector(`[name="${name}"]`)?.value || '';
     const fmt = (num) => '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const getJson = (name) => {
+        const raw = getVal(name);
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return [];
+        }
+    };
+    const hasCableData = (segment) => {
+        if (!segment) return false;
+        const numericFields = [
+            segment.capacity, segment.mrc, segment.nrc, segment.otc,
+            segment.omRate, segment.annualOm, segment.termMonths
+        ];
+        const stringFields = [
+            segment.supplier, segment.orderNo, segment.cableSystem,
+            segment.protectionCableSystem, segment.startDate,
+            segment.endDate, segment.notes
+        ];
+        return numericFields.some(val => Number(val) > 0)
+            || stringFields.some(val => val)
+            || segment.model !== 'Lease'
+            || segment.protection !== 'Unprotected';
+    };
+    const getCableSegments = () => {
+        const segments = getJson('costs.cableSegments');
+        if (segments.length) return segments;
+        const legacy = {
+            supplier: getVal('costs.cable.supplier'),
+            orderNo: getVal('costs.cable.orderNo'),
+            cableSystem: getVal('costs.cable.cableSystem'),
+            capacity: getValue('costs.cable.capacity'),
+            capacityUnit: getVal('costs.cable.capacityUnit'),
+            model: getVal('costs.cable.model'),
+            protection: getVal('costs.cable.protection'),
+            protectionCableSystem: getVal('costs.cable.protectionCableSystem'),
+            mrc: getValue('costs.cable.mrc'),
+            nrc: getValue('costs.cable.nrc'),
+            otc: getValue('costs.cable.otc'),
+            omRate: getValue('costs.cable.omRate'),
+            annualOm: getValue('costs.cable.annualOm'),
+            startDate: getVal('costs.cable.startDate'),
+            termMonths: getValue('costs.cable.termMonths'),
+            endDate: getVal('costs.cable.endDate')
+        };
+        return hasCableData(legacy) ? [legacy] : [];
+    };
 
     // ===== Get Core Parameters =====
     const salesModel = getVal('salesModel');   // 'Lease' or 'IRU'
@@ -79,6 +127,21 @@ export function calculateSalesFinancials(context) {
     let firstMonthProfit = 0;  // For IRU Resale (OTC profit in first month)
     let ongoingMonthlyProfit = 0;  // For IRU Resale (subsequent months)
     let isIruResale = false;
+    const cableSegments = getCableSegments();
+    const cableNrcTotal = cableSegments.reduce((sum, seg) => sum + (Number(seg.nrc) || 0), 0);
+    const cableOtcTotal = cableSegments.reduce((sum, seg) => sum + (Number(seg.otc) || 0), 0);
+    const cableMonthlyLease = cableSegments.reduce((sum, seg) => {
+        const model = seg.model || 'Lease';
+        if (model === 'IRU') {
+            return sum + ((Number(seg.annualOm) || 0) / 12);
+        }
+        return sum + (Number(seg.mrc) || 0);
+    }, 0);
+    const cableMonthlyOtc = cableSegments.reduce((sum, seg) => {
+        const termMonths = Number(seg.termMonths) || salesTerm || 1;
+        return sum + ((Number(seg.otc) || 0) / termMonths);
+    }, 0);
+    const cableMonthlyOm = cableSegments.reduce((sum, seg) => sum + ((Number(seg.annualOm) || 0) / 12), 0);
 
     if (salesModel === 'Lease') {
         // ========== LEASE MODEL ==========
@@ -89,13 +152,7 @@ export function calculateSalesFinancials(context) {
         // Get Cable MRC (only for Resale and Hybrid)
         let cableMRC = 0;
         if (salesType === 'Resale' || salesType === 'Hybrid') {
-            const cableModel = getVal('costs.cable.model') || 'Lease';
-            if (cableModel === 'Lease') {
-                cableMRC = getValue('costs.cable.mrc');
-            } else {
-                // IRU cable: O&M / 12 as monthly cost
-                cableMRC = getValue('costs.cable.annualOm') / 12;
-            }
+            cableMRC = cableMonthlyLease;
         }
 
         switch (salesType) {
@@ -122,11 +179,7 @@ export function calculateSalesFinancials(context) {
         const monthlyOmRevenue = annualOmRevenue / 12;
 
         // Get Cable costs (for Resale and Hybrid)
-        const cableOtc = getValue('costs.cable.otc');
-        const cableAnnualOm = getValue('costs.cable.annualOm');
-        const cableTerm = getValue('costs.cable.termMonths') || salesTerm;
-        const cableMonthlyOtc = cableOtc / cableTerm;
-        const cableMonthlyOm = cableAnnualOm / 12;
+        const cableOtc = cableOtcTotal;
 
         switch (salesType) {
             case 'Resale':
@@ -216,7 +269,7 @@ export function calculateSalesFinancials(context) {
         nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
     } else {
         const nrcSales = getValue('financials.nrcSales');
-        const cableNrc = getValue('costs.cable.nrc');
+        const cableNrc = cableNrcTotal;
         const bhNrc = getValue('costs.backhaul.aEnd.nrc') + getValue('costs.backhaul.zEnd.nrc');
         const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
         const otherOneOff = getValue('costs.otherCosts.oneOff');
@@ -227,7 +280,11 @@ export function calculateSalesFinancials(context) {
 
     // ===== Check for cost date mismatch warning =====
     const salesStartDate = getVal('dates.start');
-    const cableStartDate = getVal('costs.cable.startDate');
+    const cableStartDate = cableSegments.reduce((earliest, seg) => {
+        if (!seg.startDate) return earliest;
+        if (!earliest || seg.startDate < earliest) return seg.startDate;
+        return earliest;
+    }, '');
     const warningEl = document.getElementById('cost-date-warning');
     const warningText = document.getElementById('cost-date-warning-text');
 

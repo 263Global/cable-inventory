@@ -113,6 +113,24 @@ test('computeOrderFinancials allocates batch + base costs by capacity', () => {
     nearlyEqual(result.monthlyProfit, 800);
 });
 
+test('computeOrderFinancials sums cable segments', () => {
+    window.Store = { getInventory: () => [] };
+    const order = {
+        salesModel: 'Lease',
+        salesType: 'Resale',
+        financials: { mrcSales: 1000 },
+        costs: {
+            cableSegments: [
+                { model: 'Lease', mrc: 100 },
+                { model: 'IRU', annualOm: 2400 }
+            ]
+        }
+    };
+
+    const result = window.computeOrderFinancials(order);
+    nearlyEqual(result.monthlyProfit, 700);
+});
+
 test('computeOrderFinancials handles Lease Inventory with operating costs', () => {
     const inventory = [{
         resourceId: 'INV-1',

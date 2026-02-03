@@ -30,7 +30,7 @@ export function attachSalesFormListeners(context) {
     // ===== Cost Card Templates =====
     const costCardTemplates = {
         cable: `
-                                                                                                                        <div class="cost-card" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                                                                                                                        <div class="cost-card cost-card-multi" data-cost-type="cable" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
                                                                                                                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.75rem;">
                                                                                                                                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
                                                                                                                                     <h5 style="color: var(--accent-primary); margin: 0; font-size: 0.9rem;">3rd Party Cable Cost</h5>
@@ -500,8 +500,8 @@ export function attachSalesFormListeners(context) {
         return Number(card.querySelector(selector)?.value || 0);
     };
 
-    const getCableCostModel = () => {
-        return document.querySelector('input[name="costs.cable.model"]')?.value || 'Lease';
+    const getCableCostModel = (card) => {
+        return card?.querySelector('input[name="costs.cable.model"]')?.value || 'Lease';
     };
 
     const getCostSummaryForCard = (card) => {
@@ -510,7 +510,7 @@ export function attachSalesFormListeners(context) {
         let onetime = 0;
 
         if (type === 'cable') {
-            const model = getCableCostModel();
+            const model = getCableCostModel(card);
             if (model === 'IRU') {
                 monthly = getCardValue(card, '[data-field="costs.cable.annualOm"]') / 12;
                 onetime = getCardValue(card, '[data-field="costs.cable.otc"]');
@@ -612,11 +612,13 @@ export function attachSalesFormListeners(context) {
     };
 
     // ===== Add Cost Card Function =====
-    let otherCostCounter = 0; // Counter for unique Other Costs cards
+    let multiCostCounter = 0; // Counter for unique multi cards
 
     const addCostCard = (type, isMulti = false) => {
+        const allowMultiple = isMulti || type === 'cable';
+
         // For non-multi types, prevent duplicates
-        if (!isMulti && addedCostTypes.has(type)) return;
+        if (!allowMultiple && addedCostTypes.has(type)) return;
 
         const template = costCardTemplates[type];
         if (!template) return;
@@ -626,8 +628,8 @@ export function attachSalesFormListeners(context) {
         const card = tempDiv.firstChild;
 
         // For multi-add cards, assign unique ID
-        if (isMulti) {
-            const uniqueId = `${type}_${++otherCostCounter}`;
+        if (allowMultiple) {
+            const uniqueId = `${type}_${++multiCostCounter}`;
             card.dataset.uniqueId = uniqueId;
         } else {
             addedCostTypes.add(type);
@@ -642,7 +644,16 @@ export function attachSalesFormListeners(context) {
             const dropdownId = `supplier-${type}-${Date.now()}`;
             supplierPlaceholder.outerHTML = createSupplierDropdown(fieldName, dropdownId);
             // Initialize the dropdown after it's in the DOM
-            setTimeout(() => initSearchableDropdown(`${dropdownId}-container`), 10);
+            setTimeout(() => {
+                initSearchableDropdown(`${dropdownId}-container`);
+                const supplierInput = card.querySelector(`input[name="${fieldName}"]`);
+                if (supplierInput) {
+                    supplierInput.addEventListener('change', () => {
+                        syncCostInputs();
+                        context.calculateSalesFinancials();
+                    });
+                }
+            }, 10);
         }
 
         // Initialize Cost Model and Protection SimpleDropdowns for cable card
@@ -685,7 +696,7 @@ export function attachSalesFormListeners(context) {
         }
 
         // Update toggle state (only for non-multi types)
-        if (!isMulti) {
+        if (!allowMultiple) {
             setCostToggleState(type, true);
         }
 
@@ -720,17 +731,8 @@ export function attachSalesFormListeners(context) {
 
             // Cost Model Toggle (Lease vs IRU) - using SimpleDropdown hidden input
             setTimeout(() => {
-                const modelInput = document.querySelector('input[name="costs.cable.model"]');
+                const modelInput = card.querySelector('input[name="costs.cable.model"]');
                 if (modelInput && leaseFields && iruFields) {
-                    // Create MutationObserver to detect value changes
-                    const modelObserver = new MutationObserver(() => {
-                        const isIRU = modelInput.value === 'IRU';
-                        leaseFields.style.display = isIRU ? 'none' : 'block';
-                        iruFields.style.display = isIRU ? 'block' : 'none';
-                        syncCostInputs();
-                        context.calculateSalesFinancials();
-                    });
-                    modelObserver.observe(modelInput, { attributes: true, attributeFilter: ['value'] });
                     // Also listen to manual input changes
                     modelInput.addEventListener('change', () => {
                         const isIRU = modelInput.value === 'IRU';
@@ -742,13 +744,8 @@ export function attachSalesFormListeners(context) {
                 }
 
                 // Protection Toggle - using SimpleDropdown hidden input
-                const protectionInput = document.querySelector('input[name="costs.cable.protection"]');
+                const protectionInput = card.querySelector('input[name="costs.cable.protection"]');
                 if (protectionInput && protectionSystemContainer) {
-                    const protectionObserver = new MutationObserver(() => {
-                        protectionSystemContainer.style.display = protectionInput.value === 'Protected' ? 'block' : 'none';
-                        syncCostInputs();
-                    });
-                    protectionObserver.observe(protectionInput, { attributes: true, attributeFilter: ['value'] });
                     protectionInput.addEventListener('change', () => {
                         protectionSystemContainer.style.display = protectionInput.value === 'Protected' ? 'block' : 'none';
                         syncCostInputs();
@@ -939,7 +936,7 @@ export function attachSalesFormListeners(context) {
             resetCostInputs(type);
         }
 
-        updateCostDisplays();
+        syncCostInputs();
         context.calculateSalesFinancials();
     };
 
@@ -947,12 +944,66 @@ export function attachSalesFormListeners(context) {
     const syncCostInputs = () => {
         cardsContainer.querySelectorAll('.cost-input').forEach(input => {
             const field = input.dataset.field;
+            if (!field) return;
+            const card = input.closest('.cost-card');
+            if (card?.dataset.costType === 'cable') return;
             const hiddenInput = document.querySelector(`[name="${field}"]`);
             if (hiddenInput) {
                 hiddenInput.value = input.value;
             }
         });
+        syncCableSegments();
         updateCostDisplays();
+    };
+
+    const syncCableSegments = () => {
+        const cableSegmentsInput = document.querySelector('input[name="costs.cableSegments"]');
+        if (!cableSegmentsInput) return;
+
+        const cards = Array.from(cardsContainer.querySelectorAll('.cost-card[data-cost-type="cable"]'));
+        const segments = cards.map(card => {
+            const getValue = (selector) => card.querySelector(selector)?.value || '';
+            const getNumber = (selector) => Number(getValue(selector) || 0);
+            const supplier = card.querySelector('input[name="costs.cable.supplier"]')?.value || '';
+            const model = card.querySelector('input[name="costs.cable.model"]')?.value || 'Lease';
+            const protection = card.querySelector('input[name="costs.cable.protection"]')?.value || 'Unprotected';
+
+            return {
+                supplier,
+                orderNo: getValue('[data-field="costs.cable.orderNo"]'),
+                cableSystem: getValue('[data-field="costs.cable.cableSystem"]'),
+                capacity: getNumber('[data-field="costs.cable.capacity"]'),
+                capacityUnit: getValue('[data-field="costs.cable.capacityUnit"]') || 'Gbps',
+                model,
+                protection,
+                protectionCableSystem: getValue('[data-field="costs.cable.protectionCableSystem"]'),
+                mrc: getNumber('[data-field="costs.cable.mrc"]'),
+                nrc: getNumber('[data-field="costs.cable.nrc"]'),
+                otc: getNumber('[data-field="costs.cable.otc"]'),
+                omRate: getNumber('[data-field="costs.cable.omRate"]'),
+                annualOm: getNumber('[data-field="costs.cable.annualOm"]'),
+                startDate: getValue('[data-field="costs.cable.startDate"]'),
+                termMonths: getNumber('[data-field="costs.cable.termMonths"]'),
+                endDate: getValue('[data-field="costs.cable.endDate"]'),
+                notes: getValue('[data-field="costs.cable.notes"]')
+            };
+        }).filter(segment => {
+            const numericFields = [
+                segment.capacity, segment.mrc, segment.nrc, segment.otc,
+                segment.omRate, segment.annualOm, segment.termMonths
+            ];
+            const stringFields = [
+                segment.supplier, segment.orderNo, segment.cableSystem,
+                segment.protectionCableSystem, segment.startDate,
+                segment.endDate, segment.notes
+            ];
+            return numericFields.some(val => Number(val) > 0)
+                || stringFields.some(val => val)
+                || segment.model !== 'Lease'
+                || segment.protection !== 'Unprotected';
+        });
+
+        cableSegmentsInput.value = JSON.stringify(segments);
     };
 
     // ===== Reset hidden inputs when card is removed =====
@@ -1283,21 +1334,17 @@ export function attachSalesFormListeners(context) {
                 // Hide 3rd Party Cable button for Inventory/Swapped Out
                 addCableBtn.style.display = 'none';
 
-                // Remove cable card if exists
-                const cableCard = cardsContainer.querySelector('.cost-card[data-cost-type="cable"]');
-                if (cableCard) {
-                    removeCostCard('cable', cableCard);
-                }
-                setCostToggleState('cable', false);
+                // Remove all cable cards if present
+                const cableCards = cardsContainer.querySelectorAll('.cost-card[data-cost-type="cable"]');
+                cableCards.forEach(card => card.remove());
+                syncCostInputs();
             } else {
                 // Show button
                 addCableBtn.style.display = '';
 
-                setCostToggleState('cable', addedCostTypes.has('cable'));
-
-                // Auto-add cable card for Resale/Hybrid
-                if ((type === 'Resale' || type === 'Hybrid') && !addedCostTypes.has('cable')) {
-                    addCostCard('cable');
+                // Auto-add cable card for Resale/Hybrid if none exists
+                if ((type === 'Resale' || type === 'Hybrid') && !cardsContainer.querySelector('.cost-card[data-cost-type="cable"]')) {
+                    addCostCard('cable', true);
                 }
             }
         }

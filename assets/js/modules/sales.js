@@ -368,6 +368,45 @@ export function viewSalesDetails(context, salesOrderId) {
     const salesModel = order.salesModel || 'Lease';
     const salesType = order.salesType || 'Resale';
     const term = order.dates?.term || 12;
+    const getCableSegments = (costs = {}) => {
+        if (Array.isArray(costs.cableSegments) && costs.cableSegments.length) {
+            return costs.cableSegments;
+        }
+        const legacy = costs.cable || costs.cableCost;
+        return legacy ? [legacy] : [];
+    };
+    const summarizeCableSegments = (segments, defaultTerm) => {
+        const summary = {
+            leaseMonthly: 0,
+            iruMonthlyOtc: 0,
+            iruMonthlyOm: 0,
+            totalOtc: 0,
+            totalNrc: 0,
+            allIru: segments.length > 0
+        };
+        const termFallback = defaultTerm || 12;
+        segments.forEach(seg => {
+            const model = seg.model || 'Lease';
+            if (model !== 'IRU') {
+                summary.allIru = false;
+            }
+            const annualOm = Number(seg.annualOm || 0);
+            const otc = Number(seg.otc || 0);
+            const termMonths = Number(seg.termMonths || termFallback || 1);
+            summary.totalOtc += otc;
+            summary.totalNrc += Number(seg.nrc || 0);
+            if (model === 'IRU') {
+                summary.leaseMonthly += annualOm / 12;
+            } else {
+                summary.leaseMonthly += Number(seg.mrc || 0);
+            }
+            summary.iruMonthlyOtc += termMonths > 0 ? (otc / termMonths) : 0;
+            summary.iruMonthlyOm += annualOm / 12;
+        });
+        return summary;
+    };
+    const cableSegments = getCableSegments(order.costs || {});
+    const cableSummary = summarizeCableSegments(cableSegments, term);
 
     // Revenue display - handle both Lease and IRU
     const isIru = salesModel === 'IRU';
@@ -381,19 +420,16 @@ export function viewSalesDetails(context, salesOrderId) {
     const statusClass = getSalesStatusBadgeClass(order.status);
 
     // Calculate costs display - MRC
-    const cableModel = order.costs?.cable?.model || 'Lease';
-    const cableOtc = order.costs?.cable?.otc || 0;
-    const cableAnnualOm = order.costs?.cable?.annualOm || 0;
-    const cableTerm = order.costs?.cable?.termMonths || term;
-    let cableCostMrc = order.costs?.cableCost?.mrc || order.costs?.cable?.mrc || 0;
+    const cableOtc = cableSummary.totalOtc;
+    const cableMonthlyOtc = cableSummary.iruMonthlyOtc;
+    const cableMonthlyOm = cableSummary.iruMonthlyOm;
+    let cableCostMrc = salesModel === 'IRU'
+        ? (cableMonthlyOtc + cableMonthlyOm)
+        : cableSummary.leaseMonthly;
     let cableCostLabel = 'Cable Cost';
     if (salesModel === 'IRU') {
-        const cableMonthlyOtc = cableTerm ? (cableOtc / cableTerm) : 0;
-        const cableMonthlyOm = cableAnnualOm / 12;
-        cableCostMrc = cableMonthlyOtc + cableMonthlyOm;
         cableCostLabel = 'Cable Cost (Amortized)';
-    } else if (cableModel === 'IRU') {
-        cableCostMrc = cableAnnualOm / 12;
+    } else if (cableSummary.allIru) {
         cableCostLabel = 'Cable Cost (O&M)';
     }
     const getBackhaulMonthlyCost = (backhaul) => {
@@ -416,7 +452,7 @@ export function viewSalesDetails(context, salesOrderId) {
     const totalCostsMrc = cableCostMrc + backhaulAMrc + backhaulZMrc + xcAMrc + xcZMrc + otherMonthly;
 
     // Calculate costs display - NRC
-    const cableCostNrc = order.costs?.cableCost?.nrc || order.costs?.cable?.nrc || 0;
+    const cableCostNrc = cableSummary.totalNrc;
     const backhaulANrc = backhaulA?.nrc || 0;
     const backhaulZNrc = backhaulZ?.nrc || 0;
     const xcANrc = order.costs?.crossConnectA?.nrc || 0;
@@ -493,16 +529,33 @@ export function viewSalesDetails(context, salesOrderId) {
     const zEndCity = order.location?.zEnd?.city || order.locationZEnd?.city || order.zEndCity || '-';
     const zEndPop = order.location?.zEnd?.pop || order.locationZEnd?.pop || order.zEndPop || '-';
 
-    // Get cable supplier name from ID
-    const cableSupplierId = order.costs?.cable?.supplier;
-    let cableSupplierName = cableSupplierId || '-';
-    if (cableSupplierId) {
-        const suppliers = window.Store.getSuppliers();
-        const supplier = suppliers.find(s => s.id === cableSupplierId);
-        if (supplier) {
-            cableSupplierName = supplier.short_name || supplier.full_name || cableSupplierId;
-        }
-    }
+    // Get cable supplier names
+    const suppliers = window.Store.getSuppliers();
+    const resolveSupplierName = (supplierId) => {
+        if (!supplierId) return '';
+        const supplier = suppliers.find(s => s.id === supplierId);
+        return supplier ? (supplier.short_name || supplier.full_name || supplierId) : supplierId;
+    };
+    const cableSegmentRows = cableSegments.map((seg, index) => {
+        const supplierName = resolveSupplierName(seg.supplier) || '-';
+        const system = seg.cableSystem || '-';
+        const capacity = seg.capacity ? `${seg.capacity} ${seg.capacityUnit || 'Gbps'}` : '';
+        const model = seg.model || 'Lease';
+        const protection = seg.protection && seg.protection !== 'Unprotected'
+            ? `${seg.protection}${seg.protectionCableSystem ? ` (${seg.protectionCableSystem})` : ''}`
+            : '';
+        const meta = [capacity, model, protection].filter(Boolean).join(' • ');
+        const orderNo = seg.orderNo ? ` (${seg.orderNo})` : '';
+        return `
+            <tr>
+                <td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Segment ${index + 1}</td>
+                <td>
+                    <div style="font-weight:600; color:var(--accent-primary);">${system}${orderNo}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${supplierName}${meta ? ` • ${meta}` : ''}</div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
     const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
@@ -584,16 +637,11 @@ export function viewSalesDetails(context, salesOrderId) {
                 </div>
 
                 <!-- Cable System Information (Resale only) -->
-                ${salesType === 'Resale' && (order.costs?.cable?.cableSystem || order.costs?.cable?.supplier) ? `
+                ${salesType === 'Resale' && cableSegments.length ? `
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">🔌 Cable System</h4>
                     <table style="width:100%;">
-                        ${order.costs?.cable?.cableSystem ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable System</td><td style="font-weight:600; color:var(--accent-primary);">${order.costs.cable.cableSystem}</td></tr>` : ''}
-                        ${order.costs?.cable?.supplier ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Supplier</td><td>${cableSupplierName}</td></tr>` : ''}
-                        ${order.costs?.cable?.capacity ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono">${order.costs.cable.capacity} ${order.costs.cable.capacityUnit || 'Gbps'}</td></tr>` : ''}
-                        ${order.costs?.cable?.model ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Model</td><td>${order.costs.cable.model}</td></tr>` : ''}
-                        ${order.costs?.cable?.protection && order.costs.cable.protection !== 'Unprotected' ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Protection</td><td><span style="color:var(--accent-success);">${order.costs.cable.protection}</span>${order.costs.cable.protectionCableSystem ? ` (${order.costs.cable.protectionCableSystem})` : ''}</td></tr>` : ''}
-                        ${order.costs?.cable?.orderNo ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order No.</td><td class="font-mono">${order.costs.cable.orderNo}</td></tr>` : ''}
+                        ${cableSegmentRows}
                     </table>
                 </div>
                 ` : ''}

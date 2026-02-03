@@ -26,6 +26,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
 - **Inventory Costing** - Base O&M is now derived from O&M Rate (auto-calculated), not manual Annual O&M entry
 - **Batch Cost Allocation** - Base + batch costs now share a unified capacity ratio in the profit engine and sales form
+- **Cable Cost Segments** - Resale/Hybrid cable costs now support multiple segments and aggregate in financials
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
