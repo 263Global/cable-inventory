@@ -27,6 +27,9 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Inventory Costing** - Base O&M is now derived from O&M Rate (auto-calculated), not manual Annual O&M entry
 - **Batch Cost Allocation** - Base + batch costs now share a unified capacity ratio in the profit engine and sales form
 - **Cable Cost Segments** - Resale/Hybrid cable costs now support multiple segments and aggregate in financials
+- **Batch Capacity Guard** - Inventory batch totals cannot exceed base capacity at save time
+- **Batch Capacity Display** - Inventory list and detail views show lit vs unlit capacity for batch mode
+- **Batch Capacity Label** - Base capacity field clarifies it is total/unlit when using batch mode
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs

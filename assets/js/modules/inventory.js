@@ -172,6 +172,10 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
             progressColor
         } = getInventoryDisplayMetrics(item, totalSoldCapacity, now);
 
+        const baseCapacity = item.capacity?.value || 0;
+        const isBatchMode = item.costMode === 'batches';
+        const litCapacity = isBatchMode ? totalCapacity : baseCapacity;
+        const unlitCapacity = isBatchMode ? Math.max(0, baseCapacity - litCapacity) : 0;
         return `
                         <tr style="${calculatedStatus === 'Expired' ? 'opacity: 0.6;' : ''}" class="${context._selectedInventory.has(item.resourceId) ? 'row-selected' : ''}">
                             ${context._inventorySelectionMode ? `<td style="text-align: center;"><input type="checkbox" class="inventory-row-checkbox" data-id="${escapeHtml(item.resourceId)}" ${context._selectedInventory.has(item.resourceId) ? 'checked' : ''}></td>` : ''}
@@ -199,12 +203,22 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
                                 <div style="font-size:0.8em; color:var(--text-muted)">
                                     ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
                                 </div>
+                                ${isBatchMode ? `
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">
+                                    Lit ${litCapacity}/${baseCapacity} ${item.capacity?.unit || 'Gbps'} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
+                                </div>
+                                ` : ''}
                                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
                                     ${escapeHtml(item.segmentType || '')} (${escapeHtml(item.protection || '')})
                                 </div>
                                 <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-warning); margin-top:0.35rem; font-weight:500;">
                                     📊 已售 ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
                                 </div>
+                                ${isBatchMode ? `
+                                <div class="mobile-capacity-info" style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">
+                                    🔆 Lit ${litCapacity}/${baseCapacity} ${item.capacity?.unit || 'Gbps'} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
+                                </div>
+                                ` : ''}
                             </td>
                             <td class="col-cost-info">
                                 ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
@@ -327,13 +341,16 @@ export function viewInventoryDetails(context, resourceId) {
 
     // Calculate usage
     const totalSoldCapacity = soldByResourceId.get(resourceId) || 0;
-    const totalCapacity = item.capacity?.value || 0;
+    const baseCapacity = item.capacity?.value || 0;
     const {
         calculatedStatus,
         totalCapacity: displayTotalCapacity,
         usagePercent,
         statusBadgeClass
     } = getInventoryDisplayMetrics(item, totalSoldCapacity, now);
+    const isBatchMode = item.costMode === 'batches';
+    const litCapacity = isBatchMode ? displayTotalCapacity : baseCapacity;
+    const unlitCapacity = isBatchMode ? Math.max(0, baseCapacity - litCapacity) : 0;
 
     // Calculate financial totals from linked sales
     let totalMonthlyRevenue = 0;
@@ -389,8 +406,8 @@ export function viewInventoryDetails(context, resourceId) {
             </h4>
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
                 <div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Total Capacity</div>
-                    <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-primary);">${totalCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">${isBatchMode ? 'Base Capacity' : 'Total Capacity'}</div>
+                    <div class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-primary);">${baseCapacity} ${item.capacity?.unit || 'Gbps'}</div>
                 </div>
                 <div>
                     <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Sold</div>
@@ -406,6 +423,12 @@ export function viewInventoryDetails(context, resourceId) {
                     <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Sum of linked sales monthly revenue (incl. IRU amortized)</div>
                 </div>
             </div>
+            ${isBatchMode ? `
+            <div style="margin-top: 0.75rem; display: flex; gap: 1rem; justify-content: center; font-size: 0.75rem; color: var(--text-muted);">
+                <div><span style="color: var(--accent-warning); font-weight: 600;">Lit</span> ${litCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+                <div><span style="color: var(--accent-secondary); font-weight: 600;">Unlit</span> ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}</div>
+            </div>
+            ` : ''}
             <!-- Usage Progress Bar -->
             <div style="margin-top: 1rem;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
@@ -508,6 +531,10 @@ export function openInventoryModal(context, resourceId = null) {
     const existingSupplier = item.acquisition?.supplierId || '';
 
 
+    const isBatchMode = item.costMode === 'batches';
+    const capacityLabel = isBatchMode ? 'Base Capacity (Total, Unlit)' : 'Capacity Value';
+    const capacityHelp = isBatchMode ? 'Batches represent lit capacity drawn from this total.' : '';
+
     const formHTML = `
                                                                                                                         ${item.usage?.currentUser ? `
             <!-- Usage Information -->
@@ -525,6 +552,8 @@ export function openInventoryModal(context, resourceId = null) {
                 </div>
             </div>
             ` : ''}
+
+                                                                                                                        <div id="inventory-form-error" style="display:none; background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); color: var(--accent-danger); padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem;"></div>
 
                                                                                                                         <!-- Core Identity -->
                                                                                                                         <h4 class="mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-top:0;">Identity</h4>
@@ -584,17 +613,18 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         </div>
                                                                                                                         <div class="grid-1">
                                                                                                                             <div class="form-group">
-                                                                                                                                <label class="form-label">Route Description</label>
+                                                                                                                               <label class="form-label">Route Description</label>
                                                                                                                                 <textarea class="form-control" name="routeDescription" rows="3" placeholder="Describe the cable routing path...">${escapeHtml(item.routeDescription || '')}</textarea>
                                                                                                                             </div>
                                                                                                                         </div>
                                                                                                                         <div class="grid-3">
                                                                                                                             <div class="form-group">
-                                                                                                                                <label class="form-label">Capacity Value</label>
+                                                                                                                                <label class="form-label" id="inventory-capacity-label">${capacityLabel}</label>
                                                                                                                                 <input type="number" class="form-control" name="capacity.value" value="${item.capacity?.value || 0}">
+                                                                                                                                <div id="inventory-capacity-help" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem; ${capacityHelp ? '' : 'display:none;'}">${capacityHelp}</div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
-                                                                                                                                <label class="form-label">Unit</label>
+                                                                                                                               <label class="form-label">Unit</label>
                                                                                                                                 <div id="inventory-capacity-unit-dropdown-placeholder" data-selected="${escapeHtml(item.capacity?.unit || 'Gbps')}"></div>
                                                                                                                             </div>
                                                                                                                             <div class="form-group">
@@ -883,6 +913,16 @@ export function openInventoryModal(context, resourceId = null) {
             };
         }).filter(b => b.capacity.value > 0);
 
+        setFormError('');
+        if (newItem.costMode === 'batches') {
+            const baseCapacity = newItem.capacity?.value || 0;
+            const batchTotal = batches.reduce((sum, batch) => sum + (batch.capacity?.value || 0), 0);
+            if (batchTotal > baseCapacity) {
+                setFormError(`Total batch capacity (${batchTotal} ${newItem.capacity?.unit || 'Gbps'}) exceeds base capacity (${baseCapacity} ${newItem.capacity?.unit || 'Gbps'}).`);
+                return false;
+            }
+        }
+
         if (isEdit) {
             await window.Store.updateInventory(newItem.resourceId, newItem);
         } else {
@@ -1029,6 +1069,37 @@ export function openInventoryModal(context, resourceId = null) {
     const baseIruContainer = document.getElementById('base-iru-container');
     const baseAnnualOmContainer = document.getElementById('base-annual-om-container');
     const baseTermContainer = document.getElementById('base-term-container');
+    const capacityLabelEl = document.getElementById('inventory-capacity-label');
+    const capacityHelpEl = document.getElementById('inventory-capacity-help');
+    const formErrorEl = document.getElementById('inventory-form-error');
+
+    const setFormError = (message) => {
+        if (!formErrorEl) return;
+        if (message) {
+            formErrorEl.textContent = message;
+            formErrorEl.style.display = 'block';
+            formErrorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            formErrorEl.textContent = '';
+            formErrorEl.style.display = 'none';
+        }
+    };
+
+    const updateCapacityLabel = () => {
+        const isBatchModeSelected = (costModeInput?.value || 'single') === 'batches';
+        if (capacityLabelEl) {
+            capacityLabelEl.textContent = isBatchModeSelected ? 'Base Capacity (Total, Unlit)' : 'Capacity Value';
+        }
+        if (capacityHelpEl) {
+            if (isBatchModeSelected) {
+                capacityHelpEl.textContent = 'Batches represent lit capacity drawn from this total.';
+                capacityHelpEl.style.display = 'block';
+            } else {
+                capacityHelpEl.textContent = '';
+                capacityHelpEl.style.display = 'none';
+            }
+        }
+    };
 
     const updateCostModeDisplay = () => {
         const mode = costModeInput?.value || 'single';
@@ -1043,6 +1114,7 @@ export function openInventoryModal(context, resourceId = null) {
             if (baseCostSection) baseCostSection.style.display = 'none';
             if (batchSection) batchSection.style.display = 'none';
         }
+        updateCapacityLabel();
     };
 
     const updateBaseModelDisplay = () => {
@@ -1073,6 +1145,8 @@ export function openInventoryModal(context, resourceId = null) {
     const baseOtcInput = document.querySelector('[name="baseCost.otc"]');
     const baseOmRateInput = document.getElementById('base-om-rate-input');
     const baseAnnualOmInput = document.getElementById('base-annual-om-input');
+    const baseTermInput = document.querySelector('[name="baseCost.termMonths"]');
+    const inventoryStartInput = document.getElementById('start-date-input');
 
     const calculateBaseOmCost = () => {
         if (!baseOtcInput || !baseOmRateInput || !baseAnnualOmInput) return;
@@ -1080,6 +1154,29 @@ export function openInventoryModal(context, resourceId = null) {
         const omRateVal = parseFloat(baseOmRateInput.value) || 0;
         const annualCost = (otcVal * omRateVal / 100);
         baseAnnualOmInput.value = annualCost.toFixed(2);
+    };
+
+    const computeBaseEndDate = () => {
+        if (!inventoryStartInput || !baseTermInput) return null;
+        const startVal = inventoryStartInput.value;
+        const termVal = parseInt(baseTermInput.value, 10);
+        if (!startVal || !termVal || termVal <= 0) return null;
+        const endDate = new Date(startVal);
+        if (Number.isNaN(endDate.getTime())) return null;
+        endDate.setMonth(endDate.getMonth() + termVal);
+        endDate.setDate(endDate.getDate() - 1);
+        return endDate;
+    };
+
+    const computeBatchTermMonths = (batchStartVal) => {
+        if (!batchStartVal) return 0;
+        const baseEndDate = computeBaseEndDate();
+        if (!baseEndDate) return 0;
+        const start = new Date(batchStartVal);
+        if (Number.isNaN(start.getTime())) return 0;
+        if (baseEndDate < start) return 0;
+        return ((baseEndDate.getFullYear() - start.getFullYear()) * 12)
+            + (baseEndDate.getMonth() - start.getMonth()) + 1;
     };
 
     if (baseOtcInput && baseOmRateInput) {
@@ -1113,6 +1210,21 @@ export function openInventoryModal(context, resourceId = null) {
         annualInput.value = annual.toFixed(2);
     };
 
+    const updateBatchTermForRow = (row) => {
+        const startInput = row.querySelector('[data-field="startDate"]');
+        const termInput = row.querySelector('[data-field="termMonths"]');
+        if (!startInput || !termInput) return;
+        const computed = computeBatchTermMonths(startInput.value);
+        if (computed > 0) {
+            termInput.value = computed;
+        }
+    };
+
+    const updateAllBatchTerms = () => {
+        if (!batchRowsContainer) return;
+        batchRowsContainer.querySelectorAll('.batch-row').forEach(row => updateBatchTermForRow(row));
+    };
+
     const attachBatchRowListeners = (row) => {
         const modelSelect = row.querySelector('[data-field="model"]');
         if (modelSelect) {
@@ -1122,12 +1234,17 @@ export function openInventoryModal(context, resourceId = null) {
         const rateInput = row.querySelector('[data-field="omRate"]');
         if (otcInput) otcInput.addEventListener('input', () => calculateBatchOmCost(row));
         if (rateInput) rateInput.addEventListener('input', () => calculateBatchOmCost(row));
+        const startInput = row.querySelector('[data-field="startDate"]');
+        if (startInput) {
+            startInput.addEventListener('change', () => updateBatchTermForRow(row));
+        }
         const removeBtn = row.querySelector('.batch-remove-btn');
         if (removeBtn) {
             removeBtn.addEventListener('click', () => row.remove());
         }
         syncBatchRowFields(row);
         calculateBatchOmCost(row);
+        updateBatchTermForRow(row);
     };
 
     if (batchRowsContainer) {
@@ -1204,6 +1321,12 @@ export function openInventoryModal(context, resourceId = null) {
             batchRowsContainer.appendChild(row);
             attachBatchRowListeners(row);
         });
+    }
+    if (inventoryStartInput) {
+        inventoryStartInput.addEventListener('change', updateAllBatchTerms);
+    }
+    if (baseTermInput) {
+        baseTermInput.addEventListener('input', updateAllBatchTerms);
     }
 
     // Initialize Handoff Type simple dropdown
