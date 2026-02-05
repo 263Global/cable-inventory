@@ -88,9 +88,9 @@ export function initCustomersModule(App) {
                         ` : paginatedData.map(c => `
                             <tr>
                                 <td><strong>${escapeHtml(c.short_name || '')}</strong></td>
-                                <td class="mobile-hidden">${escapeHtml(c.full_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(c.contact_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(c.contact_email || '-')}</td>
+                                <td class="mobile-hidden" data-label="Full Name">${escapeHtml(c.full_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Contact">${escapeHtml(c.contact_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Email">${escapeHtml(c.contact_email || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-icon" onclick="App.openCustomerModal('${escapeJsString(c.id)}')" title="Edit">

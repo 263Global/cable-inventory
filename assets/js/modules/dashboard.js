@@ -239,7 +239,7 @@ export function renderDashboard(context) {
             <!-- 2. Margin Distribution -->
             <div class="card" style="border-left: 4px solid var(--accent-warning);">
                 <h3 class="mb-4" style="color: var(--accent-warning)"><ion-icon name="stats-chart-outline"></ion-icon> Margin Distribution</h3>
-                ${marginTotal === 0 ? '<p style="color:var(--text-muted)">No sales data.</p>' : `
+                ${marginTotal === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="stats-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
                     <div>
                         <div style="display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;">
                             ${marginDist.high > 0 ? `<div style="flex: ${marginDist.high}; background: var(--accent-success);" title="High (≥50%)"></div>` : ''}
@@ -258,7 +258,7 @@ export function renderDashboard(context) {
             <!-- 3. Sales by Type -->
             <div class="card">
                 <h3 class="mb-4"><ion-icon name="pie-chart-outline"></ion-icon> Sales by Type</h3>
-                ${totalSalesCount === 0 ? '<p style="color:var(--text-muted)">No sales data.</p>' : `
+                ${totalSalesCount === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="pie-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
                     <div style="display: flex; align-items: center; gap: 2rem;">
                         <div style="position: relative; width: 120px; height: 120px;">
                             <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
@@ -286,7 +286,7 @@ export function renderDashboard(context) {
             <!-- 4. Leaderboard + Export -->
             <div class="card leaderboard-card" style="border-left: 4px solid var(--accent-primary);">
                 <h3 class="mb-4" style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
-                ${leaderboard.length === 0 ? '<p style="color:var(--text-muted)">No data.</p>' : `
+                ${leaderboard.length === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="trophy-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales team data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add Sale</button></p>' : `
                     <div class="leaderboard-list" style="margin-bottom: 1rem;">
                         ${(() => {
                 const maxMrr = leaderboard[0]?.totalMrr || 1;

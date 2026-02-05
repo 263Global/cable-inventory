@@ -86,8 +86,8 @@ export function initSuppliersModule(App) {
                         ` : paginatedData.map(s => `
                             <tr>
                                 <td><strong>${escapeHtml(s.short_name || '')}</strong></td>
-                                <td class="mobile-hidden">${escapeHtml(s.full_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(s.contact_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Full Name">${escapeHtml(s.full_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Contact">${escapeHtml(s.contact_name || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-icon" onclick="App.openSupplierModal('${escapeJsString(s.id)}')" title="Edit">

@@ -40,6 +40,27 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Tests
 - **Batch Allocation Coverage** - Added a test for base + batch cost allocation by capacity
 
+## [1.8.2] - 2026-02-05
+
+### Added
+- **Mobile Card Layouts** - Data tables transform into stacked cards on mobile (< 768px)
+  - Customers and Suppliers: Full Name, Contact, Email fields with labels
+  - Inventory and Sales: Already implemented, verified working
+  - Uses CSS grid and `data-label` attributes for responsive display
+
+### Changed
+- **Touch Optimizations** - Added `touch-action: manipulation` to remove 300ms tap delay
+- **FAB Position** - Increased bottom offset from 90px to 100px for better nav bar clearance
+- **Filter Bar Layout** - Search bar now full-width on mobile with filters stacked below
+- **Safe Area Padding** - Bottom navigation respects `env(safe-area-inset-bottom)`
+- **Focus States** - Added `focus-visible` styles for keyboard navigation accessibility
+- **Table Headers** - Changed from ALL CAPS to Title Case for better readability
+- **Sidebar Layout** - Reorganized footer with compact theme toggle and danger-styled sign out
+
+### Improved
+- **Dashboard Empty States** - Added CTA buttons for Inventory and Sales when no data exists
+- **Placeholder Contrast** - Increased form input placeholder visibility
+
 ## [1.8.1] - 2026-01-18
 
 ### Added
