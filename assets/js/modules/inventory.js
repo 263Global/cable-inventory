@@ -536,27 +536,50 @@ export function openInventoryModal(context, resourceId = null) {
     const capacityHelp = isBatchMode ? 'Batches represent lit capacity drawn from this total.' : '';
 
     const formHTML = `
-                                                                                                                        ${item.usage?.currentUser ? `
-            <!-- Usage Information -->
-            <div class="mb-4 p-3" style="background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px;">
-                <h4 class="mb-2" style="color: var(--accent-danger); font-size: 0.9rem;"><ion-icon name="link-outline"></ion-icon> Linked Sales</h4>
-                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                    <div>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Customer:</span>
-                        <div style="font-weight: 600; font-size: 1.1rem;">${escapeHtml(item.usage.currentUser)}</div>
-                    </div>
-                    <div>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Sales Order:</span>
-                        <div class="font-mono" style="color: var(--accent-secondary);">${escapeHtml(item.usage.orderLink || 'N/A')}</div>
-                    </div>
+        ${item.usage?.currentUser ? `
+        <!-- Usage Information -->
+        <div class="mb-4 p-3" style="background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px;">
+            <h4 class="mb-2" style="color: var(--accent-danger); font-size: 0.9rem;"><ion-icon name="link-outline"></ion-icon> Linked Sales</h4>
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Customer:</span>
+                    <div style="font-weight: 600; font-size: 1.1rem;">${escapeHtml(item.usage.currentUser)}</div>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Sales Order:</span>
+                    <div class="font-mono" style="color: var(--accent-secondary);">${escapeHtml(item.usage.orderLink || 'N/A')}</div>
                 </div>
             </div>
-            ` : ''}
+        </div>
+        ` : ''}
 
-                                                                                                                        <div id="inventory-form-error" style="display:none; background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); color: var(--accent-danger); padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem;"></div>
+        <div id="inventory-form-error" style="display:none; background: rgba(189, 39, 30, 0.1); border: 1px solid var(--accent-danger); color: var(--accent-danger); padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem;"></div>
 
-                                                                                                                        <!-- Core Identity -->
-                                                                                                                        <h4 class="mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-top:0;">Identity</h4>
+        <!-- Stepper Navigation -->
+        <div class="form-stepper" id="inventory-stepper">
+            <div class="step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Core Info</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Connectivity</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Financials</span>
+            </div>
+        </div>
+
+        <!-- STEP 1: Core Info -->
+        <div class="form-step" data-step="1" id="inventory-step-1">
+            <!-- Identity -->
+            <div class="form-section-header">
+                <ion-icon name="finger-print-outline"></ion-icon>
+                <span>Identity</span>
+            </div>
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Resource ID</label>
@@ -569,7 +592,10 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                         </div>
 
                                                                                                                         <!--Acquisition -->
-                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Acquisition</h4>
+            <div class="form-section-header">
+                <ion-icon name="cart-outline"></ion-icon>
+                <span>Acquisition</span>
+            </div>
                                                                                                                         <div class="grid-3">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Acquisition Type</label>
@@ -583,14 +609,24 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                                 <label class="form-label">Supplier</label>
                                                                                                                                 <div id="inventory-supplier-dropdown-placeholder"></div>
                                                                                                                             </div>
+                                                                                                                        </div>
+                                                                                                                        <div class="grid-3">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Contract Ref</label>
                                                                                                                                 <input type="text" class="form-control" name="acquisition.contractRef" value="${escapeHtml(item.acquisition?.contractRef || '')}">
                                                                                                                             </div>
+                                                                                                                            <div class="form-group">
+                                                                                                                                <label class="form-label">Cost Mode</label>
+                                                                                                                                <div id="inventory-cost-mode-dropdown-placeholder" data-selected="${escapeHtml(item.costMode || 'single')}"></div>
+                                                                                                                                <small style="color:var(--text-muted)">Batches = capacity below is base pool</small>
+                                                                                                                            </div>
                                                                                                                         </div>
 
                                                                                                                         <!-- Technical Specs -->
-                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Technical Specs</h4>
+            <div class="form-section-header">
+                <ion-icon name="settings-outline"></ion-icon>
+                <span>Technical Specs</span>
+            </div>
                                                                                                                         <div class="grid-2">
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Cable System</label>
@@ -639,9 +675,21 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                         </div>
 
-                                                                                                                        <!--Locations -->
-                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Location</h4>
-                                                                                                                        <div class="grid-2">
+            <!-- Step 1 Navigation -->
+            <div class="form-step-nav">
+                <div></div>
+                <button type="button" class="btn btn-primary" id="step-next-1">Next: Connectivity <ion-icon name="arrow-forward-outline"></ion-icon></button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Connectivity -->
+        <div class="form-step" data-step="2" id="inventory-step-2" style="display:none;">
+            <div class="form-section-header">
+                <ion-icon name="git-network-outline"></ion-icon>
+                <span>Location Endpoints</span>
+            </div>
+            
+            <div class="grid-2">
                                                                                                                             <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:4px;">
                                                                                                                                 <h5 class="mb-2" style="color:var(--accent-primary)">A-End</h5>
                                                                                                                                 <div class="form-group"><label class="form-label">Country</label><input type="text" class="form-control" name="location.aEnd.country" value="${escapeHtml(item.location?.aEnd?.country || '')}"></div>
@@ -658,21 +706,34 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                                 <div class="form-group"><label class="form-label">Device</label><input type="text" class="form-control" name="location.zEnd.device" value="${escapeHtml(item.location?.zEnd?.device || '')}" placeholder="e.g., Router-02, Switch-SG"></div>
                                                                                                                                 <div class="form-group"><label class="form-label">Port</label><input type="text" class="form-control" name="location.zEnd.port" value="${escapeHtml(item.location?.zEnd?.port || '')}" placeholder="e.g., Eth1/1/2"></div>
                                                                                                                             </div>
-                                                                                                                        </div>
+            </div>
+            
+            <!-- Copy A-End to Z-End -->
+            <button type="button" class="btn btn-secondary copy-location-btn" id="copy-to-zend">
+                <ion-icon name="copy-outline"></ion-icon> Copy A-End → Z-End
+            </button>
 
-                                                                                                                        <!-- Cost Mode -->
-                                                                                                                        <h4 class="mb-4 mt-4" style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Cost Mode</h4>
+            <!-- Step 2 Navigation -->
+            <div class="form-step-nav">
+                <button type="button" class="btn btn-secondary" id="step-prev-2"><ion-icon name="arrow-back-outline"></ion-icon> Back</button>
+                <button type="button" class="btn btn-primary" id="step-next-2">Next: Financials <ion-icon name="arrow-forward-outline"></ion-icon></button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Financials -->
+        <div class="form-step" data-step="3" id="inventory-step-3" style="display:none;">
+
+            <div class="form-section-header">
+                <ion-icon name="wallet-outline"></ion-icon>
+                <span>Financials</span>
+            </div>
                                                                                                                         <div class="grid-2">
-                                                                                                                            <div class="form-group">
-                                                                                                                                <label class="form-label">Cost Mode</label>
-                                                                                                                                <div id="inventory-cost-mode-dropdown-placeholder" data-selected="${escapeHtml(item.costMode || 'single')}"></div>
-                                                                                                                                <small style="color:var(--text-muted)">Single = legacy cost; Batches = staged lighting + base cost pool.</small>
-                                                                                                                            </div>
                                                                                                                             <div class="form-group">
                                                                                                                                 <label class="form-label">Base Order ID</label>
                                                                                                                                 <input type="text" class="form-control" name="baseCost.orderId" value="${escapeHtml(item.baseCost?.orderId || '')}">
                                                                                                                             </div>
                                                                                                                         </div>
+
 
                                                                                                                         <!-- Base Cost (Batch Mode) -->
                                                                                                                         <div id="inventory-base-cost-section" style="display:${item.costMode === 'batches' ? 'block' : 'none'}; background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:6px; margin-bottom:1rem;">
@@ -815,6 +876,13 @@ export function openInventoryModal(context, resourceId = null) {
                                                                                                                             </div>
                                                                                                                             <button type="button" class="btn btn-secondary" id="add-batch-btn" style="font-size:0.8rem; padding:0.4rem 0.75rem;">+ Add Batch</button>
                                                                                                                         </div>
+
+            <!-- Step 3 Navigation -->
+            <div class="form-step-nav">
+                <button type="button" class="btn btn-secondary" id="step-prev-3"><ion-icon name="arrow-back-outline"></ion-icon> Back</button>
+                <div></div>
+            </div>
+        </div>
                                                                                                                         `;
 
     context.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, async (form) => {
@@ -1395,6 +1463,61 @@ export function openInventoryModal(context, resourceId = null) {
 }
 
 export function attachInventoryFormListeners(context) {
+    // ===== WIZARD STEP NAVIGATION =====
+    const step1 = document.getElementById('inventory-step-1');
+    const step2 = document.getElementById('inventory-step-2');
+    const step3 = document.getElementById('inventory-step-3');
+    const stepper = document.getElementById('inventory-stepper');
+
+    const goToStep = (stepNum) => {
+        // Hide all steps
+        [step1, step2, step3].forEach(s => { if (s) s.style.display = 'none'; });
+
+        // Show target step with animation
+        const targetStep = document.getElementById(`inventory-step-${stepNum}`);
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            targetStep.classList.remove('form-step'); // Reset animation
+            void targetStep.offsetWidth; // Force reflow
+            targetStep.classList.add('form-step');
+        }
+
+        // Update stepper UI
+        if (stepper) {
+            stepper.querySelectorAll('.step').forEach(stepEl => {
+                const sNum = parseInt(stepEl.dataset.step);
+                stepEl.classList.remove('active', 'completed');
+                if (sNum < stepNum) stepEl.classList.add('completed');
+                if (sNum === stepNum) stepEl.classList.add('active');
+            });
+            stepper.querySelectorAll('.step-connector').forEach((conn, idx) => {
+                conn.classList.toggle('active', idx < stepNum - 1);
+            });
+        }
+
+        // Scroll modal to top
+        const modalBody = document.querySelector('.modal-body');
+        if (modalBody) modalBody.scrollTop = 0;
+    };
+
+    // Step navigation handlers
+    document.getElementById('step-next-1')?.addEventListener('click', () => goToStep(2));
+    document.getElementById('step-prev-2')?.addEventListener('click', () => goToStep(1));
+    document.getElementById('step-next-2')?.addEventListener('click', () => goToStep(3));
+    document.getElementById('step-prev-3')?.addEventListener('click', () => goToStep(2));
+
+    // Copy A-End to Z-End button
+    const copyToZEndBtn = document.getElementById('copy-to-zend');
+    if (copyToZEndBtn) {
+        copyToZEndBtn.addEventListener('click', () => {
+            ['country', 'city', 'pop'].forEach(field => {
+                const aVal = document.querySelector(`[name="location.aEnd.${field}"]`)?.value || '';
+                const zInput = document.querySelector(`[name="location.zEnd.${field}"]`);
+                if (zInput) zInput.value = aVal;
+            });
+        });
+    }
+
     // Protection Field Toggle
     const protectionSelect = document.querySelector('[name="protection"]');
     const protectionContainer = document.getElementById('protection-cable-container');

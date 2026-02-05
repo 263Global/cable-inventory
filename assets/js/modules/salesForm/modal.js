@@ -189,11 +189,38 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                 <!-- RIGHT CONTAINER: Sales Info + Cost Structure + Order Notes -->
                 <div>
+                    <!-- Anchor Navigation -->
+                    <nav class="anchor-nav" id="sales-anchor-nav">
+                        <button type="button" class="anchor-nav-item active" data-target="section-sales-info">
+                            <ion-icon name="document-text-outline"></ion-icon>
+                            <span>Sales Info</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-location">
+                            <ion-icon name="location-outline"></ion-icon>
+                            <span>Location</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-revenue">
+                            <ion-icon name="cash-outline"></ion-icon>
+                            <span>Revenue</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-costs">
+                            <ion-icon name="wallet-outline"></ion-icon>
+                            <span>Costs</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-notes">
+                            <ion-icon name="create-outline"></ion-icon>
+                            <span>Notes</span>
+                        </button>
+                    </nav>
+                    
                     <!-- Nested 2-Column Grid for Sales Info & Cost Structure -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <!-- Sales Information -->
-                        <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
+                        <div class="section-card" id="section-sales-info">
+                    <div class="form-section-header">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        <span>Sales Information</span>
+                    </div>
 
                     <!-- Sales Model & Type (FIRST - determines other field behavior) -->
                     <div class="grid-2">
@@ -283,7 +310,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
 
                     <!-- Delivery Location -->
-                    <h5 class="mt-4 mb-2">Delivery Location</h5>
+                    <div id="section-location" class="form-anchor-section">
+                    <div class="form-section-header" style="margin-top: 0.75rem;">
+                        <ion-icon name="location-outline"></ion-icon>
+                        <span>Delivery Location</span>
+                    </div></div>
                     <!-- A-End -->
                     <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
                         <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
@@ -314,7 +345,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
 
                     <!-- Revenue / Price -->
-                    <h5 class="mt-4 mb-2">Revenue / Price</h5>
+                    <div id="section-revenue" class="form-anchor-section">
+                    <div class="form-section-header" style="margin-top: 0.75rem;">
+                        <ion-icon name="cash-outline"></ion-icon>
+                        <span>Revenue / Price</span>
+                    </div></div>
                     <!-- Lease Revenue Fields -->
                     <div id="lease-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? 'display:none;' : ''}">
                         <div class="grid-2">
@@ -348,8 +383,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
 
                         <!-- Cost Structure -->
-                        <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
+                        <div class="section-card" id="section-costs">
+                    <div class="form-section-header">
+                        <ion-icon name="wallet-outline"></ion-icon>
+                        <span>Cost Structure</span>
+                    </div>
 
                     ${isEditMode && existingOrder?.costs ? `
                     <!-- Read-only Cost Summary (Edit Mode) -->
@@ -514,10 +552,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <!-- Close nested 2-column grid -->
                 
                     <!-- Order Notes - Inside right container, spans full width -->
-                    <div class="section-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
-                        <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <ion-icon name="document-text-outline"></ion-icon> Order Notes
-                        </h4>
+                    <div class="section-card" id="section-notes" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                        <div class="form-section-header" style="margin-bottom: 0.75rem;">
+                            <ion-icon name="create-outline"></ion-icon>
+                            <span>Order Notes</span>
+                        </div>
                         <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${escapeHtml(existingOrder?.notes || '')}</textarea>
                     </div>
                 </div>

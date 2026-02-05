@@ -1470,4 +1470,62 @@ export function attachSalesFormListeners(context) {
     calcTriggers.forEach(input => {
         input.addEventListener('input', () => context.calculateSalesFinancials());
     });
+
+    // ===== Anchor Navigation =====
+    const anchorNav = document.getElementById('sales-anchor-nav');
+    if (anchorNav) {
+        const anchorItems = anchorNav.querySelectorAll('.anchor-nav-item');
+        const modalBody = document.querySelector('.modal-body');
+
+        // Click handler for anchor navigation
+        anchorItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = item.dataset.target;
+                const targetSection = document.getElementById(targetId);
+
+                if (targetSection && modalBody) {
+                    // Calculate offset within modal body
+                    const modalBodyRect = modalBody.getBoundingClientRect();
+                    const targetRect = targetSection.getBoundingClientRect();
+                    const scrollOffset = targetRect.top - modalBodyRect.top + modalBody.scrollTop - 60;
+
+                    modalBody.scrollTo({
+                        top: scrollOffset,
+                        behavior: 'smooth'
+                    });
+
+                    // Update active states
+                    anchorItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Scroll spy - highlight current section on scroll
+        if (modalBody) {
+            const sections = ['section-sales-info', 'section-location', 'section-revenue', 'section-costs', 'section-notes'];
+
+            modalBody.addEventListener('scroll', () => {
+                const modalBodyRect = modalBody.getBoundingClientRect();
+                let currentSection = sections[0];
+
+                sections.forEach(sectionId => {
+                    const section = document.getElementById(sectionId);
+                    if (section) {
+                        const sectionRect = section.getBoundingClientRect();
+                        // If section top is within viewport upper half, mark it as current
+                        if (sectionRect.top <= modalBodyRect.top + 150) {
+                            currentSection = sectionId;
+                        }
+                    }
+                });
+
+                // Update active nav item
+                anchorItems.forEach(nav => {
+                    nav.classList.toggle('active', nav.dataset.target === currentSection);
+                });
+            });
+        }
+    }
 }
