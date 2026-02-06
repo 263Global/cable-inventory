@@ -34,6 +34,64 @@ const SCHEMAS = {
         entityName: 'suppliers',
         displayName: 'Suppliers',
         displayNameZh: '供应商'
+    },
+    inventory: {
+        columns: [
+            { name: 'resource_id', required: true, type: 'string', label: 'Resource ID' },
+            { name: 'supplier', required: true, type: 'fk_supplier', label: 'Supplier' },
+            { name: 'acquisition_type', required: false, type: 'enum', options: ['Purchased', 'Swapped In'], label: 'Acquisition Type' },
+            { name: 'ownership', required: false, type: 'enum', options: ['Leased', 'IRU'], label: 'Ownership' },
+            { name: 'segment_type', required: false, type: 'enum', options: ['E2E', 'Segment', 'Backhaul', 'Spectrum'], label: 'Segment Type' },
+            { name: 'cable_system', required: false, type: 'string', label: 'Cable System' },
+            { name: 'capacity_value', required: true, type: 'number', label: 'Capacity' },
+            { name: 'capacity_unit', required: false, type: 'enum', options: ['Gbps', 'Tbps', 'Fiber Pair', 'GHz'], label: 'Capacity Unit' },
+            { name: 'protection', required: false, type: 'enum', options: ['Protected', 'Unprotected'], label: 'Protection' },
+            { name: 'handoff_type', required: false, type: 'enum', options: ['OTU-4', '100GE', '400GE', 'Other'], label: 'Handoff Type' },
+            { name: 'aend_country', required: false, type: 'string', label: 'A-End Country' },
+            { name: 'aend_city', required: false, type: 'string', label: 'A-End City' },
+            { name: 'aend_pop', required: false, type: 'string', label: 'A-End POP' },
+            { name: 'zend_country', required: false, type: 'string', label: 'Z-End Country' },
+            { name: 'zend_city', required: false, type: 'string', label: 'Z-End City' },
+            { name: 'zend_pop', required: false, type: 'string', label: 'Z-End POP' },
+            { name: 'cost_model', required: true, type: 'enum', options: ['Lease', 'IRU'], label: 'Cost Model' },
+            { name: 'mrc', required: false, type: 'number', label: 'MRC' },
+            { name: 'otc', required: false, type: 'number', label: 'OTC' },
+            { name: 'nrc', required: false, type: 'number', label: 'NRC' },
+            { name: 'om_rate', required: false, type: 'number', label: 'O&M Rate %' },
+            { name: 'term_months', required: true, type: 'number', label: 'Term (Months)' },
+            { name: 'start_date', required: true, type: 'date', label: 'Start Date' },
+            { name: 'contract_ref', required: false, type: 'string', label: 'Contract Ref' },
+            { name: 'notes', required: false, type: 'string', label: 'Notes' }
+        ],
+        entityName: 'inventory',
+        displayName: 'Inventory',
+        displayNameZh: '库存'
+    },
+    sales: {
+        columns: [
+            { name: 'sales_order_id', required: true, type: 'string', label: 'Sales Order ID' },
+            { name: 'customer', required: true, type: 'fk_customer', label: 'Customer' },
+            { name: 'salesperson', required: false, type: 'string', label: 'Salesperson' },
+            { name: 'inventory_link', required: false, type: 'string', label: 'Linked Resource ID' },
+            { name: 'sales_model', required: true, type: 'enum', options: ['Lease', 'IRU'], label: 'Sales Model' },
+            { name: 'sales_type', required: true, type: 'enum', options: ['Resale', 'Inventory', 'Hybrid', 'Swapped Out'], label: 'Sales Type' },
+            { name: 'capacity_value', required: true, type: 'number', label: 'Capacity' },
+            { name: 'capacity_unit', required: false, type: 'enum', options: ['Gbps', 'Tbps', 'Wavelength', 'Fiber Pair'], label: 'Capacity Unit' },
+            { name: 'aend_city', required: false, type: 'string', label: 'A-End City' },
+            { name: 'aend_pop', required: false, type: 'string', label: 'A-End POP' },
+            { name: 'zend_city', required: false, type: 'string', label: 'Z-End City' },
+            { name: 'zend_pop', required: false, type: 'string', label: 'Z-End POP' },
+            { name: 'mrc_sales', required: true, type: 'number', label: 'MRC Sales' },
+            { name: 'nrc_sales', required: false, type: 'number', label: 'NRC Sales' },
+            { name: 'otc', required: false, type: 'number', label: 'OTC' },
+            { name: 'annual_om', required: false, type: 'number', label: 'Annual O&M' },
+            { name: 'term_months', required: true, type: 'number', label: 'Term (Months)' },
+            { name: 'start_date', required: true, type: 'date', label: 'Start Date' },
+            { name: 'notes', required: false, type: 'string', label: 'Notes' }
+        ],
+        entityName: 'sales',
+        displayName: 'Sales',
+        displayNameZh: '销售'
     }
 };
 
@@ -151,6 +209,12 @@ function validateRows(data, schema) {
     const valid = [];
     const invalid = [];
 
+    // Build lookup maps for FK resolution
+    const suppliers = window.Store?.getSuppliers() || [];
+    const customers = window.Store?.getCustomers() || [];
+    const supplierMap = new Map(suppliers.map(s => [s.short_name?.toLowerCase(), s.id]));
+    const customerMap = new Map(customers.map(c => [c.short_name?.toLowerCase(), c.id]));
+
     data.forEach((row, index) => {
         const errors = [];
         const validatedRow = { _rowIndex: index + 2 }; // +2 for 1-indexed and header row
@@ -195,6 +259,24 @@ function validateRows(data, schema) {
                             errors.push(`${col.label || col.name}: must be YYYY-MM-DD format`);
                         }
                         break;
+                    case 'fk_supplier': {
+                        const supplierId = supplierMap.get(value.toLowerCase());
+                        if (!supplierId) {
+                            errors.push(`${col.label || col.name}: supplier "${value}" not found`);
+                        } else {
+                            validatedRow._resolved_supplier_id = supplierId;
+                        }
+                        break;
+                    }
+                    case 'fk_customer': {
+                        const customerId = customerMap.get(value.toLowerCase());
+                        if (!customerId) {
+                            errors.push(`${col.label || col.name}: customer "${value}" not found`);
+                        } else {
+                            validatedRow._resolved_customer_id = customerId;
+                        }
+                        break;
+                    }
                 }
             }
         });
@@ -236,13 +318,65 @@ function transformRowForStore(row, entityType) {
             portalUrl: row.portal_url || '',
             notes: row.notes || ''
         };
+    } else if (entityType === 'inventory') {
+        return {
+            resourceId: row.resource_id,
+            supplierId: row._resolved_supplier_id,
+            supplierName: row.supplier,
+            acquisitionType: row.acquisition_type || 'Purchased',
+            ownership: row.ownership || 'Leased',
+            segmentType: row.segment_type || 'E2E',
+            cableSystems: row.cable_system || '',
+            capacityValue: row.capacity_value || 0,
+            capacityUnit: row.capacity_unit || 'Gbps',
+            protection: row.protection || 'Unprotected',
+            handoffType: row.handoff_type || 'OTU-4',
+            aEndCountry: row.aend_country || '',
+            aEndCity: row.aend_city || '',
+            aEndPop: row.aend_pop || '',
+            zEndCountry: row.zend_country || '',
+            zEndCity: row.zend_city || '',
+            zEndPop: row.zend_pop || '',
+            costModel: row.cost_model || 'Lease',
+            mrc: row.mrc || 0,
+            otc: row.otc || 0,
+            nrc: row.nrc || 0,
+            omRate: row.om_rate || 0,
+            termMonths: row.term_months || 12,
+            startDate: row.start_date,
+            contractRef: row.contract_ref || '',
+            notes: row.notes || ''
+        };
+    } else if (entityType === 'sales') {
+        return {
+            orderId: row.sales_order_id,
+            customerId: row._resolved_customer_id,
+            customerName: row.customer,
+            salesperson: row.salesperson || '',
+            inventoryLink: row.inventory_link || '',
+            salesModel: row.sales_model || 'Lease',
+            salesType: row.sales_type || 'Resale',
+            capacityValue: row.capacity_value || 0,
+            capacityUnit: row.capacity_unit || 'Gbps',
+            aEndCity: row.aend_city || '',
+            aEndPop: row.aend_pop || '',
+            zEndCity: row.zend_city || '',
+            zEndPop: row.zend_pop || '',
+            mrcSales: row.mrc_sales || 0,
+            nrcSales: row.nrc_sales || 0,
+            otc: row.otc || 0,
+            annualOm: row.annual_om || 0,
+            termMonths: row.term_months || 12,
+            startDate: row.start_date,
+            notes: row.notes || ''
+        };
     }
     return row;
 }
 
 /**
  * Import validated rows to Supabase
- * @param {string} entityType - 'customers' or 'suppliers'
+ * @param {string} entityType - 'customers', 'suppliers', 'inventory', or 'sales'
  * @param {Array} rows - Validated rows
  * @returns {Promise<{success: number, failed: Array}>}
  */
@@ -256,6 +390,10 @@ async function importRows(entityType, rows) {
                 await window.Store.addCustomer(data);
             } else if (entityType === 'suppliers') {
                 await window.Store.addSupplier(data);
+            } else if (entityType === 'inventory') {
+                await window.Store.addInventory(data);
+            } else if (entityType === 'sales') {
+                await window.Store.addSalesOrder(data);
             }
             results.success++;
         } catch (err) {

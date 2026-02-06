@@ -91,6 +91,13 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
     const paginatedData = data.slice(startIndex, endIndex);
 
+    // Add Import button
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn btn-secondary';
+    importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
+    importBtn.onclick = () => window.CsvImport?.openImportModal('inventory');
+    context.headerActions.appendChild(importBtn);
+
     // Add "Add Item" button
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-primary';

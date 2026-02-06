@@ -93,6 +93,13 @@ export function renderSales(context, filters = {}) {
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
     const paginatedData = data.slice(startIndex, endIndex);
 
+    // Add Import button
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn btn-secondary';
+    importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
+    importBtn.onclick = () => window.CsvImport?.openImportModal('sales');
+    context.headerActions.appendChild(importBtn);
+
     // Add "Add Sale" button
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-primary';
