@@ -223,7 +223,7 @@ The system implements a 4-stage P&L calculation:
 - **Inventory**: 100% company assets, no external Cable Cost
 - **Resale**: Pure pass-through of supplier capacity
 - **Hybrid**: Mix of internal + external resources
-- **Swapped Out**: Net-zero resource exchange
+- **Swapped Out**: Market-priced swap out (profit/loss possible)
 
 ### Sales Models
 - **Lease**: Monthly MRC + NRC
@@ -290,6 +290,9 @@ open http://localhost:3000
 | `location.aEnd/zEnd` | `a_end_*/z_end_*` | `{ country, city, pop, device, port }` |
 | `mrc/otc/nrc` | `mrc/otc/nrc` | Financial costs |
 | `dates.start/end` | `start_date/end_date` | Contract period |
+| `costMode` | `cost_mode` | `single` or `batches` |
+| `baseCost.*` | `base_*` | Base cost pool for batch mode (orderId/model/mrc/otc/omRate/annualOm/termMonths) |
+| `batches.*.omRate` | `inventory_batches.om_rate` | Batch O&M rate (Annual O&M derived) |
 
 ### Sales Order (Revenue Side)
 
@@ -300,6 +303,11 @@ open http://localhost:3000
 | `customerId` | `customer_id` | FK to Customers table |
 | `salesModel` | `sales_model` | "Lease" or "IRU" |
 | `salesType` | `sales_type` | Resale, Inventory, Hybrid, Swapped Out |
+| `batchAllocations` | `sales_order_batches` | Capacity allocations per batch |
+| `financials.mrcSales` | `mrc_sales` | Lease revenue (Swapped Out = market MRC) |
+| `financials.nrcSales` | `nrc_sales` | Lease one-time revenue (Swapped Out = market NRC) |
+| `financials.otc` | `otc` | IRU OTC revenue (Swapped Out = market OTC) |
+| `financials.annualOm` | `annual_om` | IRU O&amp;M revenue (Swapped Out = market O&amp;M) |
 | `costs.cable` | JSON | `{ supplier, mrc, otc, omRate, ... }` |
 | `costs.backhaulA/Z` | JSON | Backhaul cost cards |
 | `costs.crossConnectA/Z` | JSON | Cross-connect cost cards |

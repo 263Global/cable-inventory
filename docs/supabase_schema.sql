@@ -126,6 +126,16 @@ CREATE TABLE inventory (
     annual_om_cost DECIMAL(12, 2),
     term_months INTEGER,
 
+    -- Cost Mode (single vs batches)
+    cost_mode VARCHAR(20) DEFAULT 'single',
+    base_order_id VARCHAR(50),
+    base_model VARCHAR(20),
+    base_mrc DECIMAL(12, 2),
+    base_otc DECIMAL(12, 2),
+    base_om_rate DECIMAL(5, 2),
+    base_annual_om DECIMAL(12, 2),
+    base_term_months INTEGER,
+
     -- Dates
     start_date DATE,
     end_date DATE,
@@ -138,6 +148,27 @@ CREATE TABLE inventory (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- =============================================
+-- INVENTORY BATCHES (STAGED LIGHTING)
+-- =============================================
+CREATE TABLE inventory_batches (
+    batch_id VARCHAR(50) PRIMARY KEY,
+    resource_id VARCHAR(50) REFERENCES inventory(resource_id) ON DELETE CASCADE,
+    order_id VARCHAR(50),
+    model VARCHAR(20),
+    capacity_value DECIMAL(10, 2),
+    capacity_unit VARCHAR(50),
+    mrc DECIMAL(12, 2),
+    otc DECIMAL(12, 2),
+    om_rate DECIMAL(5, 2),
+    annual_om DECIMAL(12, 2),
+    term_months INTEGER,
+    start_date DATE,
+    status VARCHAR(20) DEFAULT 'Planned'
+);
+
+CREATE INDEX idx_inventory_batches_resource ON inventory_batches(resource_id);
 
 -- =============================================
 -- SALES ORDERS TABLE
@@ -188,6 +219,19 @@ CREATE TABLE sales_orders (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- =============================================
+-- SALES ORDER BATCH ALLOCATIONS
+-- =============================================
+CREATE TABLE sales_order_batches (
+    sales_order_id VARCHAR(50) REFERENCES sales_orders(sales_order_id) ON DELETE CASCADE,
+    batch_id VARCHAR(50) REFERENCES inventory_batches(batch_id) ON DELETE CASCADE,
+    capacity_allocated DECIMAL(10, 2),
+    PRIMARY KEY (sales_order_id, batch_id)
+);
+
+CREATE INDEX idx_sales_order_batches_order ON sales_order_batches(sales_order_id);
+CREATE INDEX idx_sales_order_batches_batch ON sales_order_batches(batch_id);
 
 -- =============================================
 -- INDEXES

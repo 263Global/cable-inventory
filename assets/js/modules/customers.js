@@ -52,8 +52,17 @@ export function initCustomersModule(App) {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-        // Clear and add button to header
+        // Clear and add buttons to header
         this.headerActions.innerHTML = '';
+
+        // Import button
+        const importBtn = document.createElement('button');
+        importBtn.className = 'btn btn-secondary';
+        importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
+        importBtn.onclick = () => window.CsvImport.openImportModal('customers');
+        this.headerActions.appendChild(importBtn);
+
+        // Add button
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-primary';
         addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Customer';
@@ -88,9 +97,9 @@ export function initCustomersModule(App) {
                         ` : paginatedData.map(c => `
                             <tr>
                                 <td><strong>${escapeHtml(c.short_name || '')}</strong></td>
-                                <td class="mobile-hidden">${escapeHtml(c.full_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(c.contact_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(c.contact_email || '-')}</td>
+                                <td class="mobile-hidden" data-label="Full Name">${escapeHtml(c.full_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Contact">${escapeHtml(c.contact_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Email">${escapeHtml(c.contact_email || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-icon" onclick="App.openCustomerModal('${escapeJsString(c.id)}')" title="Edit">

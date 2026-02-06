@@ -51,8 +51,17 @@ export function initSuppliersModule(App) {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-        // Clear and add button to header
+        // Clear and add buttons to header
         this.headerActions.innerHTML = '';
+
+        // Import button
+        const importBtn = document.createElement('button');
+        importBtn.className = 'btn btn-secondary';
+        importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
+        importBtn.onclick = () => window.CsvImport.openImportModal('suppliers');
+        this.headerActions.appendChild(importBtn);
+
+        // Add button
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-primary';
         addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Supplier';
@@ -86,8 +95,8 @@ export function initSuppliersModule(App) {
                         ` : paginatedData.map(s => `
                             <tr>
                                 <td><strong>${escapeHtml(s.short_name || '')}</strong></td>
-                                <td class="mobile-hidden">${escapeHtml(s.full_name || '-')}</td>
-                                <td class="mobile-hidden">${escapeHtml(s.contact_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Full Name">${escapeHtml(s.full_name || '-')}</td>
+                                <td class="mobile-hidden" data-label="Contact">${escapeHtml(s.contact_name || '-')}</td>
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-icon" onclick="App.openSupplierModal('${escapeJsString(s.id)}')" title="Edit">

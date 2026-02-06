@@ -14,12 +14,63 @@ export async function handleSalesSubmit(context, form) {
     const formData = new FormData(form);
     const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value;
     const getNum = (name) => Number(getVal(name) || 0);
+    const getJson = (name) => {
+        const raw = getVal(name);
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return [];
+        }
+    };
+    const hasCableData = (segment) => {
+        if (!segment) return false;
+        const numericFields = [
+            segment.capacity, segment.mrc, segment.nrc, segment.otc,
+            segment.omRate, segment.annualOm, segment.termMonths
+        ];
+        const stringFields = [
+            segment.supplier, segment.orderNo, segment.cableSystem,
+            segment.protectionCableSystem, segment.startDate,
+            segment.endDate, segment.notes
+        ];
+        return numericFields.some(val => Number(val) > 0)
+            || stringFields.some(val => val)
+            || segment.model !== 'Lease'
+            || segment.protection !== 'Unprotected';
+    };
+    const getCableSegments = () => {
+        const segments = getJson('costs.cableSegments');
+        if (segments.length) return segments;
+        const legacy = {
+            supplier: getVal('costs.cable.supplier'),
+            orderNo: getVal('costs.cable.orderNo'),
+            cableSystem: getVal('costs.cable.cableSystem'),
+            capacity: getNum('costs.cable.capacity'),
+            capacityUnit: getVal('costs.cable.capacityUnit'),
+            model: getVal('costs.cable.model'),
+            protection: getVal('costs.cable.protection'),
+            protectionCableSystem: getVal('costs.cable.protectionCableSystem'),
+            mrc: getNum('costs.cable.mrc'),
+            nrc: getNum('costs.cable.nrc'),
+            otc: getNum('costs.cable.otc'),
+            omRate: getNum('costs.cable.omRate'),
+            annualOm: getNum('costs.cable.annualOm'),
+            startDate: getVal('costs.cable.startDate'),
+            termMonths: getNum('costs.cable.termMonths'),
+            endDate: getVal('costs.cable.endDate')
+        };
+        return hasCableData(legacy) ? [legacy] : [];
+    };
 
     // Check if we're editing an existing order
     const isEditMode = !!context._editingOrderId;
 
     // Calculate Status to ensure it's accurate at save time
     const status = computeSalesStatus(getVal('dates.start'), getVal('dates.end'));
+
+    const cableSegments = getCableSegments();
+    const primaryCable = cableSegments[0] || {};
 
     const orderData = {
         salesOrderId: isEditMode ? context._editingOrderId : (getVal('orderId') || null),
@@ -60,27 +111,8 @@ export async function handleSalesSubmit(context, form) {
             // Computed fields will be added below
         },
         costs: {
-            cable: {
-                supplier: getVal('costs.cable.supplier'),
-                orderNo: getVal('costs.cable.orderNo'),
-                cableSystem: getVal('costs.cable.cableSystem'),
-                capacity: getNum('costs.cable.capacity'),
-                capacityUnit: getVal('costs.cable.capacityUnit'),
-                model: getVal('costs.cable.model'),
-                protection: getVal('costs.cable.protection'),
-                protectionCableSystem: getVal('costs.cable.protectionCableSystem'),
-                // Lease fields
-                mrc: getNum('costs.cable.mrc'),
-                nrc: getNum('costs.cable.nrc'),
-                // IRU fields
-                otc: getNum('costs.cable.otc'),
-                omRate: getNum('costs.cable.omRate'),
-                annualOm: getNum('costs.cable.annualOm'),
-                // Contract dates
-                startDate: getVal('costs.cable.startDate'),
-                termMonths: getNum('costs.cable.termMonths'),
-                endDate: getVal('costs.cable.endDate')
-            },
+            cableSegments,
+            cable: primaryCable,
             backhaul: {
                 aEnd: {
                     supplier: getVal('costs.backhaulA.supplier'),
@@ -126,6 +158,14 @@ export async function handleSalesSubmit(context, form) {
         },
         notes: getVal('notes') || ''
     };
+    const batchAllocations = getJson('batchAllocations');
+    const inventoryId = getVal('inventoryLink');
+    const inventory = inventoryId ? window.Store.getInventory().find(i => i.resourceId === inventoryId) : null;
+    if (inventory?.costMode === 'batches') {
+        orderData.batchAllocations = batchAllocations;
+    } else if (batchAllocations.length) {
+        orderData.batchAllocations = batchAllocations;
+    }
 
     // Calculate and store financial metrics using unified engine
     const computed = computeOrderFinancials(orderData);

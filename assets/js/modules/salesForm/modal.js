@@ -67,6 +67,41 @@ export function openAddSalesModal(context, existingOrderId = null) {
         return `<option value="${safeId}">${label}</option>`;
     }).join('');
 
+    const normalizeCableSegments = (costs = {}) => {
+        if (Array.isArray(costs.cableSegments) && costs.cableSegments.length) {
+            return costs.cableSegments;
+        }
+        const legacy = costs.cable || costs.cableCost;
+        return legacy ? [legacy] : [];
+    };
+
+    const summarizeCableSegments = (segments, salesModel, defaultTerm) => {
+        const summary = { monthly: 0, onetime: 0 };
+        const termFallback = defaultTerm || 12;
+        segments.forEach(seg => {
+            const model = seg.model || 'Lease';
+            const annualOm = Number(seg.annualOm || 0);
+            const otc = Number(seg.otc || 0);
+            const term = Number(seg.termMonths || termFallback || 1);
+            if (salesModel === 'IRU') {
+                const monthlyOtc = term > 0 ? (otc / term) : 0;
+                summary.monthly += monthlyOtc + (annualOm / 12);
+                summary.onetime += otc;
+            } else if (model === 'IRU') {
+                summary.monthly += annualOm / 12;
+            } else {
+                summary.monthly += Number(seg.mrc || 0);
+                summary.onetime += Number(seg.nrc || 0);
+            }
+        });
+        return summary;
+    };
+
+    const existingSalesModel = existingOrder?.salesModel || 'Lease';
+    const existingTerm = existingOrder?.dates?.term || 12;
+    const cableSegments = normalizeCableSegments(existingOrder?.costs || {});
+    const cableSummary = summarizeCableSegments(cableSegments, existingSalesModel, existingTerm);
+
     const modalContent = `
             <!-- 2-Column Layout: Profitability (sticky) | Right Container -->
             <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;">
@@ -154,11 +189,38 @@ export function openAddSalesModal(context, existingOrderId = null) {
 
                 <!-- RIGHT CONTAINER: Sales Info + Cost Structure + Order Notes -->
                 <div>
+                    <!-- Anchor Navigation -->
+                    <nav class="anchor-nav" id="sales-anchor-nav">
+                        <button type="button" class="anchor-nav-item active" data-target="section-sales-info">
+                            <ion-icon name="document-text-outline"></ion-icon>
+                            <span>Sales Info</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-location">
+                            <ion-icon name="location-outline"></ion-icon>
+                            <span>Location</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-revenue">
+                            <ion-icon name="cash-outline"></ion-icon>
+                            <span>Revenue</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-costs">
+                            <ion-icon name="wallet-outline"></ion-icon>
+                            <span>Costs</span>
+                        </button>
+                        <button type="button" class="anchor-nav-item" data-target="section-notes">
+                            <ion-icon name="create-outline"></ion-icon>
+                            <span>Notes</span>
+                        </button>
+                    </nav>
+                    
                     <!-- Nested 2-Column Grid for Sales Info & Cost Structure -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <!-- Sales Information -->
-                        <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Sales Information</h4>
+                        <div class="section-card" id="section-sales-info">
+                    <div class="form-section-header">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        <span>Sales Information</span>
+                    </div>
 
                     <!-- Sales Model & Type (FIRST - determines other field behavior) -->
                     <div class="grid-2">
@@ -204,6 +266,21 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         ${availableResources.length === 0 ? '<small style="color:red">No available resources found.</small>' : ''}
                     </div>
 
+                    <div class="form-group" id="batch-allocation-group" style="display:none;">
+                        <label class="form-label">Batch Allocation</label>
+                        <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <small id="batch-allocation-summary" style="color: var(--text-muted);">Auto allocation by batch start date.</small>
+                            <div style="display:flex; gap: 0.5rem;">
+                                <button type="button" class="btn btn-secondary" id="batch-auto-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">Auto Allocate</button>
+                                <button type="button" class="btn btn-secondary" id="batch-clear-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">Clear</button>
+                            </div>
+                        </div>
+                        <div id="batch-allocation-table"></div>
+                        <input type="hidden" name="batchAllocations" id="batch-allocations-input" value='${escapeHtml(JSON.stringify(existingOrder?.batchAllocations || []))}'>
+                        <input type="hidden" name="batchAllocationMode" id="batch-allocation-mode" value="${existingOrder?.batchAllocations?.length ? 'manual' : 'auto'}">
+                        <small id="batch-allocation-error" style="color: var(--accent-danger); display:none; margin-top: 0.5rem;"></small>
+                    </div>
+
                     <!-- Contract Period -->
                     <div class="grid-3">
                         <div class="form-group">
@@ -233,7 +310,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
 
                     <!-- Delivery Location -->
-                    <h5 class="mt-4 mb-2">Delivery Location</h5>
+                    <div id="section-location" class="form-anchor-section">
+                    <div class="form-section-header" style="margin-top: 0.75rem;">
+                        <ion-icon name="location-outline"></ion-icon>
+                        <span>Delivery Location</span>
+                    </div></div>
                     <!-- A-End -->
                     <div style="background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; margin-bottom: 0.75rem;">
                         <h6 style="color:var(--accent-primary); margin: 0 0 0.5rem 0; font-size:0.8rem;">A-End</h6>
@@ -264,7 +345,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
 
                     <!-- Revenue / Price -->
-                    <h5 class="mt-4 mb-2">Revenue / Price</h5>
+                    <div id="section-revenue" class="form-anchor-section">
+                    <div class="form-section-header" style="margin-top: 0.75rem;">
+                        <ion-icon name="cash-outline"></ion-icon>
+                        <span>Revenue / Price</span>
+                    </div></div>
                     <!-- Lease Revenue Fields -->
                     <div id="lease-revenue-fields" style="${existingOrder?.salesModel === 'IRU' ? 'display:none;' : ''}">
                         <div class="grid-2">
@@ -298,8 +383,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         </div>
 
                         <!-- Cost Structure -->
-                        <div class="section-card">
-                    <h4 class="mb-4" style="color: var(--accent-secondary); border-bottom: 1px solid var(--border-color); padding-bottom:0.5rem;">Cost Structure</h4>
+                        <div class="section-card" id="section-costs">
+                    <div class="form-section-header">
+                        <ion-icon name="wallet-outline"></ion-icon>
+                        <span>Cost Structure</span>
+                    </div>
 
                     ${isEditMode && existingOrder?.costs ? `
                     <!-- Read-only Cost Summary (Edit Mode) -->
@@ -311,12 +399,12 @@ export function openAddSalesModal(context, existingOrderId = null) {
                             </button>
                         </div>
                         <table style="width: 100%; font-size: 0.85rem;">
-                            ${existingOrder.costs.cable || existingOrder.costs.cableCost ? `
+                            ${cableSegments.length ? `
                             <tr>
                                 <td style="padding: 0.3rem 0; color: var(--text-muted);">3rd Party Cable</td>
                                 <td class="font-mono" style="text-align: right; color: var(--accent-danger);">
-                                    MRC: $${((existingOrder.costs.cable?.mrc || existingOrder.costs.cableCost?.mrc || 0)).toLocaleString()}
-                                    ${(existingOrder.costs.cable?.nrc || existingOrder.costs.cableCost?.nrc) ? ` / NRC: $${(existingOrder.costs.cable?.nrc || existingOrder.costs.cableCost?.nrc).toLocaleString()}` : ''}
+                                    Monthly: $${(cableSummary.monthly || 0).toLocaleString()}
+                                    ${(cableSummary.onetime || 0) ? ` / One-time: $${(cableSummary.onetime || 0).toLocaleString()}` : ''}
                                 </td>
                             </tr>` : ''}
                             ${existingOrder.costs.backhaulA || existingOrder.costs.backhaul?.aEnd ? `
@@ -351,7 +439,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                                 <td style="padding: 0.5rem 0 0.3rem; color: var(--text-primary); font-weight: 600;">Total Monthly Cost</td>
                                 <td class="font-mono" style="text-align: right; color: var(--accent-danger); font-weight: 600;">
                                     $${(
-                (existingOrder.costs.cable?.mrc || existingOrder.costs.cableCost?.mrc || 0) +
+                (cableSummary.monthly || 0) +
                 (existingOrder.costs.backhaulA?.mrc || existingOrder.costs.backhaul?.aEnd?.monthly || 0) +
                 (existingOrder.costs.backhaulZ?.mrc || existingOrder.costs.backhaul?.zEnd?.monthly || 0) +
                 (existingOrder.costs.crossConnectA?.mrc || existingOrder.costs.xcA?.mrc || existingOrder.costs.crossConnect?.aEnd?.monthly || 0) +
@@ -366,8 +454,8 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <!-- Cost Type Selector (Sticky with Wrapper) -->
                     <div id="cost-buttons" class="mb-4" style="display: ${isEditMode ? 'none' : 'flex'}; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
                         <div style="width: 100%; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Cost Types</div>
-                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> 3rd Party Cable
+                        <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
+                            <ion-icon name="add-outline"></ion-icon> Add Cable Segment
                         </button>
                         <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
                             <ion-icon name="add-outline"></ion-icon> Backhaul A
@@ -408,6 +496,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     </div>
 
                     <!-- Hidden inputs for form submission (will be populated by JS) -->
+                    <input type="hidden" name="costs.cableSegments" value='${escapeHtml(JSON.stringify(cableSegments || []))}'>
                     <!-- Cable Cost -->
                     <input type="hidden" name="costs.cable.supplier" value="${escapeHtml(existingOrder?.costs?.cable?.supplier || '')}">
                     <input type="hidden" name="costs.cable.orderNo" value="${escapeHtml(existingOrder?.costs?.cable?.orderNo || '')}">
@@ -463,10 +552,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                     <!-- Close nested 2-column grid -->
                 
                     <!-- Order Notes - Inside right container, spans full width -->
-                    <div class="section-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
-                        <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <ion-icon name="document-text-outline"></ion-icon> Order Notes
-                        </h4>
+                    <div class="section-card" id="section-notes" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem;">
+                        <div class="form-section-header" style="margin-bottom: 0.75rem;">
+                            <ion-icon name="create-outline"></ion-icon>
+                            <span>Order Notes</span>
+                        </div>
                         <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes about this order..." style="resize: vertical;">${escapeHtml(existingOrder?.notes || '')}</textarea>
                     </div>
                 </div>
@@ -618,7 +708,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
         };
 
         // Get cost data using both paths
-        const cableCost = existingOrder.costs?.cableCost || existingOrder.costs?.cable || {};
+        const cableCost = cableSegments[0] || {};
         const bhA = existingOrder.costs?.backhaulA || existingOrder.costs?.backhaul?.aEnd || {};
         const bhZ = existingOrder.costs?.backhaulZ || existingOrder.costs?.backhaul?.zEnd || {};
         const xcA = existingOrder.costs?.crossConnectA || existingOrder.costs?.xcA || existingOrder.costs?.crossConnect?.aEnd || {};
@@ -626,6 +716,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
         const otherCosts = existingOrder.costs?.otherCosts || {};
 
         // Sync cable costs
+        syncHiddenInput('costs.cableSegments', JSON.stringify(cableSegments || []));
         syncHiddenInput('costs.cable.mrc', cableCost.mrc || 0);
         syncHiddenInput('costs.cable.nrc', cableCost.nrc || 0);
         syncHiddenInput('costs.cable.otc', cableCost.otc || 0);
@@ -740,12 +831,11 @@ export function openAddSalesModal(context, existingOrderId = null) {
                 };
 
                 // ===== Cable Cost Card =====
-                const hasCableCost = cableCost.mrc > 0 || cableCost.nrc > 0 || cableCost.otc > 0 || cableCost.supplier || cableCost.cableSystem;
+                const hasCableCost = cableSegments.length > 0;
 
-                // Helper function to hydrate the cable card with data
-                const hydrateCableCard = () => {
-                    const cableCard = document.querySelector('.cost-card[data-cost-type="cable"]');
-                    if (!cableCard) return;
+                // Helper function to hydrate a cable card with segment data
+                const hydrateCableCard = (cableCard, segment) => {
+                    if (!cableCard || !segment) return;
 
                     // Basic fields - scope to cableCard
                     const populateField = (dataField, value, allowZero = false) => {
@@ -758,107 +848,96 @@ export function openAddSalesModal(context, existingOrderId = null) {
                         }
                     };
 
-                    populateField('costs.cable.orderNo', cableCost.orderNo);
-                    populateField('costs.cable.cableSystem', cableCost.cableSystem);
-                    populateField('costs.cable.capacity', cableCost.capacity, true);
-                    populateField('costs.cable.notes', cableCost.notes);
+                    populateField('costs.cable.orderNo', segment.orderNo);
+                    populateField('costs.cable.cableSystem', segment.cableSystem);
+                    populateField('costs.cable.capacity', segment.capacity, true);
+                    populateField('costs.cable.notes', segment.notes);
 
                     // Capacity unit dropdown (native select)
                     const capacityUnitSelect = cableCard.querySelector('[data-field="costs.cable.capacityUnit"]');
-                    if (capacityUnitSelect && cableCost.capacityUnit) {
-                        capacityUnitSelect.value = cableCost.capacityUnit;
+                    if (capacityUnitSelect && segment.capacityUnit) {
+                        capacityUnitSelect.value = segment.capacityUnit;
                     }
 
-                    // Cost Model SimpleDropdown - find by hidden input name within card
-                    const costModelContainer = cableCard.querySelector('.simple-dropdown-container');
-                    if (costModelContainer && cableCost.model) {
-                        const hiddenInput = costModelContainer.querySelector('input[type="hidden"][name="costs.cable.model"]');
-                        if (hiddenInput) {
-                            hiddenInput.value = cableCost.model;
-                            const selectedDisplay = costModelContainer.querySelector('.simple-dropdown-selected');
-                            const options = costModelContainer.querySelectorAll('.simple-dropdown-option');
-                            options.forEach(opt => {
-                                if (opt.dataset.value === cableCost.model) {
-                                    opt.classList.add('selected');
-                                    if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
-                                } else {
-                                    opt.classList.remove('selected');
-                                }
-                            });
-                        }
-                    }
+                    const populateSimpleDropdown = (fieldName, value) => {
+                        if (!value) return;
+                        const hiddenInput = cableCard.querySelector(`input[type="hidden"][name="${fieldName}"]`);
+                        if (!hiddenInput) return;
+                        hiddenInput.value = value;
+                        const container = hiddenInput.closest('.simple-dropdown');
+                        if (!container) return;
+                        const selectedDisplay = container.querySelector('.simple-dropdown-selected');
+                        const options = container.querySelectorAll('.simple-dropdown-option');
+                        options.forEach(opt => {
+                            if (opt.dataset.value === value) {
+                                opt.classList.add('selected');
+                                if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
+                            } else {
+                                opt.classList.remove('selected');
+                            }
+                        });
+                    };
 
-                    // Protection SimpleDropdown - find by name
-                    const allSimpleDropdowns = cableCard.querySelectorAll('.simple-dropdown-container');
-                    allSimpleDropdowns.forEach(container => {
-                        const hiddenInput = container.querySelector('input[type="hidden"]');
-                        if (hiddenInput && hiddenInput.name === 'costs.cable.protection' && cableCost.protection) {
-                            hiddenInput.value = cableCost.protection;
-                            const selectedDisplay = container.querySelector('.simple-dropdown-selected');
-                            const options = container.querySelectorAll('.simple-dropdown-option');
-                            options.forEach(opt => {
-                                if (opt.dataset.value === cableCost.protection) {
-                                    opt.classList.add('selected');
-                                    if (selectedDisplay) selectedDisplay.textContent = opt.textContent;
-                                } else {
-                                    opt.classList.remove('selected');
-                                }
-                            });
-                        }
-                    });
+                    populateSimpleDropdown('costs.cable.model', segment.model);
+                    populateSimpleDropdown('costs.cable.protection', segment.protection);
 
                     // Protection cable system (if protected)
-                    if (cableCost.protection && cableCost.protection !== 'Unprotected') {
+                    if (segment.protection && segment.protection !== 'Unprotected') {
                         const protSystemContainer = cableCard.querySelector('.cable-protection-system-container');
                         if (protSystemContainer) protSystemContainer.style.display = 'block';
-                        populateField('costs.cable.protectionCableSystem', cableCost.protectionCableSystem);
+                        populateField('costs.cable.protectionCableSystem', segment.protectionCableSystem);
                     }
 
                     // Supplier searchable dropdown - find by class
                     const supplierContainer = cableCard.querySelector('.searchable-dropdown');
-                    if (supplierContainer && cableCost.supplier) {
-                        populateSearchableDropdown(supplierContainer, cableCost.supplier);
+                    if (supplierContainer && segment.supplier) {
+                        populateSearchableDropdown(supplierContainer, segment.supplier);
                     }
 
                     // Handle Cost Model: Lease vs IRU fields visibility and values
-                    const costModel = cableCost.model || 'Lease';
+                    const costModel = segment.model || 'Lease';
                     const leaseFields = cableCard.querySelector('.cable-lease-fields');
                     const iruFields = cableCard.querySelector('.cable-iru-fields');
 
                     if (costModel === 'IRU') {
                         if (leaseFields) leaseFields.style.display = 'none';
                         if (iruFields) iruFields.style.display = 'block';
-                        populateField('costs.cable.otc', cableCost.otc, true);
-                        populateField('costs.cable.omRate', cableCost.omRate, true);
-                        populateField('costs.cable.annualOm', cableCost.annualOm, true);
+                        populateField('costs.cable.otc', segment.otc, true);
+                        populateField('costs.cable.omRate', segment.omRate, true);
+                        populateField('costs.cable.annualOm', segment.annualOm, true);
                     } else {
                         if (leaseFields) leaseFields.style.display = 'block';
                         if (iruFields) iruFields.style.display = 'none';
-                        populateField('costs.cable.mrc', cableCost.mrc, true);
-                        populateField('costs.cable.nrc', cableCost.nrc, true);
+                        populateField('costs.cable.mrc', segment.mrc, true);
+                        populateField('costs.cable.nrc', segment.nrc, true);
                     }
 
                     // Contract period
-                    populateField('costs.cable.startDate', cableCost.startDate);
-                    populateField('costs.cable.termMonths', cableCost.termMonths || 12, true);
-                    populateField('costs.cable.endDate', cableCost.endDate);
+                    populateField('costs.cable.startDate', segment.startDate);
+                    populateField('costs.cable.termMonths', segment.termMonths || 12, true);
+                    populateField('costs.cable.endDate', segment.endDate);
 
 
                     context.calculateSalesFinancials();
                 };
 
                 if (hasCableCost) {
-                    const addCableBtn = document.querySelector('.cost-toggle-btn[data-cost-type="cable"]');
-                    const existingCableCard = document.querySelector('.cost-card[data-cost-type="cable"]');
-
-                    if (existingCableCard) {
-                        // Card already exists (e.g., auto-created for Resale), just hydrate it
-                        setTimeout(hydrateCableCard, 50);
-                    } else if (addCableBtn) {
-                        // Need to create the card first, then hydrate
-                        addCableBtn.click();
-                        setTimeout(hydrateCableCard, 150);
-                    }
+                    const addCableBtn = document.querySelector('.cost-add-btn[data-cost-type="cable"]');
+                    const ensureCableCards = () => {
+                        const existingCards = Array.from(document.querySelectorAll('.cost-card[data-cost-type="cable"]'));
+                        const needed = Math.max(0, cableSegments.length - existingCards.length);
+                        for (let i = 0; i < needed; i += 1) {
+                            addCableBtn?.click();
+                        }
+                        const cards = Array.from(document.querySelectorAll('.cost-card[data-cost-type="cable"]'));
+                        cableSegments.forEach((segment, index) => {
+                            const card = cards[index];
+                            if (card) {
+                                hydrateCableCard(card, segment);
+                            }
+                        });
+                    };
+                    setTimeout(ensureCableCards, 100);
                 }
 
                 // ===== Backhaul A-End Card =====
@@ -1104,8 +1183,11 @@ export function openRenewModal(context, salesOrderId) {
 
     // Get cost info for renewal section
     const costs = order.costs || {};
-    const cableCost = costs.cable || {};
-    const hasCableCost = cableCost.mrc > 0 || cableCost.otc > 0 || cableCost.annualOm > 0;
+    const cableSegments = Array.isArray(costs.cableSegments) && costs.cableSegments.length
+        ? costs.cableSegments
+        : (costs.cable ? [costs.cable] : []);
+    const cableCost = cableSegments[0] || {};
+    const hasCableCost = cableSegments.length > 0 && (cableCost.mrc > 0 || cableCost.otc > 0 || cableCost.annualOm > 0);
     const isIruCable = cableCost.model === 'IRU';
     const backhaulA = costs.backhaul?.aEnd || {};
     const backhaulZ = costs.backhaul?.zEnd || {};
@@ -1365,11 +1447,21 @@ export function openRenewModal(context, salesOrderId) {
 
             // Cable costs
             if (hasCableCost) {
-                updatedData.costs.cable = { ...order.costs.cable };
+                const cableSegmentsClone = cableSegments.map(seg => ({ ...seg }));
+                updatedData.costs.cable = { ...(cableSegmentsClone[0] || order.costs.cable || {}) };
+                if (cableSegmentsClone.length) {
+                    cableSegmentsClone[0] = { ...updatedData.costs.cable };
+                }
+                updatedData.costs.cableSegments = cableSegmentsClone;
                 // Update contract dates to match sales dates
                 updatedData.costs.cable.startDate = startDate;
                 updatedData.costs.cable.termMonths = term;
                 updatedData.costs.cable.endDate = endDate;
+                if (updatedData.costs.cableSegments?.length) {
+                    updatedData.costs.cableSegments[0].startDate = startDate;
+                    updatedData.costs.cableSegments[0].termMonths = term;
+                    updatedData.costs.cableSegments[0].endDate = endDate;
+                }
 
                 if (isIruCable) {
                     const newOm = parseFloat(document.getElementById('renew-cable-om')?.value) || 0;
@@ -1379,6 +1471,10 @@ export function openRenewModal(context, salesOrderId) {
                     }
                     updatedData.costs.cable.annualOm = newOm;
                     updatedData.costs.cable.omRate = newOmRate;
+                    if (updatedData.costs.cableSegments?.length) {
+                        updatedData.costs.cableSegments[0].annualOm = newOm;
+                        updatedData.costs.cableSegments[0].omRate = newOmRate;
+                    }
                 } else {
                     const newCableMrc = parseFloat(document.getElementById('renew-cable-mrc')?.value) || 0;
                     const newCableNrc = parseFloat(document.getElementById('renew-cable-nrc')?.value) || 0;
@@ -1387,6 +1483,10 @@ export function openRenewModal(context, salesOrderId) {
                     }
                     updatedData.costs.cable.mrc = newCableMrc;
                     updatedData.costs.cable.nrc = newCableNrc;
+                    if (updatedData.costs.cableSegments?.length) {
+                        updatedData.costs.cableSegments[0].mrc = newCableMrc;
+                        updatedData.costs.cableSegments[0].nrc = newCableNrc;
+                    }
                 }
             }
 

@@ -36,6 +36,15 @@ function validateSalesForm(form) {
     // Helper to get field value
     const getVal = (name) => form.querySelector(`[name="${name}"]`)?.value?.trim();
     const getNum = (name) => Number(form.querySelector(`[name="${name}"]`)?.value || 0);
+    const getJson = (name) => {
+        const raw = form.querySelector(`[name="${name}"]`)?.value || '';
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return [];
+        }
+    };
 
     // Required field validation
     if (!getVal('customerId')) {
@@ -67,6 +76,59 @@ function validateSalesForm(form) {
         showError('dates.term', 'Term must be greater than 0');
     }
 
+    // Batch allocation validation
+    const inventoryId = getVal('inventoryLink');
+    const inventory = inventoryId ? window.Store.getInventory().find(i => i.resourceId === inventoryId) : null;
+    if (inventory?.costMode === 'batches') {
+        const allocations = getJson('batchAllocations');
+        const batchErrorEl = form.querySelector('#batch-allocation-error');
+        if (batchErrorEl) {
+            batchErrorEl.style.display = 'none';
+            batchErrorEl.textContent = '';
+        }
+        const totalAllocated = allocations.reduce((sum, a) => sum + (Number(a.capacityAllocated) || 0), 0);
+        if (totalAllocated <= 0) {
+            if (batchErrorEl) {
+                batchErrorEl.textContent = 'Please allocate capacity to active batches.';
+                batchErrorEl.style.display = 'block';
+            }
+            errors.push('Batch allocation is required');
+            isValid = false;
+        } else if (Math.abs(totalAllocated - capacityValue) > 0.0001) {
+            if (batchErrorEl) {
+                batchErrorEl.textContent = `Allocated capacity (${totalAllocated}) must equal Sales Capacity (${capacityValue}).`;
+                batchErrorEl.style.display = 'block';
+            }
+            errors.push('Batch allocation does not match sales capacity');
+            isValid = false;
+        } else {
+            const orderId = getVal('orderId') || null;
+            const batches = window.Store.getInventoryBatches(inventoryId);
+            allocations.forEach(allocation => {
+                const batch = batches.find(b => b.batchId === allocation.batchId);
+                if (!batch) return;
+                if (batch.status === 'Planned' || batch.status === 'Ended') {
+                    if (batchErrorEl) {
+                        batchErrorEl.textContent = 'Allocation can only use Active batches.';
+                        batchErrorEl.style.display = 'block';
+                    }
+                    errors.push('Allocation includes inactive batch');
+                    isValid = false;
+                    return;
+                }
+                const available = (batch.capacity?.value || 0) - window.Store.getBatchAllocatedCapacity(batch.batchId, orderId);
+                if ((allocation.capacityAllocated || 0) > available + 0.0001) {
+                    if (batchErrorEl) {
+                        batchErrorEl.textContent = `Allocated capacity exceeds available for batch ${batch.orderId || batch.batchId}.`;
+                        batchErrorEl.style.display = 'block';
+                    }
+                    errors.push('Allocation exceeds batch capacity');
+                    isValid = false;
+                }
+            });
+        }
+    }
+
     // Date logic validation
     const startDate = getVal('dates.start');
     const endDate = getVal('dates.end');
@@ -84,6 +146,11 @@ function validateSalesForm(form) {
         if (firstError) {
             firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             firstError.focus();
+        } else {
+            const batchError = form.querySelector('#batch-allocation-error');
+            if (batchError && batchError.style.display !== 'none') {
+                batchError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     }
 

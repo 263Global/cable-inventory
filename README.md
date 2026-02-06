@@ -6,7 +6,7 @@ A professional Telecom Resource and P&L Management System for managing submarine
 
 ### Core Features
 - **📊 Dashboard** - Key metrics, MRR trend charts, margin distribution, capacity tracking, and sales leaderboards
-- **📦 Inventory Management** - Track cable resources including IRU, Lease, and Swapped assets
+- **📦 Inventory Management** - Track cable resources including IRU, Lease, Swapped, and batch-staged assets
 - **💼 Sales Order Tracking** - Manage customer orders with detailed cost structures and profitability analysis
 - **☑️ Bulk Operations** - Selection mode toggle for multi-select and batch export (clean default view)
 - **📱 Responsive Design** - Optimized for desktop, tablet, and mobile devices (iOS Safari compatible)
@@ -22,7 +22,9 @@ A professional Telecom Resource and P&L Management System for managing submarine
   - Preserves Order ID while updating contract dates
 - **Multiple Cost Cards** - Cable, Backhaul (A/Z-End), Cross Connect, Other Costs
 - **Dual-Margin Analysis** - First-month and recurring margin for IRU Resale orders
-- **Smart Field Logic** - Linked Resource hidden for Resale, optional for Swapped Out
+- **Smart Field Logic** - Linked Resource hidden for Resale, required for Inventory/Hybrid/Swapped Out
+- **Batch Allocation** - Auto-allocate (with manual override) sales capacity across active inventory batches
+- **Swapped Out Pricing** - Market price revenue vs inventory cost for profit/loss visibility
 
 ### CRM/SRM (Customer & Supplier Management)
 - **👥 Customer Management** - Add and manage customers with short/full names and contact info
@@ -37,6 +39,11 @@ A professional Telecom Resource and P&L Management System for managing submarine
 - **☁️ Supabase Backend** - Cloud database with PostgreSQL for multi-device sync
 - **🔐 Authentication** - Secure user login with Row Level Security
 - **💾 Fallback Storage** - Works offline with browser localStorage
+
+### Inventory Costing (Batch Mode)
+- **Base Cost Pool** - Track whole-fiber fixed cost with O&M Rate auto-calculating Annual O&M
+- **Staged Lighting Batches** - Per-batch OTC/MRC, O&M Rate, term, and start date
+- **Batch Allocations** - Sales orders allocate capacity across active batches for accurate cost/profit
 
 ## Tech Stack
 

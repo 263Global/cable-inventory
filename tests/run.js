@@ -66,6 +66,71 @@ test('SalesStatus.computeSalesStatus returns pending/active/expired', () => {
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-01-01', '2024-06-01', now), 'Expired');
 });
 
+test('computeCapacityRatio converts Tbps to Gbps', () => {
+    const ratio = window.computeCapacityRatio(1000, 'Gbps', 10, 'Tbps');
+    nearlyEqual(ratio, 0.1);
+});
+
+test('computeOrderFinancials allocates batch + base costs by capacity', () => {
+    const inventory = [{
+        resourceId: 'INV-BATCH',
+        acquisition: { ownership: 'IRU' },
+        capacity: { value: 10000, unit: 'Gbps' },
+        costMode: 'batches',
+        baseCost: {
+            model: 'IRU',
+            otc: 120000,
+            termMonths: 120,
+            annualOm: 12000
+        },
+        batches: [{
+            batchId: 'BAT-1',
+            status: 'Active',
+            startDate: '2023-12-01',
+            capacity: { value: 1000, unit: 'Gbps' },
+            model: 'IRU',
+            financials: {
+                otc: 60000,
+                termMonths: 120,
+                annualOm: 6000
+            }
+        }]
+    }];
+    window.Store = { getInventory: () => inventory };
+
+    const order = {
+        salesModel: 'Lease',
+        salesType: 'Inventory',
+        inventoryLink: 'INV-BATCH',
+        capacity: { value: 1000, unit: 'Gbps' },
+        dates: { term: 12, start: '2024-01-01' },
+        financials: { mrcSales: 2000 },
+        batchAllocations: [{ batchId: 'BAT-1', capacityAllocated: 1000 }],
+        costs: {}
+    };
+
+    const result = window.computeOrderFinancials(order);
+    nearlyEqual(result.monthlyProfit, 800);
+});
+
+test('computeOrderFinancials sums cable segments', () => {
+    window.Store = { getInventory: () => [] };
+    const order = {
+        salesModel: 'Lease',
+        salesType: 'Resale',
+        financials: { mrcSales: 1000 },
+        costs: {
+            cableSegments: [
+                { model: 'Lease', mrc: 100 },
+                { model: 'IRU', annualOm: 2400 }
+            ]
+        }
+    };
+
+    const result = window.computeOrderFinancials(order);
+    nearlyEqual(result.monthlyProfit, 700);
+});
+
 test('computeOrderFinancials handles Lease Inventory with operating costs', () => {
     const inventory = [{
         resourceId: 'INV-1',

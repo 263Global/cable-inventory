@@ -29,10 +29,14 @@ Use this checklist after changes that may impact UI, data entry, or calculations
   - Cost card amounts and supplier dropdowns.
 - Open the Renew modal and confirm fields prefill correctly.
 - Save the renewal and confirm the order updates.
-- Swapped Out order with missing/Lease salesModel:
-  - Set salesType = Swapped Out, leave salesModel empty or set to Lease.
-  - Link an Inventory resource.
-  - Verify monthly revenue equals linked inventory monthly cost and profit = 0.
+- Swapped Out order (market-priced):
+  - Set salesType = Swapped Out, link an Inventory resource.
+  - Enter a market price (Lease MRC or IRU OTC/O&M).
+  - Verify monthly profit = market revenue - inventory monthly cost - operating costs.
+- Batch-mode Inventory order:
+  - Inventory costMode = Batches, define Base Cost + 2 batches (Active + Planned).
+  - Sales order selects the Inventory and auto-allocates Active batches only.
+  - Verify allocations sum to sales capacity and profit includes Base + Batch costs.
 
 ## Cost Structure (Edit Mode)
 - For each cost type (cable, backhaul A/Z, XC A/Z, other):

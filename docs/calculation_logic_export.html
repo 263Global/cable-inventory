@@ -180,16 +180,22 @@ Cable O&amp;M月成本 = 6,000 ÷ 12 = 500
 月利润 = 3,000 - 800 - 1,000 - 500 = 700
 利润率 = 700 ÷ 3,000 = 23.33%</pre>
 
-    <h3>4) IRU + Swapped Out（置换）</h3>
+    <h3>4) Swapped Out（资源置换）</h3>
     <ul>
-      <li>前提：双方资源 OTC 成本相同、Annual O&amp;M Rate 相同，无现金交易。</li>
-      <li>月 OTC 收入 = (Inventory OTC ÷ Inventory Term) × 分摊比例</li>
-      <li>月 O&amp;M 收入 = (Inventory Annual O&amp;M ÷ 12) × 分摊比例</li>
-      <li>月 OTC 成本 = (Inventory OTC ÷ Inventory Term) × 分摊比例</li>
-      <li>月 O&amp;M 成本 = (Inventory Annual O&amp;M ÷ 12) × 分摊比例</li>
-      <li>月利润 = (月OTC收入 + 月O&amp;M收入) - (月OTC成本 + 月O&amp;M成本) = 0</li>
-      <li>说明：利润为零，但收入与成本需记录用于财务报表。</li>
-      <li>补充：Swapped Out 的计算与 salesModel 无关。</li>
+      <li>Swapped Out 价格为市场认定价（销售侧收入字段），与真实成本（链接 Inventory）可能不同。</li>
+      <li>收入（市场价）：Lease 用 MRC/NRC；IRU 用 OTC 按月摊销 + 年度 O&amp;M ÷ 12。</li>
+      <li>成本：Inventory 月成本 + 运营成本（Backhaul / XC / Other Monthly）。</li>
+      <li>月利润 = 月收入（市场价） - Inventory 月成本 - 运营成本。</li>
+      <li>说明：若市场价=真实成本，利润为 0；系统不再强制归零。</li>
+    </ul>
+    <h3>5) Inventory Batch Mode（分期点亮）</h3>
+    <ul>
+      <li>Base Cost Pool（整条光纤固定成本）：(Base OTC ÷ Base Term) + (Base Annual O&amp;M ÷ 12)，按销售容量比例分摊。</li>
+      <li>Batch 成本（点亮批次）：IRU = OTC ÷ Term + Annual O&amp;M ÷ 12；Lease = MRC。</li>
+      <li>Batch Annual O&amp;M = Batch OTC × O&amp;M Rate。</li>
+      <li>Batch 分摊 = Batch 月成本 × (分配容量 ÷ Batch 容量)。</li>
+      <li>月利润 = 月收入 - Base分摊 - ΣBatch分摊 - 运营成本。</li>
+      <li>规则：仅计入 Active 且生效日期 ≤ 订单开始日的批次。</li>
     </ul>
   </div>
 </body>

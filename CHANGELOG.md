@@ -10,6 +10,17 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
 - **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
 - **Regression Checklist** - `docs/regression-checklist.md` for manual QA coverage
+- **Inventory Batch Mode** - Batch-based cost tracking with base cost pool + staged lighting batches
+- **Batch Allocation** - Sales orders can auto-allocate (or manually override) capacity across active batches
+- **Batch Data Tables** - New `inventory_batches` and `sales_order_batches` tables in Supabase schema
+- **Incremental Migration** - `docs/migrations/2026-01-29-add-om-rate.sql` for O&M rate columns
+- **CSV/Excel Bulk Import** - Import data via CSV or Excel files across all modules
+  - Customers, Suppliers, Inventory, and Sales supported
+  - 3-step wizard: Download Template → Upload File → Validate & Import
+  - Drag & drop file upload with format detection
+  - Schema-based validation with error highlighting
+  - Foreign key resolution (Supplier/Customer short_name → UUID)
+  - PapaParse (CSV) and SheetJS (Excel) via CDN
 
 ### Changed
 - **Sales Ordering** - Avoid in-place sorting to keep store ordering stable
@@ -19,7 +30,13 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Sales Form Split** - `salesForm.js` decomposed into focused modules with a re-export facade
 - **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
-- **Swapped Out Accounting** - Swapped Out now records inventory-based monthly revenue with zero profit (independent of salesModel), requires Inventory linkage, and updates UI hints/docs/regression checklist
+- **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
+- **Inventory Costing** - Base O&M is now derived from O&M Rate (auto-calculated), not manual Annual O&M entry
+- **Batch Cost Allocation** - Base + batch costs now share a unified capacity ratio in the profit engine and sales form
+- **Cable Cost Segments** - Resale/Hybrid cable costs now support multiple segments and aggregate in financials
+- **Batch Capacity Guard** - Inventory batch totals cannot exceed base capacity at save time
+- **Batch Capacity Display** - Inventory list and detail views show lit vs unlit capacity for batch mode
+- **Batch Capacity Label** - Base capacity field clarifies it is total/unlit when using batch mode
 
 ### Fixed
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
@@ -29,6 +46,30 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
 - **Dashboard Escaping** - Sanitized alert and leaderboard fields to prevent injection
+
+### Tests
+- **Batch Allocation Coverage** - Added a test for base + batch cost allocation by capacity
+
+## [1.8.2] - 2026-02-05
+
+### Added
+- **Mobile Card Layouts** - Data tables transform into stacked cards on mobile (< 768px)
+  - Customers and Suppliers: Full Name, Contact, Email fields with labels
+  - Inventory and Sales: Already implemented, verified working
+  - Uses CSS grid and `data-label` attributes for responsive display
+
+### Changed
+- **Touch Optimizations** - Added `touch-action: manipulation` to remove 300ms tap delay
+- **FAB Position** - Increased bottom offset from 90px to 100px for better nav bar clearance
+- **Filter Bar Layout** - Search bar now full-width on mobile with filters stacked below
+- **Safe Area Padding** - Bottom navigation respects `env(safe-area-inset-bottom)`
+- **Focus States** - Added `focus-visible` styles for keyboard navigation accessibility
+- **Table Headers** - Changed from ALL CAPS to Title Case for better readability
+- **Sidebar Layout** - Reorganized footer with compact theme toggle and danger-styled sign out
+
+### Improved
+- **Dashboard Empty States** - Added CTA buttons for Inventory and Sales when no data exists
+- **Placeholder Contrast** - Increased form input placeholder visibility
 
 ## [1.8.1] - 2026-01-18
 
