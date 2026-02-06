@@ -52,7 +52,8 @@
             <div id="user-section" class="sidebar-user-section"
                 style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: none;">
                 <!-- User Info Row -->
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0 0.5rem;">
+                <div
+                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0 0.5rem;">
                     <ion-icon name="person-circle-outline"
                         style="font-size: 1.5rem; color: var(--accent-primary); flex-shrink: 0;"></ion-icon>
                     <span id="user-email"
@@ -60,10 +61,12 @@
                 </div>
                 <!-- Quick Actions Row -->
                 <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <button class="btn btn-secondary" id="theme-toggle" style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.8rem;" title="Toggle Theme">
+                    <button class="btn btn-secondary" id="theme-toggle"
+                        style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.8rem;" title="Toggle Theme">
                         <ion-icon name="moon-outline"></ion-icon>
                     </button>
-                    <button class="btn btn-secondary" id="change-password-btn" style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.8rem;" title="Change Password">
+                    <button class="btn btn-secondary" id="change-password-btn"
+                        style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.8rem;" title="Change Password">
                         <ion-icon name="key-outline"></ion-icon>
                     </button>
                 </div>
@@ -123,6 +126,10 @@
     <script src="assets/js/modules/financials.js" defer></script>
     <script src="assets/js/modules/validation.js" defer></script>
     <script src="assets/js/modules/csv.js" defer></script>
+    <!-- Import dependencies (PapaParse + SheetJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+    <script src="assets/js/modules/import.js" defer></script>
     <script src="assets/js/modules/bulkOps.js" defer></script>
     <!-- Main Application (ES6 Module) -->
     <script type="module" src="assets/js/app.js"></script>

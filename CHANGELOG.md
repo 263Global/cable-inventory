@@ -14,6 +14,11 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Batch Allocation** - Sales orders can auto-allocate (or manually override) capacity across active batches
 - **Batch Data Tables** - New `inventory_batches` and `sales_order_batches` tables in Supabase schema
 - **Incremental Migration** - `docs/migrations/2026-01-29-add-om-rate.sql` for O&M rate columns
+- **CSV/Excel Bulk Import** - Import Customers and Suppliers via CSV or Excel files
+  - 3-step wizard: Download Template → Upload File → Validate & Import
+  - Drag & drop file upload with format detection
+  - Schema-based validation with error highlighting
+  - PapaParse (CSV) and SheetJS (Excel) via CDN
 
 ### Changed
 - **Sales Ordering** - Avoid in-place sorting to keep store ordering stable

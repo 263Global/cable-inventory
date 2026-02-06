@@ -51,8 +51,17 @@ export function initSuppliersModule(App) {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         const paginatedData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-        // Clear and add button to header
+        // Clear and add buttons to header
         this.headerActions.innerHTML = '';
+
+        // Import button
+        const importBtn = document.createElement('button');
+        importBtn.className = 'btn btn-secondary';
+        importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
+        importBtn.onclick = () => window.CsvImport.openImportModal('suppliers');
+        this.headerActions.appendChild(importBtn);
+
+        // Add button
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-primary';
         addBtn.innerHTML = '<ion-icon name="add-outline"></ion-icon> Add Supplier';
