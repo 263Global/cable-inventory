@@ -42,6 +42,12 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
 - **Modal Save Guard** - Prevent null save button errors in close-only modals
 - **Modal Close View** - Avoid forcing inventory view when closing non-inventory modals
+- **FAB Modal Overlap** - Hide floating action button when modals are open (mobile)
+- **Import Defensive Coding** - Added optional chaining to CsvImport calls in customers/suppliers
+
+### Improved
+- **Form Placeholders** - Added example text to Customer/Supplier form inputs for guidance
+- **Notes Textarea** - Increased textarea rows for better visibility
 
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders

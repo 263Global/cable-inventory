@@ -59,7 +59,7 @@ export function initCustomersModule(App) {
         const importBtn = document.createElement('button');
         importBtn.className = 'btn btn-secondary';
         importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
-        importBtn.onclick = () => window.CsvImport.openImportModal('customers');
+        importBtn.onclick = () => window.CsvImport?.openImportModal('customers');
         this.headerActions.appendChild(importBtn);
 
         // Add button
@@ -155,7 +155,7 @@ export function initCustomersModule(App) {
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Short Name <span class="required-indicator">*</span></label>
-                                    <input type="text" name="shortName" class="form-control" value="${escapeHtml(existing?.short_name || '')}" required>
+                                    <input type="text" name="shortName" class="form-control" value="${escapeHtml(existing?.short_name || '')}" placeholder="e.g. ACME" required>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Company Type</label>
@@ -172,17 +172,17 @@ export function initCustomersModule(App) {
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Name</label>
-                                    <input type="text" name="contactName" class="form-control" value="${escapeHtml(existing?.contact_name || '')}">
+                                    <input type="text" name="contactName" class="form-control" value="${escapeHtml(existing?.contact_name || '')}" placeholder="John Doe">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Contact Email</label>
-                                    <input type="email" name="contactEmail" class="form-control" value="${escapeHtml(existing?.contact_email || '')}">
+                                    <input type="email" name="contactEmail" class="form-control" value="${escapeHtml(existing?.contact_email || '')}" placeholder="contact@company.com">
                                 </div>
                             </div>
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label class="form-label">Contact Phone</label>
-                                    <input type="text" name="contactPhone" class="form-control" value="${escapeHtml(existing?.contact_phone || '')}">
+                                    <input type="text" name="contactPhone" class="form-control" value="${escapeHtml(existing?.contact_phone || '')}" placeholder="+1 234 567 8900">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Website</label>
@@ -191,7 +191,7 @@ export function initCustomersModule(App) {
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2">${escapeHtml(existing?.notes || '')}</textarea>
+                                <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes...">${escapeHtml(existing?.notes || '')}</textarea>
                             </div>
                         </form>
                     </div>

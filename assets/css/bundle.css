@@ -2026,6 +2026,14 @@ textarea.is-invalid:focus {
     animation: fabIn 0.25s ease forwards;
 }
 
+/* Hide FAB when modal is active (prevents overlap on mobile) */
+.modal-overlay~.fab,
+.modal-backdrop~.fab,
+body:has(.modal-overlay) .fab,
+body:has(.modal-backdrop) .fab {
+    display: none !important;
+}
+
 /* 
  * Responsive Styles
  * All media queries consolidated for maintainability
