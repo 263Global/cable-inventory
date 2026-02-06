@@ -283,6 +283,11 @@ export function renderInventory(context, searchQuery = '', page = 1, statusFilte
 
     if (statusFilterEl) {
         statusFilterEl.addEventListener('change', () => applyFilters(1));
+        // Visual indicator for active filter
+        statusFilterEl.classList.toggle('filter-active', statusFilterEl.value !== '');
+        statusFilterEl.addEventListener('change', () => {
+            statusFilterEl.classList.toggle('filter-active', statusFilterEl.value !== '');
+        });
     }
 
     // Add pagination event listeners

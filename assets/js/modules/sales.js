@@ -313,6 +313,17 @@ export function renderSales(context, filters = {}) {
     }
     if (statusFilter) {
         statusFilter.addEventListener('change', () => applyFilters(1));
+        // Visual indicator for active filter
+        statusFilter.classList.toggle('filter-active', statusFilter.value !== '');
+        statusFilter.addEventListener('change', () => {
+            statusFilter.classList.toggle('filter-active', statusFilter.value !== '');
+        });
+    }
+    if (salespersonFilter) {
+        salespersonFilter.classList.toggle('filter-active', salespersonFilter.value !== '');
+        salespersonFilter.addEventListener('change', () => {
+            salespersonFilter.classList.toggle('filter-active', salespersonFilter.value !== '');
+        });
     }
 
     // Add pagination event listeners

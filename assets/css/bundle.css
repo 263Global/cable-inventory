@@ -1006,12 +1006,26 @@ tbody tr:hover {
 }
 
 .form-control::placeholder {
-    color: var(--text-muted);
-    opacity: 0.8;
+    color: var(--text-secondary);
+    opacity: 1;
 }
 
 [data-theme="light"] .form-control::placeholder {
-    color: #64748b;
+    color: #475569;
+    opacity: 1;
+}
+
+/* Filter active state - visual indicator when filter is not default */
+.form-control.filter-active,
+select.form-control.filter-active {
+    border-color: var(--accent-primary);
+    background-color: rgba(99, 91, 255, 0.08);
+    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.12);
+}
+
+[data-theme="light"] .form-control.filter-active,
+[data-theme="light"] select.form-control.filter-active {
+    background-color: rgba(99, 91, 255, 0.05);
 }
 
 select.form-control {
@@ -1882,7 +1896,12 @@ select.form-control:focus {
 }
 
 .search-box input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    opacity: 1;
+}
+
+[data-theme="light"] .search-box input::placeholder {
+    color: #475569;
 }
 
 /* ===== Form Validation Styles ===== */
