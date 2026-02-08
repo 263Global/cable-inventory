@@ -26,7 +26,8 @@ const escapeJsString = (str) => {
         .replace(/\n/g, '\\n');
 };
 
-const { getSalesStatusBadgeClass } = window.SalesStatus;
+const { getSalesStatusBadgeClass, computeSalesStatus } = window.SalesStatus;
+const { isExpiringWithin } = window.StatusUi;
 
 export function renderSales(context, filters = {}) {
     // Check if coming from Dashboard with an expiring filter
@@ -36,6 +37,8 @@ export function renderSales(context, filters = {}) {
     }
 
     let data = window.Store.getSales().slice();
+    const now = new Date();
+    const getEffectiveStatus = (item) => computeSalesStatus(item.dates?.start, item.dates?.end, now);
 
     // Sort by contract start date (newest first), orders without date go to end
     data.sort((a, b) => {
@@ -69,17 +72,13 @@ export function renderSales(context, filters = {}) {
 
     if (statusValue) {
         if (statusValue === 'Expiring') {
-            // Filter for Active orders expiring within 90 days
-            const now = new Date();
             data = data.filter(item => {
-                if (item.status !== 'Active') return false;
-                if (!item.dates?.end) return false;
-                const endDate = new Date(item.dates.end);
-                const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-                return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
+                const effectiveStatus = getEffectiveStatus(item);
+                if (effectiveStatus !== 'Active') return false;
+                return isExpiringWithin(item.dates?.end, 90, now, item.dates?.start);
             });
         } else {
-            data = data.filter(item => item.status === statusValue);
+            data = data.filter(item => getEffectiveStatus(item) === statusValue);
         }
     }
 
@@ -210,9 +209,10 @@ export function renderSales(context, filters = {}) {
         const marginClass = marginPercent >= 50 ? 'margin-high' : (marginPercent >= 20 ? 'margin-mid' : 'margin-low');
         const firstMonthMarginClass = firstMonthMargin >= 50 ? 'margin-high' : (firstMonthMargin >= 20 ? 'margin-mid' : 'margin-low');
         const recurringMarginClass = recurringMargin >= 50 ? 'margin-high' : (recurringMargin >= 20 ? 'margin-mid' : 'margin-low');
+        const effectiveStatus = getEffectiveStatus(item);
 
         // Status badge
-        const statusClass = getSalesStatusBadgeClass(item.status);
+        const statusClass = getSalesStatusBadgeClass(effectiveStatus);
 
         // Type icons
         const typeClass = salesType === 'Resale' ? 'type-resale' :
@@ -253,7 +253,7 @@ export function renderSales(context, filters = {}) {
                                 <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${salesModel}</div>
                             </td>
                             <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
-                            <td><span class="badge ${statusClass}">${item.status}</span></td>
+                            <td><span class="badge ${statusClass}">${effectiveStatus}</span></td>
                             <td class="col-revenue font-mono" style="text-align:right; color: var(--accent-success)">$${mrr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td class="col-margin-percent" style="text-align:right">${marginPercentCell}</td>
@@ -435,7 +435,8 @@ export function viewSalesDetails(context, salesOrderId) {
         : 'Monthly Revenue (MRR)';
     const revenueLabel2 = isIru ? 'OTC Revenue' : 'One-time Revenue (NRC)';
 
-    const statusClass = getSalesStatusBadgeClass(order.status);
+    const effectiveStatus = computeSalesStatus(order.dates?.start, order.dates?.end, new Date());
+    const statusClass = getSalesStatusBadgeClass(effectiveStatus);
 
     // Calculate costs display - MRC
     const cableOtc = cableSummary.totalOtc;
@@ -616,7 +617,7 @@ export function viewSalesDetails(context, salesOrderId) {
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${salesModel}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${salesType}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${order.status}</span></td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${effectiveStatus}</span></td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
                     </table>
                 </div>

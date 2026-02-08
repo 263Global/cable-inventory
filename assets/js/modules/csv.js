@@ -41,6 +41,7 @@ function exportSalesToCSV() {
         alert('No sales data to export.');
         return;
     }
+    const now = new Date();
 
     // Get customers for lookup
     const customers = window.Store.getCustomers();
@@ -66,7 +67,7 @@ function exportSalesToCSV() {
             s.salesOrderId || '',
             customerName,
             s.salesperson || '',
-            s.status || '',
+            window.SalesStatus.computeSalesStatus(s.dates?.start, s.dates?.end, now),
             s.salesModel || '',
             s.salesType || '',
             route,
@@ -95,6 +96,9 @@ function exportInventoryToCSV() {
         alert('No inventory data to export.');
         return;
     }
+    const allSales = window.Store.getSales();
+    const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(allSales);
+    const now = new Date();
 
     // Get suppliers for lookup
     const suppliers = window.Store.getSuppliers();
@@ -130,7 +134,7 @@ function exportInventoryToCSV() {
             i.cableSystem || '',
             i.segmentType || '',
             i.routeDescription || '',
-            i.status || '',
+            window.InventoryStatus.computeInventoryStatus(i, soldByResourceId.get(i.resourceId) || 0, now).calculatedStatus,
             i.capacity?.value || '',
             formatEndpoint(i.location?.aEnd),
             formatEndpoint(i.location?.zEnd),

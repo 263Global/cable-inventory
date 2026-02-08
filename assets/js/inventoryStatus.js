@@ -1,11 +1,22 @@
 // Shared inventory status helpers for non-module and module scripts.
 (() => {
+    const getSaleStatus = (sale, now) => {
+        const start = sale?.dates?.start;
+        const end = sale?.dates?.end;
+        if (window.SalesStatus?.computeSalesStatus) {
+            return window.SalesStatus.computeSalesStatus(start, end, now);
+        }
+        return sale?.status || 'Active';
+    };
+
     const buildSalesIndex = (sales) => {
         const byResourceId = new Map();
         const soldByResourceId = new Map();
+        const now = new Date();
         sales.forEach(sale => {
             const resourceId = sale.inventoryLink;
             if (!resourceId) return;
+            if (getSaleStatus(sale, now) === 'Expired') return;
             const list = byResourceId.get(resourceId) || [];
             list.push(sale);
             byResourceId.set(resourceId, list);

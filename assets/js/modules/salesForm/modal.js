@@ -565,7 +565,7 @@ export function openAddSalesModal(context, existingOrderId = null) {
             <!-- Close 2-Column Grid -->
             `;
 
-    context.openModal(isEditMode ? `Edit Sales Order: ${escapeHtml(existingOrderId)}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
+    context.openModal(isEditMode ? `Edit Sales Order: ${existingOrderId}` : 'New Sales Order', modalContent, (form) => context.handleSalesSubmit(form), true); // true for large modal
 
     // Initialize Sales Model simple dropdown
     const salesModelPlaceholder = document.getElementById('sales-model-dropdown-placeholder');
@@ -1442,25 +1442,31 @@ export function openRenewModal(context, salesOrderId) {
         const costsWereEdited = costRenewBody && costRenewBody.style.display !== 'none';
 
         if (costsWereEdited && hasAnyCost) {
-            // Initialize costs structure
-            updatedData.costs = { ...order.costs };
+            // Initialize costs structure while preserving nested fields.
+            const currentCosts = order.costs || {};
+            const nextCosts = {
+                ...currentCosts,
+                backhaul: { ...(currentCosts.backhaul || {}) },
+                crossConnect: { ...(currentCosts.crossConnect || {}) },
+                otherCosts: { ...(currentCosts.otherCosts || {}) }
+            };
 
             // Cable costs
             if (hasCableCost) {
                 const cableSegmentsClone = cableSegments.map(seg => ({ ...seg }));
-                updatedData.costs.cable = { ...(cableSegmentsClone[0] || order.costs.cable || {}) };
+                nextCosts.cable = { ...(cableSegmentsClone[0] || currentCosts.cable || {}) };
                 if (cableSegmentsClone.length) {
-                    cableSegmentsClone[0] = { ...updatedData.costs.cable };
+                    cableSegmentsClone[0] = { ...nextCosts.cable };
                 }
-                updatedData.costs.cableSegments = cableSegmentsClone;
+                nextCosts.cableSegments = cableSegmentsClone;
                 // Update contract dates to match sales dates
-                updatedData.costs.cable.startDate = startDate;
-                updatedData.costs.cable.termMonths = term;
-                updatedData.costs.cable.endDate = endDate;
-                if (updatedData.costs.cableSegments?.length) {
-                    updatedData.costs.cableSegments[0].startDate = startDate;
-                    updatedData.costs.cableSegments[0].termMonths = term;
-                    updatedData.costs.cableSegments[0].endDate = endDate;
+                nextCosts.cable.startDate = startDate;
+                nextCosts.cable.termMonths = term;
+                nextCosts.cable.endDate = endDate;
+                if (nextCosts.cableSegments?.length) {
+                    nextCosts.cableSegments[0].startDate = startDate;
+                    nextCosts.cableSegments[0].termMonths = term;
+                    nextCosts.cableSegments[0].endDate = endDate;
                 }
 
                 if (isIruCable) {
@@ -1469,11 +1475,11 @@ export function openRenewModal(context, salesOrderId) {
                     if (newOm !== (cableCost.annualOm || 0)) {
                         costChanges.push(`Cable O&M: $${cableCost.annualOm || 0} → $${newOm}`);
                     }
-                    updatedData.costs.cable.annualOm = newOm;
-                    updatedData.costs.cable.omRate = newOmRate;
-                    if (updatedData.costs.cableSegments?.length) {
-                        updatedData.costs.cableSegments[0].annualOm = newOm;
-                        updatedData.costs.cableSegments[0].omRate = newOmRate;
+                    nextCosts.cable.annualOm = newOm;
+                    nextCosts.cable.omRate = newOmRate;
+                    if (nextCosts.cableSegments?.length) {
+                        nextCosts.cableSegments[0].annualOm = newOm;
+                        nextCosts.cableSegments[0].omRate = newOmRate;
                     }
                 } else {
                     const newCableMrc = parseFloat(document.getElementById('renew-cable-mrc')?.value) || 0;
@@ -1481,11 +1487,11 @@ export function openRenewModal(context, salesOrderId) {
                     if (newCableMrc !== (cableCost.mrc || 0)) {
                         costChanges.push(`Cable MRC: $${cableCost.mrc || 0} → $${newCableMrc}`);
                     }
-                    updatedData.costs.cable.mrc = newCableMrc;
-                    updatedData.costs.cable.nrc = newCableNrc;
-                    if (updatedData.costs.cableSegments?.length) {
-                        updatedData.costs.cableSegments[0].mrc = newCableMrc;
-                        updatedData.costs.cableSegments[0].nrc = newCableNrc;
+                    nextCosts.cable.mrc = newCableMrc;
+                    nextCosts.cable.nrc = newCableNrc;
+                    if (nextCosts.cableSegments?.length) {
+                        nextCosts.cableSegments[0].mrc = newCableMrc;
+                        nextCosts.cableSegments[0].nrc = newCableNrc;
                     }
                 }
             }
@@ -1497,9 +1503,14 @@ export function openRenewModal(context, salesOrderId) {
                 if (newBhAMrc !== (backhaulA.monthly || 0)) {
                     costChanges.push(`BH-A: $${backhaulA.monthly || 0} → $${newBhAMrc}`);
                 }
-                updatedData.costs.backhaul = {
-                    ...order.costs.backhaul,
-                    aEnd: { monthly: newBhAMrc, nrc: newBhANrc }
+                const existingAEnd = nextCosts.backhaul?.aEnd || {};
+                nextCosts.backhaul = {
+                    ...(nextCosts.backhaul || {}),
+                    aEnd: {
+                        ...existingAEnd,
+                        monthly: newBhAMrc,
+                        nrc: newBhANrc
+                    }
                 };
             }
 
@@ -1510,9 +1521,14 @@ export function openRenewModal(context, salesOrderId) {
                 if (newBhZMrc !== (backhaulZ.monthly || 0)) {
                     costChanges.push(`BH-Z: $${backhaulZ.monthly || 0} → $${newBhZMrc}`);
                 }
-                updatedData.costs.backhaul = {
-                    ...updatedData.costs.backhaul,
-                    zEnd: { monthly: newBhZMrc, nrc: newBhZNrc }
+                const existingZEnd = nextCosts.backhaul?.zEnd || {};
+                nextCosts.backhaul = {
+                    ...(nextCosts.backhaul || {}),
+                    zEnd: {
+                        ...existingZEnd,
+                        monthly: newBhZMrc,
+                        nrc: newBhZNrc
+                    }
                 };
             }
 
@@ -1523,9 +1539,14 @@ export function openRenewModal(context, salesOrderId) {
                 if (newXcAMrc !== (xcA.monthly || 0)) {
                     costChanges.push(`XC-A: $${xcA.monthly || 0} → $${newXcAMrc}`);
                 }
-                updatedData.costs.crossConnect = {
-                    ...order.costs.crossConnect,
-                    aEnd: { monthly: newXcAMrc, nrc: newXcANrc }
+                const existingXcAEnd = nextCosts.crossConnect?.aEnd || {};
+                nextCosts.crossConnect = {
+                    ...(nextCosts.crossConnect || {}),
+                    aEnd: {
+                        ...existingXcAEnd,
+                        monthly: newXcAMrc,
+                        nrc: newXcANrc
+                    }
                 };
             }
 
@@ -1536,9 +1557,14 @@ export function openRenewModal(context, salesOrderId) {
                 if (newXcZMrc !== (xcZ.monthly || 0)) {
                     costChanges.push(`XC-Z: $${xcZ.monthly || 0} → $${newXcZMrc}`);
                 }
-                updatedData.costs.crossConnect = {
-                    ...updatedData.costs.crossConnect,
-                    zEnd: { monthly: newXcZMrc, nrc: newXcZNrc }
+                const existingXcZEnd = nextCosts.crossConnect?.zEnd || {};
+                nextCosts.crossConnect = {
+                    ...(nextCosts.crossConnect || {}),
+                    zEnd: {
+                        ...existingXcZEnd,
+                        monthly: newXcZMrc,
+                        nrc: newXcZNrc
+                    }
                 };
             }
 
@@ -1549,12 +1575,14 @@ export function openRenewModal(context, salesOrderId) {
                 if (newOtherMrc !== (otherCosts.monthly || 0)) {
                     costChanges.push(`Other: $${otherCosts.monthly || 0} → $${newOtherMrc}`);
                 }
-                updatedData.costs.otherCosts = {
-                    ...order.costs.otherCosts,
+                nextCosts.otherCosts = {
+                    ...(nextCosts.otherCosts || {}),
                     monthly: newOtherMrc,
                     oneOff: newOtherNrc
                 };
             }
+
+            updatedData.costs = nextCosts;
         }
 
         await window.Store.updateSalesOrder(salesOrderId, updatedData);

@@ -516,7 +516,7 @@ export function viewInventoryDetails(context, resourceId) {
         </div>
     `;
 
-    context.openModal(`Resource: ${escapeHtml(item.resourceId)}`, detailsHtml, null, true);
+    context.openModal(`Resource: ${item.resourceId}`, detailsHtml, null, true);
 }
 
 export function openInventoryModal(context, resourceId = null) {

@@ -42,6 +42,7 @@ function initBulkOpsModule(App) {
         }
 
         const sales = window.Store.getSales().filter(s => this._selectedSales.has(s.salesOrderId));
+        const now = new Date();
 
         const headers = [
             'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
@@ -54,7 +55,7 @@ function initBulkOpsModule(App) {
             return [
                 s.salesOrderId,
                 s.customerName || '',
-                s.status || '',
+                window.SalesStatus.computeSalesStatus(s.dates?.start, s.dates?.end, now),
                 s.salesModel || '',
                 s.salesType || '',
                 s.capacity?.value || '',
@@ -121,6 +122,9 @@ function initBulkOpsModule(App) {
         }
 
         const inventory = window.Store.getInventory().filter(i => this._selectedInventory.has(i.resourceId));
+        const allSales = window.Store.getSales();
+        const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(allSales);
+        const now = new Date();
 
         const headers = [
             'Resource ID', 'Cable System', 'Status', 'Acquisition Type', 'Ownership',
@@ -131,7 +135,7 @@ function initBulkOpsModule(App) {
         const rows = inventory.map(i => [
             i.resourceId,
             i.cableSystem || '',
-            i.status || '',
+            window.InventoryStatus.computeInventoryStatus(i, soldByResourceId.get(i.resourceId) || 0, now).calculatedStatus || '',
             i.acquisition?.type || '',
             i.acquisition?.ownership || '',
             i.capacity?.value || '',

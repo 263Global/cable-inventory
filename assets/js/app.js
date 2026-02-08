@@ -40,6 +40,16 @@ const loadModule = (name) => {
     return moduleCache[name];
 };
 
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 
 // ============================================================================
 // REGION: App Object Definition
@@ -386,11 +396,12 @@ const App = {
 
 
     openModal(title, content, onSave, isLarge = false) {
+        const safeTitle = escapeHtml(title);
         this.modalContainer.innerHTML = `
             <div class="modal-backdrop" id="modal-backdrop">
                 <div class="modal ${isLarge ? 'modal-lg' : ''}">
                     <div class="modal-header">
-                        <h3>${title}</h3>
+                        <h3>${safeTitle}</h3>
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             ${onSave ? `
                                 <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
@@ -547,6 +558,8 @@ const App = {
         const rows = sales.map(s => {
             const computed = computeOrderFinancials(s);
             const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
+            const effectiveStatus = window.SalesStatus?.computeSalesStatus(s.dates?.start, s.dates?.end) || s.status || '';
+            const monthlyCost = (computed.monthlyRevenue || 0) - (computed.monthlyProfit || 0);
             const aEndCity = s.location?.aEnd?.city || s.locationAEnd?.city || '';
             const aEndPop = s.location?.aEnd?.pop || s.locationAEnd?.pop || '';
             const zEndCity = s.location?.zEnd?.city || s.locationZEnd?.city || '';
@@ -554,7 +567,7 @@ const App = {
             return [
                 s.salesOrderId || '',
                 customerName,
-                s.status || '',
+                effectiveStatus,
                 s.salesModel || '',
                 s.salesType || '',
                 s.salesperson || '',
@@ -565,7 +578,7 @@ const App = {
                 s.dates?.term || '',
                 s.financials?.mrcSales || s.financials?.totalMrr || 0,
                 s.financials?.nrcSales || 0,
-                computed.monthlyProfit ? (s.financials?.mrcSales || 0) - computed.monthlyProfit : 0,
+                monthlyCost,
                 computed.monthlyProfit || 0,
                 computed.marginPercent?.toFixed(1) || 0,
                 aEndCity,
@@ -587,6 +600,9 @@ const App = {
             alert('No inventory data to export.');
             return;
         }
+        const allSales = window.Store.getSales();
+        const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(allSales);
+        const now = new Date();
 
         // CSV Headers
         const headers = [
@@ -604,7 +620,7 @@ const App = {
         // Generate rows
         const rows = inventory.map(i => [
             i.resourceId || '',
-            i.status || '',
+            window.InventoryStatus.computeInventoryStatus(i, soldByResourceId.get(i.resourceId) || 0, now).calculatedStatus || '',
             i.cableSystem || '',
             i.segmentType || '',
             i.protection || '',

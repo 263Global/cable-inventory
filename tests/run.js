@@ -59,6 +59,40 @@ test('InventoryStatus.buildSalesIndex aggregates by resource', () => {
     assert.strictEqual(soldByResourceId.get('INV-2'), 4);
 });
 
+test('InventoryStatus.buildSalesIndex excludes expired sales', () => {
+    const now = new Date('2024-06-15');
+    const realDate = Date;
+    global.Date = class extends realDate {
+        constructor(value) {
+            if (value !== undefined) return super(value);
+            return new realDate(now);
+        }
+        static now() {
+            return now.getTime();
+        }
+        static parse(value) {
+            return realDate.parse(value);
+        }
+        static UTC(...args) {
+            return realDate.UTC(...args);
+        }
+    };
+
+    try {
+        const sales = [
+            { inventoryLink: 'INV-1', capacity: { value: 2 }, dates: { start: '2024-01-01', end: '2024-06-01' } }, // expired
+            { inventoryLink: 'INV-1', capacity: { value: 3 }, dates: { start: '2024-06-10', end: '2024-12-31' } }, // active
+            { inventoryLink: 'INV-2', capacity: { value: 4 } } // no dates => active fallback
+        ];
+        const { byResourceId, soldByResourceId } = window.InventoryStatus.buildSalesIndex(sales);
+        assert.strictEqual(byResourceId.get('INV-1').length, 1);
+        assert.strictEqual(soldByResourceId.get('INV-1'), 3);
+        assert.strictEqual(soldByResourceId.get('INV-2'), 4);
+    } finally {
+        global.Date = realDate;
+    }
+});
+
 test('SalesStatus.computeSalesStatus returns pending/active/expired', () => {
     const now = new Date('2024-06-15');
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-06-20', '2024-12-01', now), 'Pending');

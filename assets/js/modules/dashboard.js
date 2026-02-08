@@ -8,6 +8,7 @@
  * @param {Object} context - The App object context (this)
  */
 const { getAlertBadgeClass, getAlertAccentColor, isExpiringWithin } = window.StatusUi;
+const { computeSalesStatus } = window.SalesStatus;
 
 const escapeHtml = (str) => {
     if (str === null || str === undefined) return '';
@@ -22,14 +23,16 @@ const escapeHtml = (str) => {
 export function renderDashboard(context) {
     const inventory = window.Store.getInventory();
     const sales = window.Store.getSalesOrders();
+    const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(sales);
 
     // Calculate Stats
     const totalCapacity = inventory.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
-    const totalSoldCapacity = sales.reduce((acc, item) => acc + (item.capacity?.value || 0), 0);
+    const totalSoldCapacity = Array.from(soldByResourceId.values()).reduce((acc, value) => acc + value, 0);
     const capacityUsagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
 
     // Use mrcSales and filter for Active orders with valid contract dates
     const now = new Date();
+    const getEffectiveSalesStatus = (sale) => computeSalesStatus(sale.dates?.start, sale.dates?.end, now);
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
@@ -37,7 +40,7 @@ export function renderDashboard(context) {
     let totalMonthlyProfit = 0;
     let activeOrders = 0;
     sales.forEach(s => {
-        if (s.status !== 'Active') return;
+        if (getEffectiveSalesStatus(s) !== 'Active') return;
         const computed = computeOrderFinancials(s);
         const mrr = computed.monthlyRevenue || 0;
         if (mrr <= 0) return;
@@ -55,7 +58,7 @@ export function renderDashboard(context) {
     const profit = totalMonthlyProfit;
 
     const expiringSales = sales.filter(s => {
-        return s.status === 'Active' && isExpiringWithin(s.dates?.end, 90, now, s.dates?.start);
+        return getEffectiveSalesStatus(s) === 'Active' && isExpiringWithin(s.dates?.end, 90, now, s.dates?.start);
     });
 
     const expiringInventory = inventory.filter(i => {
@@ -102,7 +105,6 @@ export function renderDashboard(context) {
         const monthEnd = new Date(year, month, 0);
 
         sales.forEach(s => {
-            if (s.status !== 'Active') return;
             const computed = computeOrderFinancials(s);
             const mrr = computed.monthlyRevenue || 0;
             if (mrr <= 0) return;

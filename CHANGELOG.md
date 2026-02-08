@@ -23,6 +23,13 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
   - PapaParse (CSV) and SheetJS (Excel) via CDN
 
 ### Changed
+- **Computed Status Everywhere** - Sales and inventory status is now dynamically computed from contract dates instead of relying on stored `status` field
+  - Dashboard, sales list, sales details, CSV/bulk exports all use `computeSalesStatus()`
+  - Inventory exports use `computeInventoryStatus()` for accurate status
+  - MRR trend chart no longer filters by stored status — computed status drives all revenue calculations
+- **Expired Sales Exclusion** - `buildSalesIndex` and `getSoldCapacity` now exclude expired sales, ensuring sold capacity reflects only active/pending orders
+- **Import Data Model Alignment** - `transformRowForStore` outputs nested structures (`capacity`, `location`, `financials`, `dates`) matching the Store API; added `computeEndDate()` and `normalizeOwnership()` helpers
+- **Resource Status Auto-Refresh** - `updateSalesOrder` automatically refreshes linked resource status when inventory link changes, keeping inventory usage fields in sync
 - **Sales Ordering** - Avoid in-place sorting to keep store ordering stable
 - **Latest Sale Resolution** - Determine most recent sale using `created_at` or contract start date
 - **ID Validation** - Block duplicate external Order/Resource IDs on create
@@ -37,8 +44,11 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Batch Capacity Guard** - Inventory batch totals cannot exceed base capacity at save time
 - **Batch Capacity Display** - Inventory list and detail views show lit vs unlit capacity for batch mode
 - **Batch Capacity Label** - Base capacity field clarifies it is total/unlit when using batch mode
+- **CSV Monthly Cost** - Export now computes monthly cost as `revenue - profit` for correctness
 
 ### Fixed
+- **Renew Modal Cost Mutation** - Replaced direct `updatedData.costs` writes with a `nextCosts` accumulator to prevent backhaul/cross-connect ends from overwriting each other
+- **Null Clearing in Resource Status** - Switched from `??` to `hasOwnProperty` check so `null` values correctly clear `currentUser` and `orderLink` fields
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
 - **Modal Save Guard** - Prevent null save button errors in close-only modals
 - **Modal Close View** - Avoid forcing inventory view when closing non-inventory modals
@@ -52,9 +62,11 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
 - **Dashboard Escaping** - Sanitized alert and leaderboard fields to prevent injection
+- **Modal Title Escaping** - `openModal` now applies `escapeHtml` to the title parameter
 
 ### Tests
 - **Batch Allocation Coverage** - Added a test for base + batch cost allocation by capacity
+- **Expired Sales Exclusion** - Added test verifying `buildSalesIndex` excludes expired sales from capacity aggregation
 
 ## [1.8.2] - 2026-02-05
 

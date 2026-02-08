@@ -321,8 +321,15 @@ class Store {
     // ============ Helper Methods ============
 
     getSoldCapacity(resourceId) {
+        const now = new Date();
         return this.salesOrders
             .filter(s => s.inventoryLink === resourceId)
+            .filter(sale => {
+                if (window.SalesStatus?.computeSalesStatus) {
+                    return window.SalesStatus.computeSalesStatus(sale.dates?.start, sale.dates?.end, now) !== 'Expired';
+                }
+                return sale.status !== 'Expired';
+            })
             .reduce((total, sale) => total + (sale.capacity?.value || 0), 0);
     }
 
@@ -339,8 +346,12 @@ class Store {
         const updates = {
             status: newStatus,
             usage: {
-                currentUser: options.latestCustomer ?? resource.usage?.currentUser,
-                orderLink: options.latestOrderId ?? resource.usage?.orderLink
+                currentUser: Object.prototype.hasOwnProperty.call(options, 'latestCustomer')
+                    ? options.latestCustomer
+                    : resource.usage?.currentUser,
+                orderLink: Object.prototype.hasOwnProperty.call(options, 'latestOrderId')
+                    ? options.latestOrderId
+                    : resource.usage?.orderLink
             }
         };
 
@@ -527,6 +538,8 @@ class Store {
         const index = this.salesOrders.findIndex(s => s.salesOrderId === id);
         if (index === -1) return null;
 
+        const previousOrder = this.salesOrders[index];
+        const previousInventoryLink = previousOrder.inventoryLink;
         const merged = { ...this.salesOrders[index], ...updates };
         const dbRow = this.salesOrderToDb(merged);
 
@@ -547,6 +560,21 @@ class Store {
         if (Array.isArray(updates.batchAllocations)) {
             await this.replaceSalesOrderBatches(id, updates.batchAllocations);
         }
+
+        const currentInventoryLink = updated.inventoryLink;
+        const inventoryLinksToRefresh = new Set();
+        if (previousInventoryLink) inventoryLinksToRefresh.add(previousInventoryLink);
+        if (currentInventoryLink) inventoryLinksToRefresh.add(currentInventoryLink);
+
+        for (const inventoryLink of inventoryLinksToRefresh) {
+            const relatedSales = this.salesOrders.filter(s => s.inventoryLink === inventoryLink);
+            const latestSale = this.getLatestSaleForResource(relatedSales);
+            await this.updateResourceStatus(inventoryLink, {
+                latestCustomer: latestSale?.customerName || null,
+                latestOrderId: latestSale?.salesOrderId || null
+            });
+        }
+
         return updated;
     }
 
