@@ -40,15 +40,7 @@ const loadModule = (name) => {
     return moduleCache[name];
 };
 
-const escapeHtml = (str) => {
-    if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
+const { escapeHtml } = window.DomUtils;
 
 
 // ============================================================================
@@ -536,138 +528,27 @@ const App = {
     // ============ CSV Export Functions ============
 
     exportSalesToCSV() {
-        const sales = window.Store.getSales();
-        if (sales.length === 0) {
-            alert('No sales data to export.');
+        if (window.CsvExport?.exportSalesToCSV) {
+            window.CsvExport.exportSalesToCSV();
             return;
         }
-
-        // CSV Headers
-        const headers = [
-            'Order ID', 'Customer', 'Status', 'Sales Model', 'Sales Type',
-            'Salesperson', 'Capacity', 'Unit', 'Contract Start', 'Contract End', 'Term (Months)',
-            'MRC Sales', 'NRC Sales', 'Monthly Cost', 'Monthly Margin', 'Margin %',
-            'A-End City', 'A-End PoP', 'Z-End City', 'Z-End PoP', 'Notes'
-        ];
-
-        // Generate rows
-        const customers = window.Store.getCustomers();
-        const customerMap = {};
-        customers.forEach(c => { customerMap[c.id] = c.short_name || c.full_name || c.id; });
-
-        const rows = sales.map(s => {
-            const computed = computeOrderFinancials(s);
-            const customerName = s.customerId ? (customerMap[s.customerId] || s.customerName || '') : (s.customerName || '');
-            const effectiveStatus = window.SalesStatus?.computeSalesStatus(s.dates?.start, s.dates?.end) || s.status || '';
-            const monthlyCost = (computed.monthlyRevenue || 0) - (computed.monthlyProfit || 0);
-            const aEndCity = s.location?.aEnd?.city || s.locationAEnd?.city || '';
-            const aEndPop = s.location?.aEnd?.pop || s.locationAEnd?.pop || '';
-            const zEndCity = s.location?.zEnd?.city || s.locationZEnd?.city || '';
-            const zEndPop = s.location?.zEnd?.pop || s.locationZEnd?.pop || '';
-            return [
-                s.salesOrderId || '',
-                customerName,
-                effectiveStatus,
-                s.salesModel || '',
-                s.salesType || '',
-                s.salesperson || '',
-                s.capacity?.value || 0,
-                s.capacity?.unit || 'Gbps',
-                s.dates?.start || '',
-                s.dates?.end || '',
-                s.dates?.term || '',
-                s.financials?.mrcSales || s.financials?.totalMrr || 0,
-                s.financials?.nrcSales || 0,
-                monthlyCost,
-                computed.monthlyProfit || 0,
-                computed.marginPercent?.toFixed(1) || 0,
-                aEndCity,
-                aEndPop,
-                zEndCity,
-                zEndPop,
-                (s.notes || '').replace(/"/g, '""') // Escape quotes
-            ].map(v => `"${v}"`).join(',');
-        });
-
-        // Combine and download
-        const csv = [headers.join(','), ...rows].join('\n');
-        this.downloadCSV(csv, `sales_export_${new Date().toISOString().split('T')[0]}.csv`);
+        alert('CSV export module unavailable.');
     },
 
     exportInventoryToCSV() {
-        const inventory = window.Store.getInventory();
-        if (inventory.length === 0) {
-            alert('No inventory data to export.');
+        if (window.CsvExport?.exportInventoryToCSV) {
+            window.CsvExport.exportInventoryToCSV();
             return;
         }
-        const allSales = window.Store.getSales();
-        const { soldByResourceId } = window.InventoryStatus.buildSalesIndex(allSales);
-        const now = new Date();
-
-        // CSV Headers
-        const headers = [
-            'Resource ID', 'Status', 'Cable System', 'Segment Type', 'Protection',
-            'Ownership', 'Supplier', 'Capacity', 'Unit',
-            'A-End Country', 'A-End City', 'A-End PoP',
-            'Z-End Country', 'Z-End City', 'Z-End PoP',
-            'MRC', 'OTC/NRC', 'Annual O&M', 'Contract Start', 'Contract End', 'Term (Months)'
-        ];
-
-        const suppliers = window.Store.getSuppliers();
-        const supplierMap = {};
-        suppliers.forEach(s => { supplierMap[s.id] = s.short_name || s.full_name || s.id; });
-
-        // Generate rows
-        const rows = inventory.map(i => [
-            i.resourceId || '',
-            window.InventoryStatus.computeInventoryStatus(i, soldByResourceId.get(i.resourceId) || 0, now).calculatedStatus || '',
-            i.cableSystem || '',
-            i.segmentType || '',
-            i.protection || '',
-            i.acquisition?.ownership || '',
-            i.acquisition?.supplierId ? (supplierMap[i.acquisition.supplierId] || i.acquisition?.supplierName || i.acquisition.supplierId) : (i.acquisition?.supplierName || ''),
-            i.capacity?.value || 0,
-            i.capacity?.unit || 'Gbps',
-            i.location?.aEnd?.country || '',
-            i.location?.aEnd?.city || '',
-            i.location?.aEnd?.pop || '',
-            i.location?.zEnd?.country || '',
-            i.location?.zEnd?.city || '',
-            i.location?.zEnd?.pop || '',
-            i.financials?.mrc || 0,
-            (i.acquisition?.ownership === 'IRU' ? i.financials?.otc : i.financials?.nrc) || 0,
-            i.financials?.annualOmCost || 0,
-            i.dates?.start || '',
-            i.dates?.end || '',
-            i.financials?.term || ''
-        ].map(v => `"${v}"`).join(','));
-
-        // Combine and download
-        const csv = [headers.join(','), ...rows].join('\n');
-        this.downloadCSV(csv, `inventory_export_${new Date().toISOString().split('T')[0]}.csv`);
+        alert('CSV export module unavailable.');
     },
 
     downloadCSV(csvContent, filename) {
-        // Use Blob approach for better browser compatibility (including Safari)
-        const BOM = '\uFEFF';
-        const csvData = BOM + csvContent;
-
-        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.style.display = 'none';
-
-        document.body.appendChild(link);
-        link.click();
-
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }, 100);
+        if (window.CsvExport?.downloadCSV) {
+            window.CsvExport.downloadCSV(csvContent, filename);
+            return;
+        }
+        alert('CSV export module unavailable.');
     }
     //#endregion CSV Export
 };

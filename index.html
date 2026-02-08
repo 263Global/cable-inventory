@@ -116,7 +116,8 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <!-- Core scripts (split from bundle.js) -->
+    <script src="assets/js/domUtils.js" defer></script>
+    <!-- Core scripts -->
     <script src="assets/js/supabase.js" defer></script>
     <script src="assets/js/auth.js" defer></script>
     <script src="assets/js/inventoryStatus.js" defer></script>
@@ -129,6 +130,8 @@
     <!-- Import dependencies (PapaParse + SheetJS) -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+    <script src="assets/js/modules/importCore.js" defer></script>
+    <script src="assets/js/modules/importUi.js" defer></script>
     <script src="assets/js/modules/import.js" defer></script>
     <script src="assets/js/modules/bulkOps.js" defer></script>
     <!-- Main Application (ES6 Module) -->

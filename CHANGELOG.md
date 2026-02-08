@@ -35,6 +35,19 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **ID Validation** - Block duplicate external Order/Resource IDs on create
 - **Dropdown Escaping** - Searchable dropdown options and attributes are now sanitized
 - **Sales Form Split** - `salesForm.js` decomposed into focused modules with a re-export facade
+- **Sales Modal Split** - Extracted renew flow (`renewModal.js`) and edit-mode cost hydration logic (`editCostHydration.js`) from `salesForm/modal.js`
+- **Sales Modal Dropdown Split** - Moved sales modal dropdown initialization into `salesForm/modalDropdowns.js`
+- **Sales Modal Template Split** - Moved the large sales modal HTML template into `salesForm/modalContent.js`; `salesForm/modal.js` now focuses on data prep and orchestration
+- **Sales Listener Template Split** - Extracted cost card template definitions from `salesForm/listeners.js` into `salesForm/costCardTemplates.js`
+- **Sales Listener Controller Split** - Refactored `salesForm/listeners.js` into a thin entrypoint and extracted cost-card engine, sales-type/model hint logic, and meta listeners into dedicated modules
+- **Sales Cost Card Engine Split** - Broke `salesForm/costCardsController.js` into focused helpers for totals, input syncing, and type-specific listeners (`costCardSummary.js`, `costCardSync.js`, `costCardSpecialHandlers.js`)
+- **Sales Edit-Cost Hydration Split** - Refactored `salesForm/editCostHydration.js` into orchestration-only entrypoint with dedicated data-normalization and card-hydration modules (`editCostHydrationData.js`, `editCostHydrationCards.js`)
+- **Sales Cost Template Split** - Moved each cost card template into `salesForm/costCardTemplates/*` modules and kept `salesForm/costCardTemplates.js` as a lightweight aggregator
+- **Inventory Form Split** - `inventory.js` extracted inventory form dropdown wiring, batch editor behavior, and form listeners into `assets/js/modules/inventory/*` submodules
+- **Inventory View/Modal Split** - `inventory.js` is now a facade; inventory list render, details modal, and create/edit modal moved into dedicated `assets/js/modules/inventory/*` modules
+- **Sales View Split** - `sales.js` is now a facade; sales list and sales details rendering moved into `assets/js/modules/sales/*` modules
+- **Import Module Split** - `import.js` now focuses on modal/workflow UI; schema/parsing/validation/import logic moved to `assets/js/modules/importCore.js`
+- **Import UI Split** - Moved import step templates and import-specific style bootstrap into `assets/js/modules/importUi.js`; `import.js` now focuses on import state/actions/workflow
 - **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
 - **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
@@ -45,15 +58,18 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Batch Capacity Display** - Inventory list and detail views show lit vs unlit capacity for batch mode
 - **Batch Capacity Label** - Base capacity field clarifies it is total/unlit when using batch mode
 - **CSV Monthly Cost** - Export now computes monthly cost as `revenue - profit` for correctness
+- **Bundle Strategy** - Removed unused legacy `assets/js/bundle.js`; app now has a single JS loading path via explicit script/module imports in `index.html`
 
 ### Fixed
 - **Renew Modal Cost Mutation** - Replaced direct `updatedData.costs` writes with a `nextCosts` accumulator to prevent backhaul/cross-connect ends from overwriting each other
+- **Renew Modal Status Resolution** - Renew flow now explicitly uses `window.SalesStatus.computeSalesStatus` in module scope
 - **Null Clearing in Resource Status** - Switched from `??` to `hasOwnProperty` check so `null` values correctly clear `currentUser` and `orderLink` fields
 - **Sales Cost Suppliers** - Persist and hydrate supplier dropdowns for backhaul, XC, and other costs
 - **Modal Save Guard** - Prevent null save button errors in close-only modals
 - **Modal Close View** - Avoid forcing inventory view when closing non-inventory modals
 - **FAB Modal Overlap** - Hide floating action button when modals are open (mobile)
 - **Import Defensive Coding** - Added optional chaining to CsvImport calls in customers/suppliers
+- **Import Event Wiring** - Replaced inline drag/drop and file-change handlers with delegated JS event listeners
 
 ### Improved
 - **Form Placeholders** - Added example text to Customer/Supplier form inputs for guidance
@@ -67,6 +83,8 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Tests
 - **Batch Allocation Coverage** - Added a test for base + batch cost allocation by capacity
 - **Expired Sales Exclusion** - Added test verifying `buildSalesIndex` excludes expired sales from capacity aggregation
+- **Store Batch Replace Safety** - Added rollback/error-path tests for `replaceInventoryBatches` and `replaceSalesOrderBatches`
+- **Inline Handler Guard** - Added recursive test to fail if inline HTML event handlers (e.g., `onclick=`, `ondrop=`) appear in `assets/js/modules/**/*.js`
 
 ## [1.8.2] - 2026-02-05
 

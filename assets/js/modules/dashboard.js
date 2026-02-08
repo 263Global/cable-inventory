@@ -9,16 +9,7 @@
  */
 const { getAlertBadgeClass, getAlertAccentColor, isExpiringWithin } = window.StatusUi;
 const { computeSalesStatus } = window.SalesStatus;
-
-const escapeHtml = (str) => {
-    if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
+const { escapeHtml } = window.DomUtils;
 
 export function renderDashboard(context) {
     const inventory = window.Store.getInventory();
@@ -187,7 +178,7 @@ export function renderDashboard(context) {
                             </div>`;
     }).join('')}
                     </div>
-                    ${expiringSales.length > 5 ? `<div class="alert-more" onclick="App.navigateToView('sales', {filter: 'expiring'})" style="cursor:pointer;">+${expiringSales.length - 5} more</div>` : ''}
+                    ${expiringSales.length > 5 ? `<button type="button" class="alert-more" data-action="navigate-expiring-sales" style="cursor:pointer; background:none; border:none; padding:0; color:inherit; font:inherit;">+${expiringSales.length - 5} more</button>` : ''}
                 `}
                 </div>
             </div>
@@ -210,7 +201,7 @@ export function renderDashboard(context) {
                             </div>`;
     }).join('')}
                     </div>
-                    ${expiringInventory.length > 5 ? `<div class="alert-more" onclick="App.navigateToView('inventory', {filter: 'expiring'})" style="cursor:pointer;">+${expiringInventory.length - 5} more</div>` : ''}
+                    ${expiringInventory.length > 5 ? `<button type="button" class="alert-more" data-action="navigate-expiring-inventory" style="cursor:pointer; background:none; border:none; padding:0; color:inherit; font:inherit;">+${expiringInventory.length - 5} more</button>` : ''}
                 `}
                 </div>
             </div>
@@ -241,7 +232,7 @@ export function renderDashboard(context) {
             <!-- 2. Margin Distribution -->
             <div class="card" style="border-left: 4px solid var(--accent-warning);">
                 <h3 class="mb-4" style="color: var(--accent-warning)"><ion-icon name="stats-chart-outline"></ion-icon> Margin Distribution</h3>
-                ${marginTotal === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="stats-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
+                ${marginTotal === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="stats-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button type="button" class="btn btn-primary" data-action="navigate-sales" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
                     <div>
                         <div style="display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;">
                             ${marginDist.high > 0 ? `<div style="flex: ${marginDist.high}; background: var(--accent-success);" title="High (≥50%)"></div>` : ''}
@@ -260,7 +251,7 @@ export function renderDashboard(context) {
             <!-- 3. Sales by Type -->
             <div class="card">
                 <h3 class="mb-4"><ion-icon name="pie-chart-outline"></ion-icon> Sales by Type</h3>
-                ${totalSalesCount === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="pie-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
+                ${totalSalesCount === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="pie-chart-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales data yet.<br><button type="button" class="btn btn-primary" data-action="navigate-sales" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add First Sale</button></p>' : `
                     <div style="display: flex; align-items: center; gap: 2rem;">
                         <div style="position: relative; width: 120px; height: 120px;">
                             <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
@@ -288,7 +279,7 @@ export function renderDashboard(context) {
             <!-- 4. Leaderboard + Export -->
             <div class="card leaderboard-card" style="border-left: 4px solid var(--accent-primary);">
                 <h3 class="mb-4" style="color: var(--accent-primary)"><ion-icon name="trophy-outline"></ion-icon> Sales Leaderboard</h3>
-                ${leaderboard.length === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="trophy-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales team data yet.<br><button class="btn btn-primary" onclick="App.navigateToView(\'sales\')" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add Sale</button></p>' : `
+                ${leaderboard.length === 0 ? '<p style="color:var(--text-muted); text-align:center; padding: 1rem 0;"><ion-icon name="trophy-outline" style="font-size:2rem; display:block; margin:0 auto 0.5rem; opacity:0.5;"></ion-icon>No sales team data yet.<br><button type="button" class="btn btn-primary" data-action="navigate-sales" style="margin-top:0.75rem; font-size:0.8rem;"><ion-icon name="add-outline"></ion-icon> Add Sale</button></p>' : `
                     <div class="leaderboard-list" style="margin-bottom: 1rem;">
                         ${(() => {
                 const maxMrr = leaderboard[0]?.totalMrr || 1;
@@ -313,10 +304,10 @@ export function renderDashboard(context) {
                 `}
                 <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" onclick="App.exportSalesToCSV()" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
+                    <button type="button" class="btn btn-secondary" data-action="export-sales-csv" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
                         <ion-icon name="document-outline"></ion-icon> Sales CSV
                     </button>
-                    <button class="btn btn-secondary" onclick="App.exportInventoryToCSV()" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
+                    <button type="button" class="btn btn-secondary" data-action="export-inventory-csv" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;">
                         <ion-icon name="cube-outline"></ion-icon> Inventory CSV
                     </button>
                 </div>
@@ -324,4 +315,29 @@ export function renderDashboard(context) {
         </div>
     `;
     context.container.innerHTML = html;
+
+    context.container.querySelectorAll('[data-action]').forEach(el => {
+        el.addEventListener('click', () => {
+            const action = el.dataset.action;
+            if (action === 'navigate-expiring-sales') {
+                context.navigateToView('sales', { filter: 'expiring' });
+                return;
+            }
+            if (action === 'navigate-expiring-inventory') {
+                context.navigateToView('inventory', { filter: 'expiring' });
+                return;
+            }
+            if (action === 'navigate-sales') {
+                context.navigateToView('sales');
+                return;
+            }
+            if (action === 'export-sales-csv') {
+                context.exportSalesToCSV();
+                return;
+            }
+            if (action === 'export-inventory-csv') {
+                context.exportInventoryToCSV();
+            }
+        });
+    });
 }

@@ -18,12 +18,24 @@ const loadScript = (relativePath) => {
 loadScript('assets/js/inventoryStatus.js');
 loadScript('assets/js/salesStatus.js');
 loadScript('assets/js/modules/financials.js');
+loadScript('assets/js/store.js');
+const realStore = window.Store;
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 
 const nearlyEqual = (actual, expected, epsilon = 1e-6) => {
     assert.ok(Math.abs(actual - expected) <= epsilon, `Expected ${actual} to be within ${epsilon} of ${expected}`);
+};
+
+const withSilencedConsoleError = async (fn) => {
+    const previousConsoleError = console.error;
+    console.error = () => {};
+    try {
+        await fn();
+    } finally {
+        console.error = previousConsoleError;
+    }
 };
 
 test('InventoryStatus.computeInventoryStatus handles expired', () => {
@@ -207,18 +219,285 @@ test('computeOrderFinancials handles IRU Resale recurring margin', () => {
     nearlyEqual(result.marginPercent, 50);
 });
 
-let failed = 0;
-for (const t of tests) {
-    try {
-        t.fn();
-        console.log(`PASS: ${t.name}`);
-    } catch (err) {
-        failed += 1;
-        console.error(`FAIL: ${t.name}`);
-        console.error(err.stack || err.message || err);
-    }
-}
+test('Store.replaceInventoryBatches aborts when delete fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousInventory = store.inventory;
+    const previousBatches = store.inventoryBatches;
 
-if (failed > 0) {
-    process.exitCode = 1;
-}
+    const existing = [{
+        batchId: 'BAT-OLD-1',
+        resourceId: 'INV-ROLLBACK-1',
+        orderId: 'PO-1',
+        model: 'IRU',
+        capacity: { value: 10, unit: 'Gbps' },
+        financials: { mrc: 0, otc: 1000, omRate: 3, annualOm: 30, termMonths: 12 },
+        startDate: '2024-01-01',
+        status: 'Active'
+    }];
+
+    try {
+        window.Store = store;
+        store.inventory = [{ resourceId: 'INV-ROLLBACK-1' }];
+        store.inventoryBatches = existing.map((row) => ({ ...row }));
+        window.SupabaseClient = {
+            from(table) {
+                assert.strictEqual(table, 'inventory_batches');
+                return {
+                    delete() {
+                        return {
+                            async eq() {
+                                return { error: new Error('delete failed') };
+                            }
+                        };
+                    }
+                };
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.replaceInventoryBatches('INV-ROLLBACK-1', []), /delete failed/);
+        });
+        assert.deepStrictEqual(store.inventoryBatches, existing);
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.inventory = previousInventory;
+        store.inventoryBatches = previousBatches;
+    }
+});
+
+test('Store.replaceInventoryBatches attempts rollback when insert fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousInventory = store.inventory;
+    const previousBatches = store.inventoryBatches;
+
+    const existing = [{
+        batchId: 'BAT-OLD-2',
+        resourceId: 'INV-ROLLBACK-2',
+        orderId: 'PO-2',
+        model: 'Lease',
+        capacity: { value: 20, unit: 'Gbps' },
+        financials: { mrc: 200, otc: 0, omRate: 0, annualOm: 0, termMonths: 24 },
+        startDate: '2024-02-01',
+        status: 'Planned'
+    }];
+    const replacement = [{
+        batchId: 'BAT-NEW-1',
+        resourceId: 'INV-ROLLBACK-2',
+        orderId: 'PO-NEW',
+        model: 'IRU',
+        capacity: { value: 5, unit: 'Gbps' },
+        financials: { mrc: 0, otc: 500, omRate: 3, annualOm: 15, termMonths: 12 },
+        startDate: '2024-03-01',
+        status: 'Planned'
+    }];
+
+    let insertCallCount = 0;
+    let rollbackPayload = null;
+
+    try {
+        window.Store = store;
+        store.inventory = [{ resourceId: 'INV-ROLLBACK-2' }];
+        store.inventoryBatches = existing.map((row) => ({ ...row }));
+        window.SupabaseClient = {
+            from(table) {
+                assert.strictEqual(table, 'inventory_batches');
+                return {
+                    delete() {
+                        return {
+                            async eq() {
+                                return { error: null };
+                            }
+                        };
+                    },
+                    insert(payload) {
+                        insertCallCount += 1;
+                        if (insertCallCount === 1) {
+                            assert.deepStrictEqual(payload, replacement.map((b) => store.inventoryBatchToDb(b)));
+                            return {
+                                error: null,
+                                async select() {
+                                    return { data: null, error: new Error('insert failed') };
+                                }
+                            };
+                        }
+                        rollbackPayload = payload;
+                        return { error: null };
+                    }
+                };
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.replaceInventoryBatches('INV-ROLLBACK-2', replacement), /insert failed/);
+        });
+        assert.strictEqual(insertCallCount, 2);
+        assert.deepStrictEqual(rollbackPayload, existing.map((b) => store.inventoryBatchToDb(b)));
+        assert.deepStrictEqual(store.inventoryBatches, existing);
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.inventory = previousInventory;
+        store.inventoryBatches = previousBatches;
+    }
+});
+
+test('Store.replaceSalesOrderBatches aborts when delete fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousAllocations = store.salesOrderBatches;
+
+    const existing = [{
+        salesOrderId: 'SO-ROLLBACK-1',
+        batchId: 'BAT-1',
+        capacityAllocated: 3
+    }];
+
+    try {
+        window.Store = store;
+        store.salesOrderBatches = existing.map((row) => ({ ...row }));
+        window.SupabaseClient = {
+            from(table) {
+                assert.strictEqual(table, 'sales_order_batches');
+                return {
+                    delete() {
+                        return {
+                            async eq() {
+                                return { error: new Error('delete failed') };
+                            }
+                        };
+                    }
+                };
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.replaceSalesOrderBatches('SO-ROLLBACK-1', []), /delete failed/);
+        });
+        assert.deepStrictEqual(store.salesOrderBatches, existing);
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.salesOrderBatches = previousAllocations;
+    }
+});
+
+test('Store.replaceSalesOrderBatches attempts rollback when insert fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousAllocations = store.salesOrderBatches;
+
+    const existing = [{
+        salesOrderId: 'SO-ROLLBACK-2',
+        batchId: 'BAT-OLD',
+        capacityAllocated: 8
+    }];
+    const replacement = [{
+        batchId: 'BAT-NEW',
+        capacityAllocated: 5
+    }];
+
+    let insertCallCount = 0;
+    let rollbackPayload = null;
+
+    try {
+        window.Store = store;
+        store.salesOrderBatches = existing.map((row) => ({ ...row }));
+        window.SupabaseClient = {
+            from(table) {
+                assert.strictEqual(table, 'sales_order_batches');
+                return {
+                    delete() {
+                        return {
+                            async eq() {
+                                return { error: null };
+                            }
+                        };
+                    },
+                    insert(payload) {
+                        insertCallCount += 1;
+                        if (insertCallCount === 1) {
+                            assert.deepStrictEqual(payload, [{
+                                sales_order_id: 'SO-ROLLBACK-2',
+                                batch_id: 'BAT-NEW',
+                                capacity_allocated: 5
+                            }]);
+                            return {
+                                error: null,
+                                async select() {
+                                    return { data: null, error: new Error('insert failed') };
+                                }
+                            };
+                        }
+                        rollbackPayload = payload;
+                        return { error: null };
+                    }
+                };
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.replaceSalesOrderBatches('SO-ROLLBACK-2', replacement), /insert failed/);
+        });
+        assert.strictEqual(insertCallCount, 2);
+        assert.deepStrictEqual(rollbackPayload, [{
+            sales_order_id: 'SO-ROLLBACK-2',
+            batch_id: 'BAT-OLD',
+            capacity_allocated: 8
+        }]);
+        assert.deepStrictEqual(store.salesOrderBatches, existing);
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.salesOrderBatches = previousAllocations;
+    }
+});
+
+test('UI modules should not contain inline HTML event handlers', () => {
+    const modulesDir = path.join(rootDir, 'assets/js/modules');
+    const stack = [modulesDir];
+    while (stack.length > 0) {
+        const currentDir = stack.pop();
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(currentDir, entry.name);
+            if (entry.isDirectory()) {
+                stack.push(fullPath);
+                continue;
+            }
+            if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+            const content = fs.readFileSync(fullPath, 'utf8');
+            assert.strictEqual(
+                /<[^>]*\bon[a-z]+\s*=\s*['"]/i.test(content),
+                false,
+                `${path.relative(modulesDir, fullPath)} still contains inline HTML event handlers`
+            );
+        }
+    }
+});
+
+let failed = 0;
+const run = async () => {
+    for (const t of tests) {
+        try {
+            await t.fn();
+            console.log(`PASS: ${t.name}`);
+        } catch (err) {
+            failed += 1;
+            console.error(`FAIL: ${t.name}`);
+            console.error(err.stack || err.message || err);
+        }
+    }
+
+    if (failed > 0) {
+        process.exitCode = 1;
+    }
+};
+
+run();

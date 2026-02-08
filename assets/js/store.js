@@ -607,10 +607,16 @@ class Store {
     }
 
     async replaceInventoryBatches(resourceId, batches) {
-        await window.SupabaseClient
+        const existingBatches = this.inventoryBatches.filter(b => b.resourceId === resourceId);
+
+        const { error: deleteError } = await window.SupabaseClient
             .from('inventory_batches')
             .delete()
             .eq('resource_id', resourceId);
+        if (deleteError) {
+            console.error('Failed to clear inventory batches:', deleteError);
+            throw deleteError;
+        }
 
         if (batches.length === 0) {
             this.inventoryBatches = this.inventoryBatches.filter(b => b.resourceId !== resourceId);
@@ -626,6 +632,15 @@ class Store {
 
         if (error) {
             console.error('Failed to update inventory batches:', error);
+            if (existingBatches.length > 0) {
+                const rollbackPayload = existingBatches.map(batch => this.inventoryBatchToDb(batch));
+                const { error: rollbackError } = await window.SupabaseClient
+                    .from('inventory_batches')
+                    .insert(rollbackPayload);
+                if (rollbackError) {
+                    console.error('Failed to rollback inventory batches after insert error:', rollbackError);
+                }
+            }
             throw error;
         }
 
@@ -635,10 +650,16 @@ class Store {
     }
 
     async replaceSalesOrderBatches(salesOrderId, allocations) {
-        await window.SupabaseClient
+        const existingAllocations = this.salesOrderBatches.filter(b => b.salesOrderId === salesOrderId);
+
+        const { error: deleteError } = await window.SupabaseClient
             .from('sales_order_batches')
             .delete()
             .eq('sales_order_id', salesOrderId);
+        if (deleteError) {
+            console.error('Failed to clear sales order batch allocations:', deleteError);
+            throw deleteError;
+        }
 
         if (allocations.length === 0) {
             this.salesOrderBatches = this.salesOrderBatches.filter(b => b.salesOrderId !== salesOrderId);
@@ -659,6 +680,19 @@ class Store {
 
         if (error) {
             console.error('Failed to update sales order batches:', error);
+            if (existingAllocations.length > 0) {
+                const rollbackPayload = existingAllocations.map(allocation => this.salesOrderBatchToDb({
+                    salesOrderId: allocation.salesOrderId,
+                    batchId: allocation.batchId,
+                    capacityAllocated: allocation.capacityAllocated
+                }));
+                const { error: rollbackError } = await window.SupabaseClient
+                    .from('sales_order_batches')
+                    .insert(rollbackPayload);
+                if (rollbackError) {
+                    console.error('Failed to rollback sales order batch allocations after insert error:', rollbackError);
+                }
+            }
             throw error;
         }
 
