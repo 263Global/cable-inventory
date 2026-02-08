@@ -5,6 +5,11 @@
 import { initInventoryFormDropdowns } from './formDropdowns.js';
 import { setupInventoryBatchEditor } from './batchEditor.js';
 import { resolveSupplierName } from './supplierUtils.js';
+import {
+    buildInventoryPayloadFromForm,
+    buildInventoryBatchesFromForm,
+    validateInventoryBatchCapacity
+} from './resourceModalPayload.js';
 
 const { escapeHtml } = window.DomUtils;
 
@@ -13,6 +18,124 @@ const {
     computeInventoryStatus
 } = window.InventoryStatus;
 
+function setFormError(message = '') {
+    const errorEl = document.getElementById('inventory-form-error');
+    if (!errorEl) return;
+
+    if (!message) {
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+        return;
+    }
+
+    errorEl.style.display = 'block';
+    errorEl.textContent = message;
+}
+
+function buildDefaultInventoryItem() {
+    return {
+        resourceId: '',
+        status: 'Draft',
+        acquisition: {
+            type: 'Purchased',
+            ownership: 'Leased',
+            supplierId: '',
+            supplierName: '',
+            contractRef: ''
+        },
+        cableSystem: '',
+        segmentType: 'E2E',
+        handoffType: 'OTU-4',
+        routeDescription: '',
+        protection: 'Unprotected',
+        protectionCableSystem: '',
+        capacity: {
+            value: 0,
+            unit: 'Gbps'
+        },
+        location: {
+            aEnd: { country: '', city: '', pop: '', port: '', device: '' },
+            zEnd: { country: '', city: '', pop: '', port: '', device: '' }
+        },
+        financials: {
+            mrc: 0,
+            nrc: 0,
+            otc: 0,
+            term: 12,
+            omRate: 0,
+            annualOmCost: 0
+        },
+        costMode: 'single',
+        baseCost: {
+            orderId: '',
+            model: 'IRU',
+            mrc: 0,
+            otc: 0,
+            omRate: 0,
+            annualOm: 0,
+            termMonths: 0
+        },
+        batches: [],
+        dates: {
+            start: '',
+            end: ''
+        },
+        usage: {
+            currentUser: '',
+            orderLink: ''
+        }
+    };
+}
+
+export function openInventoryFormModal(context, resourceId = null) {
+    const sourceItem = resourceId
+        ? window.Store.getInventory().find((item) => item.resourceId === resourceId)
+        : null;
+    const defaults = buildDefaultInventoryItem();
+    const isEdit = Boolean(sourceItem);
+    const item = {
+        ...defaults,
+        ...(sourceItem || {}),
+        acquisition: {
+            ...defaults.acquisition,
+            ...(sourceItem?.acquisition || {})
+        },
+        capacity: {
+            ...defaults.capacity,
+            ...(sourceItem?.capacity || {})
+        },
+        location: {
+            aEnd: {
+                ...defaults.location.aEnd,
+                ...(sourceItem?.location?.aEnd || {})
+            },
+            zEnd: {
+                ...defaults.location.zEnd,
+                ...(sourceItem?.location?.zEnd || {})
+            }
+        },
+        financials: {
+            ...defaults.financials,
+            ...(sourceItem?.financials || {})
+        },
+        baseCost: {
+            ...defaults.baseCost,
+            ...(sourceItem?.baseCost || {})
+        },
+        dates: {
+            ...defaults.dates,
+            ...(sourceItem?.dates || {})
+        },
+        usage: {
+            ...defaults.usage,
+            ...(sourceItem?.usage || {})
+        },
+        batches: Array.isArray(sourceItem?.batches) ? sourceItem.batches : []
+    };
+
+    let calculatedStatus = item.status || 'Draft';
+    if (item.resourceId) {
+        const { soldByResourceId } = buildSalesIndex(window.Store.getSales());
         const totalSoldCapacity = soldByResourceId.get(item.resourceId) || 0;
         const now = new Date();
         calculatedStatus = computeInventoryStatus(item, totalSoldCapacity, now).calculatedStatus;
@@ -383,109 +506,14 @@ const {
                                                                                                                         `;
 
     context.openModal(isEdit ? 'Edit Resource' : 'Add Resource', formHTML, async (form) => {
-        // Save Logic - use the form passed from openModal
-        // Construct Object manually because of nested naming "location.aEnd.country"
-        const handoffTypeValue = form.querySelector('[name="handoffType"]').value;
-        const handoffTypeCustomValue = form.querySelector('[name="handoffTypeCustom"]')?.value || '';
-        const finalHandoffType = handoffTypeValue === 'Other' ? handoffTypeCustomValue : handoffTypeValue;
-
-        const newItem = {
-            resourceId: form.querySelector('[name="resourceId"]').value,
-            status: form.querySelector('[name="status"]').value,
-            acquisition: {
-                type: form.querySelector('[name="acquisition.type"]').value,
-                ownership: form.querySelector('[name="acquisition.ownership"]').value,
-                supplierId: form.querySelector('[name="acquisition.supplierId"]').value,
-                supplierName: resolveSupplierName(form.querySelector('[name="acquisition.supplierId"]').value),
-                contractRef: form.querySelector('[name="acquisition.contractRef"]').value,
-            },
-            cableSystem: form.querySelector('[name="cableSystem"]').value,
-            segmentType: form.querySelector('[name="segmentType"]').value,
-            handoffType: finalHandoffType,
-            routeDescription: form.querySelector('[name="routeDescription"]').value,
-            protection: form.querySelector('[name="protection"]').value,
-            protectionCableSystem: form.querySelector('[name="protectionCableSystem"]')?.value || '',
-            capacity: {
-                value: Number(form.querySelector('[name="capacity.value"]').value),
-                unit: form.querySelector('[name="capacity.unit"]').value
-            },
-            location: {
-                aEnd: {
-                    country: form.querySelector('[name="location.aEnd.country"]').value,
-                    city: form.querySelector('[name="location.aEnd.city"]').value,
-                    pop: form.querySelector('[name="location.aEnd.pop"]').value,
-                    port: form.querySelector('[name="location.aEnd.port"]').value,
-                    device: form.querySelector('[name="location.aEnd.device"]').value
-                },
-                zEnd: {
-                    country: form.querySelector('[name="location.zEnd.country"]').value,
-                    city: form.querySelector('[name="location.zEnd.city"]').value,
-                    pop: form.querySelector('[name="location.zEnd.pop"]').value,
-                    port: form.querySelector('[name="location.zEnd.port"]').value,
-                    device: form.querySelector('[name="location.zEnd.device"]').value
-                }
-            },
-            financials: (() => {
-                const ownership = form.querySelector('[name="acquisition.ownership"]').value;
-                const oneTimeCost = Number(form.querySelector('[name="financials.otc"]').value);
-                return {
-                    mrc: Number(form.querySelector('[name="financials.mrc"]').value),
-                    nrc: ownership === 'IRU' ? 0 : oneTimeCost,
-                    otc: ownership === 'IRU' ? oneTimeCost : 0,
-                    term: Number(form.querySelector('[name="financials.term"]').value),
-                    omRate: Number(form.querySelector('[name="financials.omRate"]')?.value || 0),
-                    annualOmCost: Number(form.querySelector('[name="financials.annualOmCost"]')?.value || 0)
-                };
-            })(),
-            costMode: form.querySelector('[name="costMode"]')?.value || 'single',
-            baseCost: {
-                orderId: form.querySelector('[name="baseCost.orderId"]')?.value || '',
-                model: form.querySelector('[name="baseCost.model"]')?.value || 'IRU',
-                mrc: Number(form.querySelector('[name="baseCost.mrc"]')?.value || 0),
-                otc: Number(form.querySelector('[name="baseCost.otc"]')?.value || 0),
-                omRate: Number(form.querySelector('[name="baseCost.omRate"]')?.value || 0),
-                annualOm: Number(form.querySelector('[name="baseCost.annualOm"]')?.value || 0),
-                termMonths: Number(form.querySelector('[name="baseCost.termMonths"]')?.value || 0)
-            },
-            dates: {
-                start: form.querySelector('[name="dates.start"]').value,
-                end: form.querySelector('[name="dates.end"]').value
-            }
-        };
-
-        const batchRows = Array.from(form.querySelectorAll('.batch-row'));
-        const batches = batchRows.map(row => {
-            const getField = (field) => row.querySelector(`[data-field="${field}"]`)?.value || '';
-            const model = getField('model') || 'IRU';
-            return {
-                batchId: row.dataset.batchId || `BAT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
-                resourceId: newItem.resourceId,
-                orderId: getField('orderId'),
-                model,
-                capacity: {
-                    value: Number(getField('capacity') || 0),
-                    unit: newItem.capacity.unit
-                },
-                financials: {
-                    mrc: Number(getField('mrc') || 0),
-                    otc: Number(getField('otc') || 0),
-                    omRate: Number(getField('omRate') || 0),
-                    annualOm: Number(getField('annualOm') || 0),
-                    termMonths: Number(getField('termMonths') || 0)
-                },
-                startDate: getField('startDate'),
-                status: getField('status') || 'Planned'
-            };
-        }).filter(b => b.capacity.value > 0);
+        const newItem = buildInventoryPayloadFromForm(form, { resolveSupplierName });
+        const batches = buildInventoryBatchesFromForm(form, newItem);
 
         setFormError('');
-        if (newItem.costMode === 'batches') {
-            const baseCapacity = newItem.capacity?.value || 0;
-            const batchTotal = batches.reduce((sum, batch) => sum + (batch.capacity?.value || 0), 0);
-            if (batchTotal > baseCapacity) {
-                setFormError(`Total batch capacity (${batchTotal} ${newItem.capacity?.unit || 'Gbps'}) exceeds base capacity (${baseCapacity} ${newItem.capacity?.unit || 'Gbps'}).`);
-                return false;
-            }
+        const capacityError = validateInventoryBatchCapacity(newItem, batches);
+        if (capacityError) {
+            setFormError(capacityError);
+            return false;
         }
 
         if (isEdit) {

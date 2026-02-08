@@ -45,9 +45,12 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Sales Cost Template Split** - Moved each cost card template into `salesForm/costCardTemplates/*` modules and kept `salesForm/costCardTemplates.js` as a lightweight aggregator
 - **Inventory Form Split** - `inventory.js` extracted inventory form dropdown wiring, batch editor behavior, and form listeners into `assets/js/modules/inventory/*` submodules
 - **Inventory View/Modal Split** - `inventory.js` is now a facade; inventory list render, details modal, and create/edit modal moved into dedicated `assets/js/modules/inventory/*` modules
+- **Inventory Modal Payload Split** - Extracted inventory modal submit payload/batch builders into `assets/js/modules/inventory/resourceModalPayload.js` to keep modal orchestration focused
+- **Inventory Modal Export Fix** - Restored `openInventoryFormModal` export entrypoint and modal defaults/status pre-computation path in `assets/js/modules/inventory/resourceModal.js`
 - **Sales View Split** - `sales.js` is now a facade; sales list and sales details rendering moved into `assets/js/modules/sales/*` modules
 - **Import Module Split** - `import.js` now focuses on modal/workflow UI; schema/parsing/validation/import logic moved to `assets/js/modules/importCore.js`
 - **Import UI Split** - Moved import step templates and import-specific style bootstrap into `assets/js/modules/importUi.js`; `import.js` now focuses on import state/actions/workflow
+- **Import Core Internal Split** - Decomposed `importCore.js` into focused helpers under `assets/js/modules/importCore/*` (schemas, parsers, validation, transform, persistence, templates) with `importCore.js` retained as the facade API
 - **CRM Module Loading** - Customers and suppliers are loaded on demand via ES modules
 - **Script Loading** - Replaced `bundle.js` usage with explicit script imports
 - **Swapped Out Accounting** - Swapped Out uses market price revenue minus inventory cost (profit/loss possible), requires Inventory linkage, updates UI hints/docs/regression checklist
