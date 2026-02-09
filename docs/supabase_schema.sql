@@ -215,6 +215,9 @@ CREATE TABLE sales_orders (
     -- Notes
     notes TEXT,
 
+    -- Renewal history snapshots
+    renewal_history JSONB DEFAULT '[]'::jsonb,
+
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

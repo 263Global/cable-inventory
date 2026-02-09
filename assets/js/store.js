@@ -227,7 +227,8 @@ class Store {
                 totalMrr: parseFloat(row.total_mrr) || 0
             },
             costs: row.costs || {},
-            notes: row.notes || ''
+            notes: row.notes || '',
+            renewalHistory: row.renewal_history || []
         };
     }
 
@@ -314,7 +315,8 @@ class Store {
             annual_om: order.financials?.annualOm,
             total_mrr: order.financials?.totalMrr || order.financials?.mrcSales,
             costs: order.costs || {},
-            notes: order.notes || ''
+            notes: order.notes || '',
+            renewal_history: order.renewalHistory || []
         };
     }
 
