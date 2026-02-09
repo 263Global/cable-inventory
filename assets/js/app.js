@@ -430,13 +430,22 @@ const App = {
         if (saveBtn) {
             saveBtn.addEventListener('click', async () => {
                 if (onSave && typeof onSave === 'function') {
+                    // Prevent double submission
+                    const originalText = saveBtn.innerHTML;
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<ion-icon name="sync-outline" class="spin-icon"></ion-icon> Saving...';
                     try {
                         const result = await onSave(form);
                         // Only close if onSave returns true or undefined (not explicitly false)
                         if (result !== false) {
                             close();
+                        } else {
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = originalText;
                         }
                     } catch (err) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = originalText;
                         this.handleError(err, { source: 'modal-save' });
                     }
                 }

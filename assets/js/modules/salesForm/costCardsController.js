@@ -58,6 +58,9 @@ export function initCostCardsController(context, { createSupplierDropdown }) {
 
         cardsContainer.appendChild(card);
 
+        // Add entrance animation
+        card.classList.add('cost-card-enter');
+
         const supplierPlaceholder = card.querySelector('.supplier-dropdown-placeholder');
         if (supplierPlaceholder) {
             const fieldName = supplierPlaceholder.dataset.field || supplierPlaceholder.dataset.fieldBase;
@@ -151,6 +154,8 @@ export function initCostCardsController(context, { createSupplierDropdown }) {
             } else {
                 addCostCard(type, false);
             }
+            // Close dropdown menu after selection
+            document.getElementById('cost-type-menu')?.classList.remove('open');
         });
     });
 
@@ -158,8 +163,26 @@ export function initCostCardsController(context, { createSupplierDropdown }) {
         btn.addEventListener('click', () => {
             const type = btn.dataset.costType;
             addCostCard(type, true);
+            // Close dropdown menu after selection
+            document.getElementById('cost-type-menu')?.classList.remove('open');
         });
     });
+
+    // Dropdown trigger toggle
+    const costTypeTrigger = document.getElementById('cost-type-trigger');
+    const costTypeMenu = document.getElementById('cost-type-menu');
+    if (costTypeTrigger && costTypeMenu) {
+        costTypeTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            costTypeMenu.classList.toggle('open');
+        });
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!costTypeMenu.contains(e.target) && e.target !== costTypeTrigger) {
+                costTypeMenu.classList.remove('open');
+            }
+        });
+    }
 
     document.querySelectorAll('.cost-toggle-btn').forEach((btn) => {
         const type = btn.dataset.costType;
