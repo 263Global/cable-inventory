@@ -3,26 +3,26 @@
  * Bulk import functionality for Customers, Suppliers, Inventory, and Sales
  */
 
-const { escapeHtml } = window.DomUtils;
+const { escapeHtml: escapeImportHtml } = window.DomUtils;
 
-const core = window.CsvImportCore;
-if (!core) {
+const importCoreFacade = window.CsvImportCore;
+if (!importCoreFacade) {
     throw new Error('CsvImportCore not loaded. Ensure assets/js/modules/importCore.js is loaded before import.js');
 }
 
 const {
-    SCHEMAS,
-    parseCSV,
-    parseExcel,
-    parseFile,
-    validateRows,
-    importRows,
-    downloadTemplateCSV,
-    downloadTemplateExcel
-} = core;
+    SCHEMAS: importSchemas,
+    parseCSV: coreParseCSV,
+    parseExcel: coreParseExcel,
+    parseFile: coreParseFile,
+    validateRows: coreValidateRows,
+    importRows: coreImportRows,
+    downloadTemplateCSV: coreDownloadTemplateCSV,
+    downloadTemplateExcel: coreDownloadTemplateExcel
+} = importCoreFacade;
 
-const ui = window.CsvImportUi;
-if (!ui) {
+const importUiFacade = window.CsvImportUi;
+if (!importUiFacade) {
     throw new Error('CsvImportUi not loaded. Ensure assets/js/modules/importUi.js is loaded before import.js');
 }
 
@@ -31,7 +31,7 @@ const {
     renderStep2,
     renderStep3,
     ensureImportStyles
-} = ui;
+} = importUiFacade;
 
 // ==================== Import Modal UI ====================
 
@@ -50,11 +50,11 @@ function handleImportAction(action, source) {
         return;
     }
     if (action === 'download-template-csv') {
-        downloadTemplateCSV(entityType);
+        coreDownloadTemplateCSV(entityType);
         return;
     }
     if (action === 'download-template-excel') {
-        downloadTemplateExcel(entityType);
+        coreDownloadTemplateExcel(entityType);
         return;
     }
     if (action === 'go-step-1') {
@@ -120,7 +120,7 @@ function bindImportModalActions() {
  * Open import modal for entity type
  */
 function openImportModal(entityType) {
-    const schema = SCHEMAS[entityType];
+    const schema = importSchemas[entityType];
     if (!schema) {
         alert(`Import not supported for: ${entityType}`);
         return;
@@ -236,13 +236,13 @@ function clearFile() {
 async function validateAndPreview() {
     if (!currentImportState.file) return;
 
-    const schema = SCHEMAS[currentImportState.entityType];
+    const schema = importSchemas[currentImportState.entityType];
     const btn = document.getElementById('import-validate-btn');
     btn.disabled = true;
     btn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Validating...';
 
     try {
-        const { data, errors } = await parseFile(currentImportState.file);
+        const { data, errors } = await coreParseFile(currentImportState.file);
         if (errors.length > 0) {
             alert('Parse errors: ' + errors.map(e => e.message).join(', '));
             btn.disabled = false;
@@ -251,7 +251,7 @@ async function validateAndPreview() {
         }
 
         currentImportState.parsedData = data;
-        const result = validateRows(data, schema);
+        const result = coreValidateRows(data, schema);
         currentImportState.validationResult = result;
 
         // Render Step 3
@@ -282,7 +282,7 @@ async function executeImport() {
     btn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Importing...';
 
     try {
-        const result = await importRows(currentImportState.entityType, valid);
+        const result = await coreImportRows(currentImportState.entityType, valid);
 
         // Show result
         document.getElementById('import-modal-body').innerHTML = `
@@ -293,7 +293,7 @@ async function executeImport() {
                 ${result.failed.length > 0 ? `
                     <p style="color: var(--status-expired); margin-top: 1rem;">${result.failed.length} failed to import.</p>
                     <ul style="text-align: left; max-height: 150px; overflow: auto; margin-top: 0.5rem;">
-                        ${result.failed.map(f => `<li>Row ${f.row}: ${escapeHtml(f.error)}</li>`).join('')}
+                        ${result.failed.map(f => `<li>Row ${f.row}: ${escapeImportHtml(f.error)}</li>`).join('')}
                     </ul>
                 ` : ''}
             </div>
@@ -317,8 +317,8 @@ ensureImportStyles();
 window.CsvImport = {
     openImportModal,
     closeImportModal,
-    downloadTemplateCSV,
-    downloadTemplateExcel,
+    downloadTemplateCSV: coreDownloadTemplateCSV,
+    downloadTemplateExcel: coreDownloadTemplateExcel,
     goToStep1,
     goToStep2,
     validateAndPreview,
@@ -329,9 +329,9 @@ window.CsvImport = {
     handleFileSelect,
     clearFile,
     // For testing
-    parseCSV,
-    parseExcel,
-    parseFile,
-    validateRows,
-    SCHEMAS
+    parseCSV: coreParseCSV,
+    parseExcel: coreParseExcel,
+    parseFile: coreParseFile,
+    validateRows: coreValidateRows,
+    SCHEMAS: importSchemas
 };

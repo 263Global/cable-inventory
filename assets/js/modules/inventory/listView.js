@@ -11,6 +11,13 @@ const {
 } = window.InventoryStatus;
 
 const { isExpiringWithin } = window.StatusUi;
+const openImportModalWithFallback = (entityType) => {
+    if (window.CsvImport?.openImportModal) {
+        window.CsvImport.openImportModal(entityType);
+        return;
+    }
+    alert('Import module unavailable. Please refresh and try again.');
+};
 
 export function renderInventoryList(context, searchQuery = '', page = 1, statusFilter = '') {
     // Check if coming from Dashboard with an expiring filter
@@ -65,7 +72,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
     const importBtn = document.createElement('button');
     importBtn.className = 'btn btn-secondary';
     importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
-    importBtn.onclick = () => window.CsvImport?.openImportModal('inventory');
+    importBtn.onclick = () => openImportModalWithFallback('inventory');
     context.headerActions.appendChild(importBtn);
 
     // Add "Add Item" button

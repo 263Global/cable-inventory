@@ -5,6 +5,13 @@
 const { escapeHtml } = window.DomUtils;
 
 const toSearchableText = (value) => String(value || '').toLowerCase();
+const openImportModalWithFallback = (entityType) => {
+    if (window.CsvImport?.openImportModal) {
+        window.CsvImport.openImportModal(entityType);
+        return;
+    }
+    alert('Import module unavailable. Please refresh and try again.');
+};
 
 export function initCrmEntityModule(App, config) {
     const {
@@ -67,7 +74,7 @@ export function initCrmEntityModule(App, config) {
         importBtn.className = 'btn btn-secondary';
         importBtn.type = 'button';
         importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
-        importBtn.addEventListener('click', () => window.CsvImport?.openImportModal(importEntityType));
+        importBtn.addEventListener('click', () => openImportModalWithFallback(importEntityType));
         this.headerActions.appendChild(importBtn);
 
         const addBtn = document.createElement('button');

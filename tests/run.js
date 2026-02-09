@@ -19,6 +19,11 @@ loadScript('assets/js/inventoryStatus.js');
 loadScript('assets/js/salesStatus.js');
 loadScript('assets/js/modules/financials.js');
 loadScript('assets/js/store.js');
+loadScript('assets/js/modules/importCore/schemas.js');
+loadScript('assets/js/modules/importCore/parsers.js');
+loadScript('assets/js/modules/importCore/validation.js');
+loadScript('assets/js/modules/importCore/transform.js');
+loadScript('assets/js/modules/importCore/persistence.js');
 const realStore = window.Store;
 
 const tests = [];
@@ -456,6 +461,171 @@ test('Store.replaceSalesOrderBatches attempts rollback when insert fails', async
         window.Store = previousWindowStore;
         window.SupabaseClient = previousSupabase;
         store.salesOrderBatches = previousAllocations;
+    }
+});
+
+test('CsvImportParsers.parseExcel normalizes date-like values to YYYY-MM-DD', async () => {
+    const previousXlsx = global.XLSX;
+    const previousFileReader = global.FileReader;
+
+    class MockFileReader {
+        readAsArrayBuffer() {
+            if (typeof this.onload === 'function') {
+                this.onload({ target: { result: new ArrayBuffer(8) } });
+            }
+        }
+    }
+
+    global.FileReader = MockFileReader;
+    global.XLSX = {
+        read() {
+            return {
+                SheetNames: ['Sheet1'],
+                Sheets: { Sheet1: {} }
+            };
+        },
+        utils: {
+            sheet_to_json() {
+                return [
+                    {
+                        'Start Date': new Date(2026, 1, 9),
+                        'Created At': 45292,
+                        Customer: 'ACME'
+                    }
+                ];
+            }
+        },
+        SSF: {
+            parse_date_code(value) {
+                if (value === 45292) return { y: 2024, m: 1, d: 1 };
+                return null;
+            }
+        }
+    };
+
+    try {
+        const result = await window.CsvImportParsers.parseExcel({ name: 'sample.xlsx' });
+        assert.deepStrictEqual(result.errors, []);
+        assert.strictEqual(result.data.length, 1);
+        assert.strictEqual(result.data[0].start_date, '2026-02-09');
+        assert.strictEqual(result.data[0].created_at, '2024-01-01');
+        assert.strictEqual(result.data[0].customer, 'ACME');
+    } finally {
+        global.XLSX = previousXlsx;
+        global.FileReader = previousFileReader;
+    }
+});
+
+test('CsvImportParsers.parseFile rejects unsupported extensions', async () => {
+    await assert.rejects(
+        () => window.CsvImportParsers.parseFile({ name: 'input.txt' }),
+        /Unsupported file format/
+    );
+});
+
+test('CsvImportValidation.validateRows resolves foreign keys', () => {
+    const previousStore = window.Store;
+    window.Store = {
+        getSuppliers: () => [{ id: 'sup-1', short_name: 'SUPA' }],
+        getCustomers: () => [{ id: 'cus-1', short_name: 'ACME' }]
+    };
+
+    try {
+        const inventoryRows = [
+            {
+                resource_id: 'INV-100',
+                supplier: 'supa',
+                capacity_value: '10',
+                cost_model: 'Lease',
+                term_months: '12',
+                start_date: '2026-01-01'
+            }
+        ];
+        const inventoryResult = window.CsvImportValidation.validateRows(
+            inventoryRows,
+            window.CsvImportSchemas.inventory
+        );
+        assert.strictEqual(inventoryResult.valid.length, 1);
+        assert.strictEqual(inventoryResult.invalid.length, 0);
+        assert.strictEqual(inventoryResult.valid[0]._resolved_supplier_id, 'sup-1');
+
+        const salesRows = [
+            {
+                sales_order_id: 'SO-100',
+                customer: 'acme',
+                sales_model: 'Lease',
+                sales_type: 'Resale',
+                capacity_value: '20',
+                mrc_sales: '1000',
+                term_months: '12',
+                start_date: '2026-01-01'
+            }
+        ];
+        const salesResult = window.CsvImportValidation.validateRows(
+            salesRows,
+            window.CsvImportSchemas.sales
+        );
+        assert.strictEqual(salesResult.valid.length, 1);
+        assert.strictEqual(salesResult.invalid.length, 0);
+        assert.strictEqual(salesResult.valid[0]._resolved_customer_id, 'cus-1');
+    } finally {
+        window.Store = previousStore;
+    }
+});
+
+test('CsvImportTransform.transformRowForStore computes sales end date', () => {
+    const previousStore = window.Store;
+    window.Store = {
+        getCustomerById: (id) => (id === 'cus-1' ? { short_name: 'ACME' } : null)
+    };
+
+    try {
+        const transformed = window.CsvImportTransform.transformRowForStore({
+            sales_order_id: 'SO-200',
+            _resolved_customer_id: 'cus-1',
+            sales_model: 'Lease',
+            sales_type: 'Resale',
+            capacity_value: 10,
+            mrc_sales: 500,
+            term_months: 2,
+            start_date: '2026-01-15'
+        }, 'sales');
+
+        assert.strictEqual(transformed.customerName, 'ACME');
+        assert.strictEqual(transformed.dates.end, '2026-03-14');
+        assert.strictEqual(transformed.dates.term, 2);
+    } finally {
+        window.Store = previousStore;
+    }
+});
+
+test('CsvImportPersistence.importRows continues after per-row failures', async () => {
+    const previousStore = window.Store;
+    const previousTransform = window.CsvImportTransform;
+
+    window.CsvImportTransform = {
+        transformRowForStore: (row) => ({ shortName: row.short_name })
+    };
+    window.Store = {
+        async addCustomer(payload) {
+            if (payload.shortName === 'BAD') {
+                throw new Error('duplicate customer');
+            }
+            return payload;
+        }
+    };
+
+    try {
+        const result = await window.CsvImportPersistence.importRows('customers', [
+            { _rowIndex: 2, short_name: 'GOOD' },
+            { _rowIndex: 3, short_name: 'BAD' }
+        ]);
+
+        assert.strictEqual(result.success, 1);
+        assert.deepStrictEqual(result.failed, [{ row: 3, error: 'duplicate customer' }]);
+    } finally {
+        window.Store = previousStore;
+        window.CsvImportTransform = previousTransform;
     }
 });
 

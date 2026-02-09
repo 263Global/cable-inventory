@@ -2,7 +2,7 @@
  * CSV/Excel import modal UI templates and style bootstrap.
  */
 
-const { escapeHtml } = window.DomUtils;
+const { escapeHtml: escapeImportUiHtml } = window.DomUtils;
 
 window.CsvImportUi = (() => {
     function renderStep1(entityType) {
@@ -115,7 +115,7 @@ window.CsvImportUi = (() => {
                             <tr>
                                 <th style="width: 40px;">Row</th>
                                 <th style="width: 40px;"></th>
-                                ${headers.map(h => `<th>${escapeHtml(h.label || h.name)}</th>`).join('')}
+                                ${headers.map(h => `<th>${escapeImportUiHtml(h.label || h.name)}</th>`).join('')}
                             </tr>
                         </thead>
                         <tbody>
@@ -126,13 +126,13 @@ window.CsvImportUi = (() => {
                                         <td>${row._rowIndex}</td>
                                         <td>
                                             ${hasError
-                    ? `<ion-icon name="alert-circle" style="color: var(--status-expired);" title="${escapeHtml(row._errors.join('; '))}"></ion-icon>`
+                    ? `<ion-icon name="alert-circle" style="color: var(--status-expired);" title="${escapeImportUiHtml(row._errors.join('; '))}"></ion-icon>`
                     : `<ion-icon name="checkmark-circle" style="color: var(--status-active);"></ion-icon>`
                 }
                                         </td>
-                                        ${headers.map(h => `<td>${escapeHtml(row[h.name] || '')}</td>`).join('')}
+                                        ${headers.map(h => `<td>${escapeImportUiHtml(row[h.name] || '')}</td>`).join('')}
                                     </tr>
-                                    ${hasError ? `<tr class="error-detail"><td colspan="${headers.length + 2}" style="color: var(--status-expired); font-size: 0.8rem; padding: 0.25rem 0.5rem;">${escapeHtml(row._errors.join('; '))}</td></tr>` : ''}
+                                    ${hasError ? `<tr class="error-detail"><td colspan="${headers.length + 2}" style="color: var(--status-expired); font-size: 0.8rem; padding: 0.25rem 0.5rem;">${escapeImportUiHtml(row._errors.join('; '))}</td></tr>` : ''}
                                 `;
         }).join('')}
                         </tbody>

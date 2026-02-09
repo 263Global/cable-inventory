@@ -15,6 +15,13 @@ const escapeHtml = (str) => {
 
 const { getSalesStatusBadgeClass, computeSalesStatus } = window.SalesStatus;
 const { isExpiringWithin } = window.StatusUi;
+const openImportModalWithFallback = (entityType) => {
+    if (window.CsvImport?.openImportModal) {
+        window.CsvImport.openImportModal(entityType);
+        return;
+    }
+    alert('Import module unavailable. Please refresh and try again.');
+};
 
 export function renderSalesList(context, filters = {}) {
     // Check if coming from Dashboard with an expiring filter
@@ -83,7 +90,7 @@ export function renderSalesList(context, filters = {}) {
     const importBtn = document.createElement('button');
     importBtn.className = 'btn btn-secondary';
     importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
-    importBtn.onclick = () => window.CsvImport?.openImportModal('sales');
+    importBtn.onclick = () => openImportModalWithFallback('sales');
     context.headerActions.appendChild(importBtn);
 
     // Add "Add Sale" button
