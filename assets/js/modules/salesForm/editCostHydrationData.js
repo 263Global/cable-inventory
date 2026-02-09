@@ -69,4 +69,7 @@ export function syncEditCostHiddenInputs(costData) {
     syncHiddenInput('costs.crossConnect.zEnd.nrc', xcZ.nrc || 0);
 
     syncHiddenInput('costs.other.supplier', otherCosts.supplier || '');
+    syncHiddenInput('costs.otherCosts.description', otherCosts.description || '');
+    syncHiddenInput('costs.otherCosts.oneOff', otherCosts.oneOff || 0);
+    syncHiddenInput('costs.otherCosts.monthly', otherCosts.monthly || 0);
 }

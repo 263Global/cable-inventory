@@ -65,6 +65,9 @@ export async function handleSalesSubmit(context, form) {
 
     // Check if we're editing an existing order
     const isEditMode = !!context._editingOrderId;
+    const existingOrder = isEditMode
+        ? window.Store.getSales().find(s => s.salesOrderId === context._editingOrderId)
+        : null;
 
     // Calculate Status to ensure it's accurate at save time
     const status = computeSalesStatus(getVal('dates.start'), getVal('dates.end'));
@@ -158,6 +161,18 @@ export async function handleSalesSubmit(context, form) {
         },
         notes: getVal('notes') || ''
     };
+
+    // ===== Preserve existing fields not collected from the form =====
+    if (isEditMode && existingOrder) {
+        // Carry forward renewalHistory
+        if (existingOrder.renewalHistory) {
+            orderData.renewalHistory = existingOrder.renewalHistory;
+        }
+        // Carry forward createdAt
+        if (existingOrder.createdAt) {
+            orderData.createdAt = existingOrder.createdAt;
+        }
+    }
     const batchAllocations = getJson('batchAllocations');
     const inventoryId = getVal('inventoryLink');
     const inventory = inventoryId ? window.Store.getInventory().find(i => i.resourceId === inventoryId) : null;
@@ -171,6 +186,7 @@ export async function handleSalesSubmit(context, form) {
     const computed = computeOrderFinancials(orderData);
     orderData.financials.marginPercent = computed.marginPercent;
     orderData.financials.monthlyProfit = computed.monthlyProfit;
+    orderData.financials.totalMrr = computed.totalMrr || orderData.financials.mrcSales;
 
     // Store IRU Resale specific metrics
     if (computed.isIruResale) {
