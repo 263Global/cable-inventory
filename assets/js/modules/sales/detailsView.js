@@ -3,8 +3,8 @@
  */
 
 const { computeSalesStatus, getSalesStatusBadgeClass } = window.SalesStatus;
-const { computeOrderFinancials } = window.Financials;
-const { escapeHtml } = window.DomUtils;
+const computeOrderFinancials = window.computeOrderFinancials;
+const escapeHtml = window.DomUtils?.escapeHtml || (s => s);
 
 export function viewSalesDetailsModal(context, salesOrderId) {
     const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
