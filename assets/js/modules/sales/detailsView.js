@@ -2,6 +2,10 @@
  * Sales details modal rendering.
  */
 
+const { computeSalesStatus, getSalesStatusBadgeClass } = window.SalesStatus;
+const { computeOrderFinancials } = window.Financials;
+const { escapeHtml } = window.DomUtils;
+
 export function viewSalesDetailsModal(context, salesOrderId) {
     const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
     if (!order) return;
