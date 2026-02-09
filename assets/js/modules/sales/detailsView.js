@@ -359,18 +359,69 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                     </table>
                 </div>
 
-                <!-- Cost Breakdown MRC -->
+                <!-- Cost Breakdown MRC with Supplier Details -->
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${monthlyCostsLabel}</h4>
-                    <table style="width:100%;">
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableCostLabel}${mismatchBadge('Cable')}</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End${mismatchBadge('Backhaul A')}</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End${mismatchBadge('Backhaul Z')}</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A${mismatchBadge('XC A')}</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z${mismatchBadge('XC Z')}</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                        ${otherMonthly > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other Monthly${mismatchBadge('Other')}</td><td class="font-mono">$${otherMonthly.toLocaleString()}</td></tr>` : ''}
-                        <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total MRC</td><td class="font-mono" style="color:var(--accent-danger); font-weight:600">$${totalCostsMrc.toLocaleString()}</td></tr>
-                    </table>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        ${cableCostMrc > 0 || cableSummary.totalNrc > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">${cableCostLabel}${mismatchBadge('Cable')}</div>
+                                ${cableSegments[0]?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${cableSegments[0].supplier}</div>` : ''}
+                                ${cableSegments[0]?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${cableSegments[0].startDate} → ${cableSegments[0].endDate || '?'}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${cableCostMrc.toLocaleString()}</div>
+                        </div>` : ''}
+                        ${backhaulAMrc > 0 || (backhaulA?.nrc || 0) > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">Backhaul A-End${mismatchBadge('Backhaul A')}</div>
+                                ${backhaulA?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${backhaulA.supplier}</div>` : ''}
+                                ${backhaulA?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${backhaulA.startDate} → ${backhaulA.endDate || '?'}${backhaulA.model === 'IRU' ? ' (IRU)' : ''}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${backhaulAMrc.toLocaleString()}</div>
+                        </div>` : ''}
+                        ${backhaulZMrc > 0 || (backhaulZ?.nrc || 0) > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">Backhaul Z-End${mismatchBadge('Backhaul Z')}</div>
+                                ${backhaulZ?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${backhaulZ.supplier}</div>` : ''}
+                                ${backhaulZ?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${backhaulZ.startDate} → ${backhaulZ.endDate || '?'}${backhaulZ.model === 'IRU' ? ' (IRU)' : ''}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${backhaulZMrc.toLocaleString()}</div>
+                        </div>` : ''}
+                        ${xcAMrc > 0 || (xcA?.nrc || 0) > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">Cross Connect A${mismatchBadge('XC A')}</div>
+                                ${xcA?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${xcA.supplier}</div>` : ''}
+                                ${xcA?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${xcA.startDate} → ${xcA.endDate || '?'}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${xcAMrc.toLocaleString()}</div>
+                        </div>` : ''}
+                        ${xcZMrc > 0 || (xcZ?.nrc || 0) > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">Cross Connect Z${mismatchBadge('XC Z')}</div>
+                                ${xcZ?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${xcZ.supplier}</div>` : ''}
+                                ${xcZ?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${xcZ.startDate} → ${xcZ.endDate || '?'}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${xcZMrc.toLocaleString()}</div>
+                        </div>` : ''}
+                        ${otherMonthly > 0 || otherOneOff > 0 ? `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 600;">Other${otherCosts?.description ? ` — ${otherCosts.description}` : ''}${mismatchBadge('Other')}</div>
+                                ${otherCosts?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${otherCosts.supplier}</div>` : ''}
+                                ${otherCosts?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${otherCosts.startDate} → ${otherCosts.endDate || '?'}</div>` : ''}
+                            </div>
+                            <div class="font-mono" style="white-space: nowrap;">$${otherMonthly.toLocaleString()}</div>
+                        </div>` : ''}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0 0; margin-top: 0.25rem; border-top: 1px solid var(--border-color);">
+                        <span style="font-weight: 600; font-size: 0.85rem;">Total MRC</span>
+                        <span class="font-mono" style="color: var(--accent-danger); font-weight: 600;">$${totalCostsMrc.toLocaleString()}</span>
+                    </div>
                 </div>
 
                 <!-- Cost Breakdown NRC -->
