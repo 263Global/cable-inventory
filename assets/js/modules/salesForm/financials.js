@@ -231,11 +231,17 @@ export function calculateSalesFinancials(context) {
     const totalMonthlyCost = monthlyRevenue - monthlyProfit;
 
     // ===== Update UI =====
+    // Determine if we have any real data (zero-state = muted, colored only with data)
+    const hasData = totalMonthlyCost !== 0 || monthlyProfit !== 0 || monthlyRevenue !== 0;
+    const mutedColor = 'var(--text-muted)';
+    const profitColor = (val) => !hasData ? mutedColor : (val >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)');
+    const marginColor = (val) => !hasData ? mutedColor : (val >= 20 ? 'var(--accent-success)' : (val > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)'));
+
     document.getElementById('disp-total-cost').textContent = fmt(totalMonthlyCost);
 
     const marginEl = document.getElementById('disp-gross-margin');
     marginEl.textContent = fmt(monthlyProfit);
-    marginEl.style.color = monthlyProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+    marginEl.style.color = profitColor(monthlyProfit);
 
     const percentEl = document.getElementById('disp-margin-percent');
     const marginLabel = document.getElementById('margin-percent-label');
@@ -246,17 +252,17 @@ export function calculateSalesFinancials(context) {
         // Show dual margins for IRU Resale
         marginLabel.textContent = '首月利润率:';
         percentEl.textContent = firstMonthMargin.toFixed(1) + '%';
-        percentEl.style.color = firstMonthMargin >= 20 ? 'var(--accent-success)' : (firstMonthMargin > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        percentEl.style.color = marginColor(firstMonthMargin);
 
         // Show recurring margin row
         recurringRow.style.display = 'flex';
         recurringEl.textContent = recurringMargin.toFixed(1) + '%';
-        recurringEl.style.color = recurringMargin >= 20 ? 'var(--accent-success)' : (recurringMargin > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        recurringEl.style.color = marginColor(recurringMargin);
     } else {
         // Standard single margin display
         marginLabel.textContent = 'Margin (%):';
         percentEl.textContent = marginPercent.toFixed(1) + '%';
-        percentEl.style.color = marginPercent >= 20 ? 'var(--accent-success)' : (marginPercent > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)');
+        percentEl.style.color = marginColor(marginPercent);
 
         // Hide recurring margin row
         recurringRow.style.display = 'none';

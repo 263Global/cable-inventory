@@ -213,7 +213,11 @@ export function buildSalesModalContent({
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Sales Status</label>
-                            <input type="text" class="form-control" id="sales-status-display" value="${escapeHtml(existingOrder?.status || 'Pending')}" readonly style="background: var(--bg-card-hover); color: var(--text-secondary);">
+                            <div>
+                                <span class="status-badge-inline status-${(existingOrder?.status || 'Pending').toLowerCase()}" id="sales-status-display">
+                                    ${escapeHtml(existingOrder?.status || 'Pending')}
+                                </span>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Salesperson <span class="required-indicator" style="color: var(--accent-danger);">*</span></label>
@@ -364,26 +368,35 @@ export function buildSalesModalContent({
                     ` : ''}
 
                     <!-- Cost Type Selector (Sticky with Wrapper) -->
-                    <div id="cost-buttons" class="mb-4" style="display: ${isEditMode ? 'none' : 'flex'}; flex-wrap: wrap; gap: 0.5rem; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
-                        <div style="width: 100%; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Cost Types</div>
-                        <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="cable" id="add-cable-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Add Cable Segment
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Backhaul A
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Backhaul Z
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="xcA" id="add-xc-a-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> XC A
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-toggle-btn" data-cost-type="xcZ" id="add-xc-z-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> XC Z
-                        </button>
-                        <button type="button" class="btn btn-secondary cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn" style="font-size: 0.8rem;">
-                            <ion-icon name="add-outline"></ion-icon> Add Other Cost
-                        </button>
+                    <div id="cost-buttons" class="mb-4" style="display: ${isEditMode ? 'none' : 'block'}; position: sticky; top: 0; background: var(--bg-card); padding: 0.75rem; margin: -0.5rem -0.5rem 0.5rem -0.5rem; z-index: var(--z-sticky); box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Cost Types</span>
+                            <div class="cost-type-dropdown">
+                                <button type="button" class="btn btn-secondary" id="cost-type-trigger" style="font-size: 0.8rem;">
+                                    <ion-icon name="add-outline"></ion-icon> Add Cost
+                                </button>
+                                <div class="cost-type-menu" id="cost-type-menu">
+                                    <button type="button" class="cost-add-btn cost-add-multi" data-cost-type="cable" id="add-cable-btn">
+                                        <ion-icon name="git-branch-outline"></ion-icon> Cable Segment
+                                    </button>
+                                    <button type="button" class="cost-toggle-btn" data-cost-type="backhaulA" id="add-backhaul-a-btn">
+                                        <ion-icon name="arrow-forward-outline"></ion-icon> Backhaul A
+                                    </button>
+                                    <button type="button" class="cost-toggle-btn" data-cost-type="backhaulZ" id="add-backhaul-z-btn">
+                                        <ion-icon name="arrow-back-outline"></ion-icon> Backhaul Z
+                                    </button>
+                                    <button type="button" class="cost-toggle-btn" data-cost-type="xcA" id="add-xc-a-btn">
+                                        <ion-icon name="link-outline"></ion-icon> XC A
+                                    </button>
+                                    <button type="button" class="cost-toggle-btn" data-cost-type="xcZ" id="add-xc-z-btn">
+                                        <ion-icon name="link-outline"></ion-icon> XC Z
+                                    </button>
+                                    <button type="button" class="cost-add-btn cost-add-multi" data-cost-type="other" id="add-other-btn">
+                                        <ion-icon name="ellipsis-horizontal-outline"></ion-icon> Other Cost
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Dynamic Cost Cards Container -->
