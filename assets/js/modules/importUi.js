@@ -210,10 +210,7 @@ window.CsvImportUi = (() => {
 .error-detail {
     background: rgba(239, 68, 68, 0.05);
 }
-.modal-lg {
-    max-width: 700px;
-    width: 90%;
-}
+
 </style>
 `;
         document.head.insertAdjacentHTML('beforeend', importStyles);
