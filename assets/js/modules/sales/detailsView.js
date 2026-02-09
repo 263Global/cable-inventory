@@ -349,29 +349,58 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         <!-- Renewal History -->
         ${Array.isArray(order.renewalHistory) && order.renewalHistory.length ? `
         <div style="${sectionStyle}">
-            <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-                <ion-icon name="time-outline"></ion-icon> Renewal History (${order.renewalHistory.length})
-            </h4>
-            <div style="border-left: 2px solid var(--border-color); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div id="renewal-history-header" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <h4 style="color: var(--accent-warning); margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <ion-icon name="time-outline"></ion-icon> 续约历史 (${order.renewalHistory.length})
+                </h4>
+                <ion-icon id="renewal-history-chevron" name="chevron-down-outline" style="font-size: 1.1rem; color: var(--text-muted); transition: transform 0.2s;"></ion-icon>
+            </div>
+            <div id="renewal-history-body" style="display: none; margin-top: 0.75rem; border-left: 2px solid var(--border-color); padding-left: 1rem;">
                 ${order.renewalHistory.map((snap, i) => {
         const d = snap.dates || {};
         const f = snap.financials || {};
+        const c = snap.costs || {};
         const renewDate = snap.renewedAt ? new Date(snap.renewedAt).toLocaleDateString() : '-';
         const mrc = f.mrcSales != null ? `$${Number(f.mrcSales).toLocaleString()}` : '-';
         const nrc = f.nrcSales != null ? `$${Number(f.nrcSales).toLocaleString()}` : '-';
+        const otc = f.otc != null && f.otc > 0 ? `$${Number(f.otc).toLocaleString()}` : '';
         const changes = snap.costChanges?.length ? snap.costChanges.join(', ') : '';
+        const costLines = [];
+        const segs = Array.isArray(c.cableSegments) ? c.cableSegments : (c.cable ? [c.cable] : []);
+        segs.forEach((seg, si) => {
+            const label = segs.length > 1 ? `Cable Seg${si + 1}` : 'Cable';
+            if (seg.model === 'IRU') {
+                costLines.push(`${label}: OTC $${Number(seg.otc || 0).toLocaleString()}, O&M $${Number(seg.annualOm || 0).toLocaleString()}/yr`);
+            } else {
+                costLines.push(`${label}: MRC $${Number(seg.mrc || 0).toLocaleString()}, NRC $${Number(seg.nrc || 0).toLocaleString()}`);
+            }
+        });
+        const bhA = c.backhaul?.aEnd || c.backhaulA;
+        const bhZ = c.backhaul?.zEnd || c.backhaulZ;
+        if (bhA) costLines.push(`BH-A: MRC $${Number(bhA.monthly || 0).toLocaleString()}, NRC $${Number(bhA.nrc || 0).toLocaleString()}`);
+        if (bhZ) costLines.push(`BH-Z: MRC $${Number(bhZ.monthly || 0).toLocaleString()}, NRC $${Number(bhZ.nrc || 0).toLocaleString()}`);
+        const xcA = c.crossConnect?.aEnd || c.crossConnectA;
+        const xcZ = c.crossConnect?.zEnd || c.crossConnectZ;
+        if (xcA) costLines.push(`XC-A: MRC $${Number(xcA.monthly || xcA.mrc || 0).toLocaleString()}, NRC $${Number(xcA.nrc || 0).toLocaleString()}`);
+        if (xcZ) costLines.push(`XC-Z: MRC $${Number(xcZ.monthly || xcZ.mrc || 0).toLocaleString()}, NRC $${Number(xcZ.nrc || 0).toLocaleString()}`);
+        if (c.otherCosts) costLines.push(`Other: MRC $${Number(c.otherCosts.monthly || 0).toLocaleString()}, NRC $${Number(c.otherCosts.oneOff || 0).toLocaleString()}`);
         return `
-                    <div style="position: relative;">
+                    <div style="position: relative; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border-color);">
                         <div style="position: absolute; left: -1.35rem; top: 0.1rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-warning); border: 2px solid var(--bg-card);"></div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">第 ${i + 1} 期 · 续约于 ${renewDate}</div>
-                        <div style="font-size: 0.85rem;">
-                            <span style="color: var(--text-muted);">期限:</span> ${d.start || '-'} ~ ${d.end || '-'} (${d.term || '-'}个月)
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem; font-weight: 600;">第 ${i + 1} 期 · 续约于 ${renewDate}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 1rem; font-size: 0.85rem;">
+                            <div><span style="color: var(--text-muted);">期限:</span> ${d.start || '-'} ~ ${d.end || '-'}</div>
+                            <div><span style="color: var(--text-muted);">合同月数:</span> ${d.term || '-'}</div>
+                            <div><span style="color: var(--accent-success);">MRC:</span> ${mrc}</div>
+                            <div><span style="color: var(--accent-warning);">NRC:</span> ${nrc}</div>
+                            ${otc ? `<div><span style="color: var(--text-muted);">OTC:</span> ${otc}</div>` : ''}
                         </div>
-                        <div style="font-size: 0.85rem;">
-                            <span style="color: var(--text-muted);">MRC:</span> ${mrc}
-                            　<span style="color: var(--text-muted);">NRC:</span> ${nrc}
-                        </div>
-                        ${changes ? `<div style="font-size: 0.8rem; color: var(--accent-primary); margin-top: 0.15rem;">成本变更: ${escapeHtml(changes)}</div>` : ''}
+                        ${costLines.length ? `
+                        <div style="margin-top: 0.4rem; padding-top: 0.35rem; border-top: 1px solid var(--border-color);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.2rem;">成本明细</div>
+                            ${costLines.map(l => `<div style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(l)}</div>`).join('')}
+                        </div>` : ''}
+                        ${changes ? `<div style="font-size: 0.8rem; color: var(--accent-primary); margin-top: 0.3rem;"><ion-icon name="swap-horizontal-outline" style="font-size: 0.75rem;"></ion-icon> ${escapeHtml(changes)}</div>` : ''}
                     </div>`;
     }).join('')}
             </div>
@@ -388,6 +417,19 @@ export function viewSalesDetailsModal(context, salesOrderId) {
     `;
 
     context.openModal(`Sales Order: ${order.salesOrderId}`, detailsHtml, null, true);
+
+    // Wire up renewal history toggle
+    const histHeader = context.modalContainer.querySelector('#renewal-history-header');
+    const histBody = context.modalContainer.querySelector('#renewal-history-body');
+    const histChevron = context.modalContainer.querySelector('#renewal-history-chevron');
+    if (histHeader && histBody) {
+        histHeader.addEventListener('click', () => {
+            const expanded = histBody.style.display !== 'none';
+            histBody.style.display = expanded ? 'none' : 'block';
+            if (histChevron) histChevron.style.transform = expanded ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+    }
+
     context.modalContainer.querySelectorAll('[data-action="renew-from-detail"]').forEach(btn => {
         btn.addEventListener('click', () => {
             context.closeModal();
