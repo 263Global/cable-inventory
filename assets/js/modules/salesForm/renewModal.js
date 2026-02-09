@@ -139,6 +139,19 @@ export function openRenewModal(context, salesOrderId) {
             updatedData.costs = nextCosts;
         }
 
+        // ===== Snapshot pre-renewal state into renewalHistory =====
+        const snapshot = {
+            renewedAt: new Date().toISOString(),
+            dates: order.dates ? { ...order.dates } : null,
+            financials: order.financials ? { ...order.financials } : null,
+            costs: order.costs ? JSON.parse(JSON.stringify(order.costs)) : null,
+            costChanges: costChanges.length ? costChanges : undefined
+        };
+        const history = Array.isArray(order.renewalHistory)
+            ? [...order.renewalHistory, snapshot]
+            : [snapshot];
+        updatedData.renewalHistory = history;
+
         await window.Store.updateSalesOrder(salesOrderId, updatedData);
 
         // Build success message

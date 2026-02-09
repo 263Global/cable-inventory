@@ -346,6 +346,38 @@ export function viewSalesDetailsModal(context, salesOrderId) {
             </div>
         </div>
 
+        <!-- Renewal History -->
+        ${Array.isArray(order.renewalHistory) && order.renewalHistory.length ? `
+        <div style="${sectionStyle}">
+            <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                <ion-icon name="time-outline"></ion-icon> Renewal History (${order.renewalHistory.length})
+            </h4>
+            <div style="border-left: 2px solid var(--border-color); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                ${order.renewalHistory.map((snap, i) => {
+        const d = snap.dates || {};
+        const f = snap.financials || {};
+        const renewDate = snap.renewedAt ? new Date(snap.renewedAt).toLocaleDateString() : '-';
+        const mrc = f.mrcSales != null ? `$${Number(f.mrcSales).toLocaleString()}` : '-';
+        const nrc = f.nrcSales != null ? `$${Number(f.nrcSales).toLocaleString()}` : '-';
+        const changes = snap.costChanges?.length ? snap.costChanges.join(', ') : '';
+        return `
+                    <div style="position: relative;">
+                        <div style="position: absolute; left: -1.35rem; top: 0.1rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-warning); border: 2px solid var(--bg-card);"></div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">第 ${i + 1} 期 · 续约于 ${renewDate}</div>
+                        <div style="font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">期限:</span> ${d.start || '-'} ~ ${d.end || '-'} (${d.term || '-'}个月)
+                        </div>
+                        <div style="font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">MRC:</span> ${mrc}
+                            　<span style="color: var(--text-muted);">NRC:</span> ${nrc}
+                        </div>
+                        ${changes ? `<div style="font-size: 0.8rem; color: var(--accent-primary); margin-top: 0.15rem;">成本变更: ${escapeHtml(changes)}</div>` : ''}
+                    </div>`;
+    }).join('')}
+            </div>
+        </div>
+        ` : ''}
+
         <!-- Notes -->
         ${order.notes ? `
         <div style="${sectionStyle}">
