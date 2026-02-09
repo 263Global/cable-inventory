@@ -77,6 +77,14 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ### Improved
 - **Form Placeholders** - Added example text to Customer/Supplier form inputs for guidance
 - **Notes Textarea** - Increased textarea rows for better visibility
+- **Sales Form UX Overhaul** (PR #12)
+  - Submit button shows loading spinner and disables during save to prevent double submissions
+  - Profitability panel values display muted gray at zero; colored only after data entry
+  - Cost type selector condensed from 6 flat buttons into a single "+ Add Cost" dropdown
+  - Sales status field changed from readonly input to a colored badge chip
+  - Z-index CSS variables (`--z-sticky`, `--z-dropdown`, `--z-modal`) for consistent stacking
+  - Anchor navigation bar enhanced with purple accent border and frosted-glass backdrop
+  - Cost cards now animate in with a smooth slide-down entrance
 
 ### Security
 - **XSS Mitigation** - Expanded HTML/JS escaping for customer, supplier, sales, and inventory renders
