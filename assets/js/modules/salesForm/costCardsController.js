@@ -128,6 +128,23 @@ export function initCostCardsController(context, { createSupplierDropdown }) {
             calculateSalesFinancials: () => context.calculateSalesFinancials()
         });
 
+        // Auto-fill cost card dates from main sales order contract
+        const salesStartDate = document.getElementById('sales-start-date')?.value;
+        const salesTerm = document.getElementById('sales-term')?.value;
+        if (salesStartDate || salesTerm) {
+            card.querySelectorAll('.cost-input').forEach((input) => {
+                const field = input.dataset.field || input.dataset.fieldBase || '';
+                if (field.endsWith('.startDate') && !input.value && salesStartDate) {
+                    input.value = salesStartDate;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (field.endsWith('.termMonths') && salesTerm) {
+                    input.value = salesTerm;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+        }
+
         syncAndRecalculate();
     };
 

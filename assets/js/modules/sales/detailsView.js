@@ -115,6 +115,60 @@ export function viewSalesDetailsModal(context, salesOrderId) {
     const backhaulZOneTimeLabel = backhaulZ?.model === 'IRU' ? 'Backhaul Z OTC' : 'Backhaul Z NRC';
     const totalOneTimeCosts = cableOneTimeCost + backhaulAOneTimeCost + backhaulZOneTimeCost + xcANrc + xcZNrc + otherOneOff;
 
+    // ===== Contract Term Mismatch Detection =====
+    const salesEndDate = order.dates?.end || '';
+    const xcA = order.costs?.crossConnect?.aEnd || order.costs?.crossConnectA || null;
+    const xcZ = order.costs?.crossConnect?.zEnd || order.costs?.crossConnectZ || null;
+    const otherCosts = order.costs?.otherCosts || null;
+    const mismatches = [];
+    const checkMismatch = (label, costObj) => {
+        if (!costObj?.endDate || !salesEndDate) return;
+        const costEnd = new Date(costObj.endDate);
+        const salesEnd = new Date(salesEndDate);
+        const diffDays = Math.round((costEnd - salesEnd) / (1000 * 60 * 60 * 24));
+        if (Math.abs(diffDays) > 7) {
+            const direction = diffDays < 0 ? 'early' : 'late';
+            const months = Math.abs(Math.round(diffDays / 30));
+            mismatches.push({ label, costEnd: costObj.endDate, direction, months });
+        }
+    };
+    // Check each cable segment
+    cableSegments.forEach((seg, i) => {
+        const label = cableSegments.length > 1 ? `Cable Seg ${i + 1}` : 'Cable';
+        checkMismatch(label, seg);
+    });
+    checkMismatch('Backhaul A', backhaulA);
+    checkMismatch('Backhaul Z', backhaulZ);
+    checkMismatch('XC A', xcA);
+    checkMismatch('XC Z', xcZ);
+    checkMismatch('Other', otherCosts);
+
+    const mismatchBadge = (label) => {
+        const m = mismatches.find(x => label.startsWith(x.label));
+        if (!m) return '';
+        const icon = m.direction === 'early' ? '⏰' : '📅';
+        const color = m.direction === 'early' ? 'var(--accent-danger)' : 'var(--accent-warning)';
+        const tip = m.direction === 'early'
+            ? `Expires ${m.months}mo before sales order`
+            : `Extends ${m.months}mo past sales order`;
+        return `<span title="${tip}" style="margin-left:0.35rem; font-size:0.7rem; color:${color}; cursor:help;">${icon}</span>`;
+    };
+
+    const mismatchAlertHtml = mismatches.length === 0 ? '' : `
+        <div style="${sectionStyle} border-left: 3px solid var(--accent-warning); padding-left: 0.75rem;">
+            <h4 style="color: var(--accent-warning); margin-bottom: 0.5rem; font-size: 0.9rem;">⚠️ Contract Term Mismatches</h4>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Sales order ends: ${salesEndDate}</div>
+            <table style="width:100%;">
+                ${mismatches.map(m => {
+        const icon = m.direction === 'early' ? '🔴' : '🟡';
+        const msg = m.direction === 'early'
+            ? `Expires ${m.months}mo early (${m.costEnd})`
+            : `Extends ${m.months}mo past (${m.costEnd})`;
+        return `<tr><td style="padding:0.3rem 0; font-size:0.85rem;">${icon} ${m.label}</td><td style="font-size:0.8rem; color:var(--text-muted);">${msg}</td></tr>`;
+    }).join('')}
+            </table>
+        </div>`;
+
     // Contract totals (align with unified financial logic)
     let totalRevenue = (mrrDisplay * term) + nrcDisplay;
     if (salesModel === 'IRU' && salesType !== 'Resale') {
@@ -309,12 +363,12 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${monthlyCostsLabel}</h4>
                     <table style="width:100%;">
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableCostLabel}</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
-                        ${otherMonthly > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other Monthly</td><td class="font-mono">$${otherMonthly.toLocaleString()}</td></tr>` : ''}
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableCostLabel}${mismatchBadge('Cable')}</td><td class="font-mono">$${cableCostMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul A-End${mismatchBadge('Backhaul A')}</td><td class="font-mono">$${backhaulAMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Backhaul Z-End${mismatchBadge('Backhaul Z')}</td><td class="font-mono">$${backhaulZMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect A${mismatchBadge('XC A')}</td><td class="font-mono">$${xcAMrc.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cross Connect Z${mismatchBadge('XC Z')}</td><td class="font-mono">$${xcZMrc.toLocaleString()}</td></tr>
+                        ${otherMonthly > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other Monthly${mismatchBadge('Other')}</td><td class="font-mono">$${otherMonthly.toLocaleString()}</td></tr>` : ''}
                         <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; font-weight:600; font-size:0.85rem;">Total MRC</td><td class="font-mono" style="color:var(--accent-danger); font-weight:600">$${totalCostsMrc.toLocaleString()}</td></tr>
                     </table>
                 </div>
@@ -345,6 +399,8 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 </div>
             </div>
         </div>
+
+        ${mismatchAlertHtml}
 
         <!-- Renewal History -->
         ${Array.isArray(order.renewalHistory) && order.renewalHistory.length ? `

@@ -45,15 +45,15 @@ export const otherCostCardTemplate = `
                                                                                                                                 <div class="grid-3c">
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Start Date</label>
-                                                                                                                                        <input type="date" class="form-control cost-input other-start-date" data-field-base="costs.other.startDate">
+                                                                                                                                        <input type="date" class="form-control cost-input other-start-date" data-field="costs.other.startDate">
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">Term (Months)</label>
-                                                                                                                                        <input type="number" class="form-control cost-input other-term" data-field-base="costs.other.termMonths" value="12">
+                                                                                                                                        <input type="number" class="form-control cost-input other-term" data-field="costs.other.termMonths" value="12">
                                                                                                                                     </div>
                                                                                                                                     <div class="form-group">
                                                                                                                                         <label class="form-label">End Date</label>
-                                                                                                                                        <input type="date" class="form-control cost-input other-end-date" data-field-base="costs.other.endDate" readonly style="background: var(--bg-card-hover);">
+                                                                                                                                        <input type="date" class="form-control cost-input other-end-date" data-field="costs.other.endDate" readonly style="background: var(--bg-card-hover);">
                                                                                                                                     </div>
                                                                                                                                 </div>
                                                                                                                             </div>

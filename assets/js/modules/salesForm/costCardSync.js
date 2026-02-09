@@ -23,9 +23,18 @@ const COST_FIELD_MAPPINGS = {
         'costs.backhaulZ.annualOm', 'costs.backhaulZ.startDate',
         'costs.backhaulZ.termMonths', 'costs.backhaulZ.endDate'
     ],
-    xcA: ['costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc'],
-    xcZ: ['costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc'],
-    other: ['costs.otherCosts.description', 'costs.otherCosts.oneOff', 'costs.otherCosts.monthly']
+    xcA: [
+        'costs.crossConnect.aEnd.monthly', 'costs.crossConnect.aEnd.nrc',
+        'costs.xcA.startDate', 'costs.xcA.termMonths', 'costs.xcA.endDate'
+    ],
+    xcZ: [
+        'costs.crossConnect.zEnd.monthly', 'costs.crossConnect.zEnd.nrc',
+        'costs.xcZ.startDate', 'costs.xcZ.termMonths', 'costs.xcZ.endDate'
+    ],
+    other: [
+        'costs.otherCosts.description', 'costs.otherCosts.oneOff', 'costs.otherCosts.monthly',
+        'costs.other.startDate', 'costs.other.termMonths', 'costs.other.endDate'
+    ]
 };
 
 function getDefaultFieldValue(field) {

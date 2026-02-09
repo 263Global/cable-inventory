@@ -63,13 +63,22 @@ export function syncEditCostHiddenInputs(costData) {
     syncHiddenInput('costs.xcA.supplier', xcA.supplier || '');
     syncHiddenInput('costs.crossConnect.aEnd.monthly', xcA.mrc || xcA.monthly || 0);
     syncHiddenInput('costs.crossConnect.aEnd.nrc', xcA.nrc || 0);
+    syncHiddenInput('costs.xcA.startDate', xcA.startDate || '');
+    syncHiddenInput('costs.xcA.termMonths', xcA.termMonths || 12);
+    syncHiddenInput('costs.xcA.endDate', xcA.endDate || '');
 
     syncHiddenInput('costs.xcZ.supplier', xcZ.supplier || '');
     syncHiddenInput('costs.crossConnect.zEnd.monthly', xcZ.mrc || xcZ.monthly || 0);
     syncHiddenInput('costs.crossConnect.zEnd.nrc', xcZ.nrc || 0);
+    syncHiddenInput('costs.xcZ.startDate', xcZ.startDate || '');
+    syncHiddenInput('costs.xcZ.termMonths', xcZ.termMonths || 12);
+    syncHiddenInput('costs.xcZ.endDate', xcZ.endDate || '');
 
     syncHiddenInput('costs.other.supplier', otherCosts.supplier || '');
     syncHiddenInput('costs.otherCosts.description', otherCosts.description || '');
     syncHiddenInput('costs.otherCosts.oneOff', otherCosts.oneOff || 0);
     syncHiddenInput('costs.otherCosts.monthly', otherCosts.monthly || 0);
+    syncHiddenInput('costs.other.startDate', otherCosts.startDate || '');
+    syncHiddenInput('costs.other.termMonths', otherCosts.termMonths || 12);
+    syncHiddenInput('costs.other.endDate', otherCosts.endDate || '');
 }

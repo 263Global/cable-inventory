@@ -464,14 +464,23 @@ export function buildSalesModalContent({
                     <input type="hidden" name="costs.xcA.supplier" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.supplier || '')}">
                     <input type="hidden" name="costs.crossConnect.aEnd.monthly" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.monthly || 0)}">
                     <input type="hidden" name="costs.crossConnect.aEnd.nrc" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.nrc || 0)}">
+                    <input type="hidden" name="costs.xcA.startDate" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.startDate || '')}">
+                    <input type="hidden" name="costs.xcA.termMonths" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.termMonths || 12)}">
+                    <input type="hidden" name="costs.xcA.endDate" value="${escapeHtml(existingOrder?.costs?.crossConnect?.aEnd?.endDate || '')}">
                     <input type="hidden" name="costs.xcZ.supplier" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.supplier || '')}">
                     <input type="hidden" name="costs.crossConnect.zEnd.monthly" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.monthly || 0)}">
                     <input type="hidden" name="costs.crossConnect.zEnd.nrc" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.nrc || 0)}">
+                    <input type="hidden" name="costs.xcZ.startDate" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.startDate || '')}">
+                    <input type="hidden" name="costs.xcZ.termMonths" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.termMonths || 12)}">
+                    <input type="hidden" name="costs.xcZ.endDate" value="${escapeHtml(existingOrder?.costs?.crossConnect?.zEnd?.endDate || '')}">
                     <!-- Other Costs -->
                     <input type="hidden" name="costs.otherCosts.description" value="${escapeHtml(existingOrder?.costs?.otherCosts?.description || '')}">
                     <input type="hidden" name="costs.other.supplier" value="${escapeHtml(existingOrder?.costs?.otherCosts?.supplier || '')}">
                     <input type="hidden" name="costs.otherCosts.oneOff" value="${escapeHtml(existingOrder?.costs?.otherCosts?.oneOff || 0)}">
                     <input type="hidden" name="costs.otherCosts.monthly" value="${escapeHtml(existingOrder?.costs?.otherCosts?.monthly || 0)}">
+                    <input type="hidden" name="costs.other.startDate" value="${escapeHtml(existingOrder?.costs?.otherCosts?.startDate || '')}">
+                    <input type="hidden" name="costs.other.termMonths" value="${escapeHtml(existingOrder?.costs?.otherCosts?.termMonths || 12)}">
+                    <input type="hidden" name="costs.other.endDate" value="${escapeHtml(existingOrder?.costs?.otherCosts?.endDate || '')}">
                         </div>
                     </div>
                     <!-- Close nested 2-column grid -->

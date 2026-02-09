@@ -144,19 +144,28 @@ export async function handleSalesSubmit(context, form) {
                 aEnd: {
                     supplier: getVal('costs.xcA.supplier'),
                     monthly: getNum('costs.crossConnect.aEnd.monthly'),
-                    nrc: getNum('costs.crossConnect.aEnd.nrc')
+                    nrc: getNum('costs.crossConnect.aEnd.nrc'),
+                    startDate: getVal('costs.xcA.startDate'),
+                    termMonths: getNum('costs.xcA.termMonths'),
+                    endDate: getVal('costs.xcA.endDate')
                 },
                 zEnd: {
                     supplier: getVal('costs.xcZ.supplier'),
                     monthly: getNum('costs.crossConnect.zEnd.monthly'),
-                    nrc: getNum('costs.crossConnect.zEnd.nrc')
+                    nrc: getNum('costs.crossConnect.zEnd.nrc'),
+                    startDate: getVal('costs.xcZ.startDate'),
+                    termMonths: getNum('costs.xcZ.termMonths'),
+                    endDate: getVal('costs.xcZ.endDate')
                 }
             },
             otherCosts: {
                 description: getVal('costs.otherCosts.description'),
                 supplier: getVal('costs.other.supplier'),
                 oneOff: getNum('costs.otherCosts.oneOff'),
-                monthly: getNum('costs.otherCosts.monthly')
+                monthly: getNum('costs.otherCosts.monthly'),
+                startDate: getVal('costs.other.startDate'),
+                termMonths: getNum('costs.other.termMonths'),
+                endDate: getVal('costs.other.endDate')
             }
         },
         notes: getVal('notes') || ''
