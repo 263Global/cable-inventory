@@ -369,60 +369,52 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${monthlyCostsLabel}</h4>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                        ${cableCostMrc > 0 || cableSummary.totalNrc > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">${cableCostLabel}${mismatchBadge('Cable')}</div>
-                                ${cableSegments[0]?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${cableSegments[0].supplier}</div>` : ''}
-                                ${cableSegments[0]?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${cableSegments[0].startDate} → ${cableSegments[0].endDate || '?'}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${cableCostMrc.toLocaleString()}</div>
-                        </div>` : ''}
-                        ${backhaulAMrc > 0 || (backhaulA?.nrc || 0) > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">Backhaul A-End${mismatchBadge('Backhaul A')}</div>
-                                ${backhaulA?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${backhaulA.supplier}</div>` : ''}
-                                ${backhaulA?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${backhaulA.startDate} → ${backhaulA.endDate || '?'}${backhaulA.model === 'IRU' ? ' (IRU)' : ''}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${backhaulAMrc.toLocaleString()}</div>
-                        </div>` : ''}
-                        ${backhaulZMrc > 0 || (backhaulZ?.nrc || 0) > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">Backhaul Z-End${mismatchBadge('Backhaul Z')}</div>
-                                ${backhaulZ?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${backhaulZ.supplier}</div>` : ''}
-                                ${backhaulZ?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${backhaulZ.startDate} → ${backhaulZ.endDate || '?'}${backhaulZ.model === 'IRU' ? ' (IRU)' : ''}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${backhaulZMrc.toLocaleString()}</div>
-                        </div>` : ''}
-                        ${xcAMrc > 0 || (xcA?.nrc || 0) > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">Cross Connect A${mismatchBadge('XC A')}</div>
-                                ${xcA?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${xcA.supplier}</div>` : ''}
-                                ${xcA?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${xcA.startDate} → ${xcA.endDate || '?'}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${xcAMrc.toLocaleString()}</div>
-                        </div>` : ''}
-                        ${xcZMrc > 0 || (xcZ?.nrc || 0) > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">Cross Connect Z${mismatchBadge('XC Z')}</div>
-                                ${xcZ?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${xcZ.supplier}</div>` : ''}
-                                ${xcZ?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${xcZ.startDate} → ${xcZ.endDate || '?'}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${xcZMrc.toLocaleString()}</div>
-                        </div>` : ''}
-                        ${otherMonthly > 0 || otherOneOff > 0 ? `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 0.85rem; font-weight: 600;">Other${otherCosts?.description ? ` — ${otherCosts.description}` : ''}${mismatchBadge('Other')}</div>
-                                ${otherCosts?.supplier ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${otherCosts.supplier}</div>` : ''}
-                                ${otherCosts?.startDate ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${otherCosts.startDate} → ${otherCosts.endDate || '?'}</div>` : ''}
-                            </div>
-                            <div class="font-mono" style="white-space: nowrap;">$${otherMonthly.toLocaleString()}</div>
-                        </div>` : ''}
+                        ${(function renderCostCards() {
+            const renderCard = ({ label, mrc, supplier, orderNo, startDate, endDate, termMonths, model, mismatchKey, notes }) => {
+                const metaParts = [];
+                if (supplier) metaParts.push(resolveSupplierName(supplier) || supplier);
+                if (orderNo) metaParts.push(orderNo);
+                const metaLine = metaParts.length > 0 ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${metaParts.join('  •  ')}</div>` : '';
+                let dateLine = '';
+                if (startDate) {
+                    const dateParts = [`${startDate} → ${endDate || '?'}`];
+                    if (termMonths) dateParts.push(`${termMonths}mo`);
+                    if (model === 'IRU') dateParts.push('IRU');
+                    dateLine = `<div style="font-size: 0.7rem; color: var(--text-muted);">${dateParts.join('  •  ')}</div>`;
+                }
+                const notesLine = notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin-top: 0.15rem;">📝 ${notes}</div>` : '';
+                return `
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-size: 0.85rem; font-weight: 600;">${label}${mismatchBadge(mismatchKey || label)}</div>
+                                        ${metaLine}
+                                        ${dateLine}
+                                        ${notesLine}
+                                    </div>
+                                    <div class="font-mono" style="white-space: nowrap;">$${mrc.toLocaleString()}</div>
+                                </div>`;
+            };
+            let html = '';
+            if (cableCostMrc > 0 || cableSummary.totalNrc > 0) {
+                html += renderCard({ label: cableCostLabel, mrc: cableCostMrc, supplier: cableSegments[0]?.supplier, orderNo: cableSegments[0]?.orderNo, startDate: cableSegments[0]?.startDate, endDate: cableSegments[0]?.endDate, termMonths: cableSegments[0]?.termMonths, model: null, mismatchKey: 'Cable', notes: cableSegments[0]?.notes });
+            }
+            if (backhaulAMrc > 0 || (backhaulA?.nrc || 0) > 0) {
+                html += renderCard({ label: 'Backhaul A-End', mrc: backhaulAMrc, supplier: backhaulA?.supplier, orderNo: backhaulA?.orderNo, startDate: backhaulA?.startDate, endDate: backhaulA?.endDate, termMonths: backhaulA?.termMonths, model: backhaulA?.model, mismatchKey: 'Backhaul A', notes: backhaulA?.notes });
+            }
+            if (backhaulZMrc > 0 || (backhaulZ?.nrc || 0) > 0) {
+                html += renderCard({ label: 'Backhaul Z-End', mrc: backhaulZMrc, supplier: backhaulZ?.supplier, orderNo: backhaulZ?.orderNo, startDate: backhaulZ?.startDate, endDate: backhaulZ?.endDate, termMonths: backhaulZ?.termMonths, model: backhaulZ?.model, mismatchKey: 'Backhaul Z', notes: backhaulZ?.notes });
+            }
+            if (xcAMrc > 0 || (xcA?.nrc || 0) > 0) {
+                html += renderCard({ label: 'Cross Connect A', mrc: xcAMrc, supplier: xcA?.supplier, orderNo: xcA?.orderNo, startDate: xcA?.startDate, endDate: xcA?.endDate, termMonths: xcA?.termMonths, model: null, mismatchKey: 'XC A', notes: xcA?.notes });
+            }
+            if (xcZMrc > 0 || (xcZ?.nrc || 0) > 0) {
+                html += renderCard({ label: 'Cross Connect Z', mrc: xcZMrc, supplier: xcZ?.supplier, orderNo: xcZ?.orderNo, startDate: xcZ?.startDate, endDate: xcZ?.endDate, termMonths: xcZ?.termMonths, model: null, mismatchKey: 'XC Z', notes: xcZ?.notes });
+            }
+            if (otherMonthly > 0 || otherOneOff > 0) {
+                html += renderCard({ label: `Other${otherCosts?.description ? ' — ' + otherCosts.description : ''}`, mrc: otherMonthly, supplier: otherCosts?.supplier, orderNo: otherCosts?.orderNo, startDate: otherCosts?.startDate, endDate: otherCosts?.endDate, termMonths: otherCosts?.termMonths, model: null, mismatchKey: 'Other', notes: otherCosts?.notes });
+            }
+            return html;
+        })()}
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 0.5rem 0 0; margin-top: 0.25rem; border-top: 1px solid var(--border-color);">
                         <span style="font-weight: 600; font-size: 0.85rem;">Total MRC</span>
@@ -470,34 +462,34 @@ export function viewSalesDetailsModal(context, salesOrderId) {
             </div>
             <div id="renewal-history-body" style="display: none; margin-top: 0.75rem; border-left: 2px solid var(--border-color); padding-left: 1rem;">
                 ${order.renewalHistory.map((snap, i) => {
-        const d = snap.dates || {};
-        const f = snap.financials || {};
-        const c = snap.costs || {};
-        const renewDate = snap.renewedAt ? new Date(snap.renewedAt).toLocaleDateString() : '-';
-        const mrc = f.mrcSales != null ? `$${Number(f.mrcSales).toLocaleString()}` : '-';
-        const nrc = f.nrcSales != null ? `$${Number(f.nrcSales).toLocaleString()}` : '-';
-        const otc = f.otc != null && f.otc > 0 ? `$${Number(f.otc).toLocaleString()}` : '';
-        const changes = snap.costChanges?.length ? snap.costChanges.join(', ') : '';
-        const costLines = [];
-        const segs = Array.isArray(c.cableSegments) ? c.cableSegments : (c.cable ? [c.cable] : []);
-        segs.forEach((seg, si) => {
-            const label = segs.length > 1 ? `Cable Seg${si + 1}` : 'Cable';
-            if (seg.model === 'IRU') {
-                costLines.push(`${label}: OTC $${Number(seg.otc || 0).toLocaleString()}, O&M $${Number(seg.annualOm || 0).toLocaleString()}/yr`);
-            } else {
-                costLines.push(`${label}: MRC $${Number(seg.mrc || 0).toLocaleString()}, NRC $${Number(seg.nrc || 0).toLocaleString()}`);
-            }
-        });
-        const bhA = c.backhaul?.aEnd || c.backhaulA;
-        const bhZ = c.backhaul?.zEnd || c.backhaulZ;
-        if (bhA) costLines.push(`BH-A: MRC $${Number(bhA.monthly || 0).toLocaleString()}, NRC $${Number(bhA.nrc || 0).toLocaleString()}`);
-        if (bhZ) costLines.push(`BH-Z: MRC $${Number(bhZ.monthly || 0).toLocaleString()}, NRC $${Number(bhZ.nrc || 0).toLocaleString()}`);
-        const xcA = c.crossConnect?.aEnd || c.crossConnectA;
-        const xcZ = c.crossConnect?.zEnd || c.crossConnectZ;
-        if (xcA) costLines.push(`XC-A: MRC $${Number(xcA.monthly || xcA.mrc || 0).toLocaleString()}, NRC $${Number(xcA.nrc || 0).toLocaleString()}`);
-        if (xcZ) costLines.push(`XC-Z: MRC $${Number(xcZ.monthly || xcZ.mrc || 0).toLocaleString()}, NRC $${Number(xcZ.nrc || 0).toLocaleString()}`);
-        if (c.otherCosts) costLines.push(`Other: MRC $${Number(c.otherCosts.monthly || 0).toLocaleString()}, NRC $${Number(c.otherCosts.oneOff || 0).toLocaleString()}`);
-        return `
+            const d = snap.dates || {};
+            const f = snap.financials || {};
+            const c = snap.costs || {};
+            const renewDate = snap.renewedAt ? new Date(snap.renewedAt).toLocaleDateString() : '-';
+            const mrc = f.mrcSales != null ? `$${Number(f.mrcSales).toLocaleString()}` : '-';
+            const nrc = f.nrcSales != null ? `$${Number(f.nrcSales).toLocaleString()}` : '-';
+            const otc = f.otc != null && f.otc > 0 ? `$${Number(f.otc).toLocaleString()}` : '';
+            const changes = snap.costChanges?.length ? snap.costChanges.join(', ') : '';
+            const costLines = [];
+            const segs = Array.isArray(c.cableSegments) ? c.cableSegments : (c.cable ? [c.cable] : []);
+            segs.forEach((seg, si) => {
+                const label = segs.length > 1 ? `Cable Seg${si + 1}` : 'Cable';
+                if (seg.model === 'IRU') {
+                    costLines.push(`${label}: OTC $${Number(seg.otc || 0).toLocaleString()}, O&M $${Number(seg.annualOm || 0).toLocaleString()}/yr`);
+                } else {
+                    costLines.push(`${label}: MRC $${Number(seg.mrc || 0).toLocaleString()}, NRC $${Number(seg.nrc || 0).toLocaleString()}`);
+                }
+            });
+            const bhA = c.backhaul?.aEnd || c.backhaulA;
+            const bhZ = c.backhaul?.zEnd || c.backhaulZ;
+            if (bhA) costLines.push(`BH-A: MRC $${Number(bhA.monthly || 0).toLocaleString()}, NRC $${Number(bhA.nrc || 0).toLocaleString()}`);
+            if (bhZ) costLines.push(`BH-Z: MRC $${Number(bhZ.monthly || 0).toLocaleString()}, NRC $${Number(bhZ.nrc || 0).toLocaleString()}`);
+            const xcA = c.crossConnect?.aEnd || c.crossConnectA;
+            const xcZ = c.crossConnect?.zEnd || c.crossConnectZ;
+            if (xcA) costLines.push(`XC-A: MRC $${Number(xcA.monthly || xcA.mrc || 0).toLocaleString()}, NRC $${Number(xcA.nrc || 0).toLocaleString()}`);
+            if (xcZ) costLines.push(`XC-Z: MRC $${Number(xcZ.monthly || xcZ.mrc || 0).toLocaleString()}, NRC $${Number(xcZ.nrc || 0).toLocaleString()}`);
+            if (c.otherCosts) costLines.push(`Other: MRC $${Number(c.otherCosts.monthly || 0).toLocaleString()}, NRC $${Number(c.otherCosts.oneOff || 0).toLocaleString()}`);
+            return `
                     <div style="position: relative; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border-color);">
                         <div style="position: absolute; left: -1.35rem; top: 0.1rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-warning); border: 2px solid var(--bg-card);"></div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem; font-weight: 600;">第 ${i + 1} 期 · 续约于 ${renewDate}</div>
@@ -515,7 +507,7 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                         </div>` : ''}
                         ${changes ? `<div style="font-size: 0.8rem; color: var(--accent-primary); margin-top: 0.3rem;"><ion-icon name="swap-horizontal-outline" style="font-size: 0.75rem;"></ion-icon> ${escapeHtml(changes)}</div>` : ''}
                     </div>`;
-    }).join('')}
+        }).join('')}
             </div>
         </div>
         ` : ''}

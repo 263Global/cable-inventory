@@ -258,15 +258,22 @@ export function renderSalesList(context, filters = {}) {
                                     <button type="button" class="btn btn-primary" data-action="edit-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
-                                    <button type="button" class="btn btn-warning" data-action="renew-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem" title="Renew">
-                                        <ion-icon name="refresh-outline"></ion-icon>
-                                    </button>
-                                    ${effectiveStatus === 'Active' ? `<button type="button" class="btn btn-danger" data-action="terminate-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem; opacity:0.85;" title="Terminate">
-                                        <ion-icon name="close-circle-outline"></ion-icon>
-                                    </button>` : ''}
-                                    <button type="button" class="btn btn-danger" data-action="delete-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem" title="Delete">
-                                        <ion-icon name="trash-outline"></ion-icon>
-                                    </button>
+                                    <div class="action-dropdown">
+                                        <button type="button" class="btn btn-secondary action-dropdown-trigger" style="padding:0.4rem" title="More actions">
+                                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                                        </button>
+                                        <div class="action-dropdown-menu">
+                                            <button type="button" class="action-dropdown-item" data-action="renew-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}">
+                                                <ion-icon name="refresh-outline" style="color: var(--accent-warning);"></ion-icon> Renew
+                                            </button>
+                                            ${effectiveStatus === 'Active' ? `<button type="button" class="action-dropdown-item" data-action="terminate-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}">
+                                                <ion-icon name="close-circle-outline" style="color: var(--accent-danger);"></ion-icon> Terminate
+                                            </button>` : ''}
+                                            <button type="button" class="action-dropdown-item action-dropdown-item--danger" data-action="delete-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}">
+                                                <ion-icon name="trash-outline"></ion-icon> Delete
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -313,6 +320,21 @@ export function renderSalesList(context, filters = {}) {
     context.container.querySelectorAll('[data-action="delete-sales-order"]').forEach(btn => {
         btn.addEventListener('click', () => context.deleteSalesOrderWithConfirm(btn.dataset.salesOrderId || ''));
     });
+
+    // Kebab dropdown toggle + close-on-outside-click
+    context.container.querySelectorAll('.action-dropdown-trigger').forEach(trigger => {
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = trigger.nextElementSibling;
+            const wasOpen = menu.classList.contains('open');
+            // Close all open dropdowns first
+            context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+            if (!wasOpen) menu.classList.add('open');
+        });
+    });
+    document.addEventListener('click', () => {
+        context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+    }, { once: false });
 
     // Add filter event listeners
     const applyFilters = (page = 1) => {

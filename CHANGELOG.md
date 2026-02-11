@@ -14,6 +14,15 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
   - Terminated orders excluded from MRR, capacity, inventory status, and CSV export
   - `badge-terminated` CSS style (gray + line-through)
   - DB migration `007_add_termination_fields.sql` adds `terminated_at` and `termination_reason` columns
+- **Sales List Kebab Menu** - Action buttons refactored to prevent overflow on narrow screens
+  - View + Edit always visible, Renew/Terminate/Delete in `⋮` dropdown
+  - Click-outside auto-dismiss, 150ms animation, z-index:50
+- **Enriched Cost Breakdown** - Sales detail modal shows comprehensive cost info
+  - Supplier names resolved from UUIDs to human-readable names
+  - Order No. displayed for all cost types (cable, backhaul, XC, other)
+  - Contract term (months) shown alongside date range
+  - Notes displayed (📝) when present
+  - Shared `renderCostCard()` helper for consistent layout
 - **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
 - **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
 - **Regression Checklist** - `docs/regression-checklist.md` for manual QA coverage
