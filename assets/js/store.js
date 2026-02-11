@@ -228,7 +228,9 @@ class Store {
             },
             costs: row.costs || {},
             notes: row.notes || '',
-            renewalHistory: row.renewal_history || []
+            renewalHistory: row.renewal_history || [],
+            terminatedAt: row.terminated_at || null,
+            terminationReason: row.termination_reason || null
         };
     }
 
@@ -316,7 +318,9 @@ class Store {
             total_mrr: order.financials?.totalMrr || order.financials?.mrcSales,
             costs: order.costs || {},
             notes: order.notes || '',
-            renewal_history: order.renewalHistory || []
+            renewal_history: order.renewalHistory || [],
+            terminated_at: order.terminatedAt || null,
+            termination_reason: order.terminationReason || null
         };
     }
 
@@ -328,7 +332,8 @@ class Store {
             .filter(s => s.inventoryLink === resourceId)
             .filter(sale => {
                 if (window.SalesStatus?.computeSalesStatus) {
-                    return window.SalesStatus.computeSalesStatus(sale.dates?.start, sale.dates?.end, now) !== 'Expired';
+                    return window.SalesStatus.computeSalesStatus(sale.dates?.start, sale.dates?.end, now, sale.terminatedAt) !== 'Expired'
+                        && window.SalesStatus.computeSalesStatus(sale.dates?.start, sale.dates?.end, now, sale.terminatedAt) !== 'Terminated';
                 }
                 return sale.status !== 'Expired';
             })

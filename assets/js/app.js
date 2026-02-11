@@ -515,6 +515,11 @@ const App = {
         const mod = await loadModule('salesForm');
         mod.openRenewModal(this, salesOrderId);
     },
+
+    async openTerminateModal(salesOrderId) {
+        const mod = await loadModule('sales');
+        mod.openTerminateModal(this, salesOrderId);
+    },
     //#endregion Sales
 
     // ========================================================================

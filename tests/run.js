@@ -35,7 +35,7 @@ const nearlyEqual = (actual, expected, epsilon = 1e-6) => {
 
 const withSilencedConsoleError = async (fn) => {
     const previousConsoleError = console.error;
-    console.error = () => {};
+    console.error = () => { };
     try {
         await fn();
     } finally {
@@ -115,6 +115,45 @@ test('SalesStatus.computeSalesStatus returns pending/active/expired', () => {
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-06-20', '2024-12-01', now), 'Pending');
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-06-01', '2024-12-01', now), 'Active');
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-01-01', '2024-06-01', now), 'Expired');
+});
+
+test('SalesStatus.computeSalesStatus returns Terminated when terminatedAt is set', () => {
+    const now = new Date('2024-06-15');
+    // Even if dates say Active, terminatedAt takes priority
+    assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-01-01', '2024-12-31', now, '2024-06-10'), 'Terminated');
+    // Also works with null terminatedAt (should not affect normal status)
+    assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-01-01', '2024-12-31', now, null), 'Active');
+});
+
+test('SalesStatus.getSalesStatusBadgeClass returns correct class for Terminated', () => {
+    assert.strictEqual(window.SalesStatus.getSalesStatusBadgeClass('Terminated'), 'badge-terminated');
+    assert.strictEqual(window.SalesStatus.getSalesStatusBadgeClass('Active'), 'badge-success');
+});
+
+test('InventoryStatus.buildSalesIndex excludes terminated sales', () => {
+    const now = new Date('2024-06-15');
+    const realDate = Date;
+    global.Date = class extends realDate {
+        constructor(value) {
+            if (value !== undefined) return super(value);
+            return new realDate(now);
+        }
+        static now() { return now.getTime(); }
+        static parse(value) { return realDate.parse(value); }
+        static UTC(...args) { return realDate.UTC(...args); }
+    };
+
+    try {
+        const sales = [
+            { inventoryLink: 'INV-1', capacity: { value: 5 }, terminatedAt: '2024-06-10' }, // terminated
+            { inventoryLink: 'INV-1', capacity: { value: 3 } }, // active (no dates, no terminated)
+        ];
+        const { byResourceId, soldByResourceId } = window.InventoryStatus.buildSalesIndex(sales);
+        assert.strictEqual(byResourceId.get('INV-1').length, 1);
+        assert.strictEqual(soldByResourceId.get('INV-1'), 3);
+    } finally {
+        global.Date = realDate;
+    }
 });
 
 test('computeCapacityRatio converts Tbps to Gbps', () => {

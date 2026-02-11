@@ -67,7 +67,7 @@ function exportSalesToCSV() {
             s.salesOrderId || '',
             customerName,
             s.salesperson || '',
-            window.SalesStatus.computeSalesStatus(s.dates?.start, s.dates?.end, now),
+            window.SalesStatus.computeSalesStatus(s.dates?.start, s.dates?.end, now, s.terminatedAt),
             s.salesModel || '',
             s.salesType || '',
             route,

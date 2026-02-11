@@ -642,6 +642,12 @@ tbody tr:hover {
     color: var(--accent-primary);
 }
 
+.badge-terminated {
+    background: rgba(120, 120, 128, 0.15);
+    color: #8e8e93;
+    text-decoration: line-through;
+}
+
 /* ===== Modals ===== */
 .modal-overlay,
 .modal-backdrop {

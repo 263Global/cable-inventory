@@ -32,7 +32,7 @@ export function renderSalesList(context, filters = {}) {
 
     let data = window.Store.getSales().slice();
     const now = new Date();
-    const getEffectiveStatus = (item) => computeSalesStatus(item.dates?.start, item.dates?.end, now);
+    const getEffectiveStatus = (item) => computeSalesStatus(item.dates?.start, item.dates?.end, now, item.terminatedAt);
 
     // Sort by contract start date (newest first), orders without date go to end
     data.sort((a, b) => {
@@ -119,6 +119,7 @@ export function renderSalesList(context, filters = {}) {
                 <option value="Active" ${statusValue === 'Active' ? 'selected' : ''}>Active</option>
                 <option value="Pending" ${statusValue === 'Pending' ? 'selected' : ''}>Pending</option>
                 <option value="Expired" ${statusValue === 'Expired' ? 'selected' : ''}>Expired</option>
+                <option value="Terminated" ${statusValue === 'Terminated' ? 'selected' : ''}>Terminated</option>
                 <option value="Expiring" ${statusValue === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
             </select>
             <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
@@ -260,6 +261,9 @@ export function renderSalesList(context, filters = {}) {
                                     <button type="button" class="btn btn-warning" data-action="renew-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem" title="Renew">
                                         <ion-icon name="refresh-outline"></ion-icon>
                                     </button>
+                                    ${effectiveStatus === 'Active' ? `<button type="button" class="btn btn-danger" data-action="terminate-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem; opacity:0.85;" title="Terminate">
+                                        <ion-icon name="close-circle-outline"></ion-icon>
+                                    </button>` : ''}
                                     <button type="button" class="btn btn-danger" data-action="delete-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" style="padding:0.4rem" title="Delete">
                                         <ion-icon name="trash-outline"></ion-icon>
                                     </button>
@@ -302,6 +306,9 @@ export function renderSalesList(context, filters = {}) {
     });
     context.container.querySelectorAll('[data-action="renew-sales-order"]').forEach(btn => {
         btn.addEventListener('click', () => context.openRenewModal(btn.dataset.salesOrderId || ''));
+    });
+    context.container.querySelectorAll('[data-action="terminate-sales-order"]').forEach(btn => {
+        btn.addEventListener('click', () => context.openTerminateModal(btn.dataset.salesOrderId || ''));
     });
     context.container.querySelectorAll('[data-action="delete-sales-order"]').forEach(btn => {
         btn.addEventListener('click', () => context.deleteSalesOrderWithConfirm(btn.dataset.salesOrderId || ''));

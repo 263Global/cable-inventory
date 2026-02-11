@@ -252,7 +252,8 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = '';
 
 CREATE TRIGGER update_inventory_updated_at
     BEFORE UPDATE ON inventory
@@ -269,9 +270,17 @@ CREATE TRIGGER update_sales_orders_updated_at
 -- =============================================
 ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales_order_batches ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow full access for authenticated users" ON inventory
     FOR ALL USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Allow full access for authenticated users" ON sales_orders
+    FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow full access for authenticated users" ON inventory_batches
+    FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow full access for authenticated users" ON sales_order_batches
     FOR ALL USING (auth.role() = 'authenticated');

@@ -64,7 +64,7 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         : 'Monthly Revenue (MRR)';
     const revenueLabel2 = isIru ? 'OTC Revenue' : 'One-time Revenue (NRC)';
 
-    const effectiveStatus = computeSalesStatus(order.dates?.start, order.dates?.end, new Date());
+    const effectiveStatus = computeSalesStatus(order.dates?.start, order.dates?.end, new Date(), order.terminatedAt);
     const statusClass = getSalesStatusBadgeClass(effectiveStatus);
 
     // Calculate costs display - MRC
@@ -309,14 +309,20 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <div style="${sectionStyle}">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                         <h4 style="color: var(--accent-secondary); margin: 0; font-size: 0.9rem;">Contract Period</h4>
-                        <button type="button" class="btn btn-warning" data-action="renew-from-detail" data-sales-order-id="${escapeHtml(order.salesOrderId)}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
-                            <ion-icon name="refresh-outline"></ion-icon> Renew
-                        </button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-warning" data-action="renew-from-detail" data-sales-order-id="${escapeHtml(order.salesOrderId)}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                                <ion-icon name="refresh-outline"></ion-icon> Renew
+                            </button>
+                            ${effectiveStatus === 'Active' ? `<button type="button" class="btn btn-danger" data-action="terminate-from-detail" data-sales-order-id="${escapeHtml(order.salesOrderId)}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                                <ion-icon name="close-circle-outline"></ion-icon> Terminate
+                            </button>` : ''}
+                        </div>
                     </div>
                     <table style="width:100%;">
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td class="font-mono">${term} months</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
+                        ${order.terminatedAt ? `<tr><td style="padding:0.4rem 0; color:var(--accent-danger); font-size:0.85rem; font-weight:600;">⛔ Terminated</td><td style="color:var(--accent-danger);">${order.terminatedAt}${order.terminationReason ? ` — ${escapeHtml(order.terminationReason)}` : ''}</td></tr>` : ''}
                     </table>
                 </div>
 
@@ -541,6 +547,12 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         btn.addEventListener('click', () => {
             context.closeModal();
             context.openRenewModal(btn.dataset.salesOrderId || '');
+        });
+    });
+    context.modalContainer.querySelectorAll('[data-action="terminate-from-detail"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            context.closeModal();
+            context.openTerminateModal(btn.dataset.salesOrderId || '');
         });
     });
 }

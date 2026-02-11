@@ -24,11 +24,12 @@ export function renderDashboard(context) {
     // Resale capacity: sum capacity from sales without inventory link (pure resale)
     const now = new Date();
     const totalResaleCapacity = sales
-        .filter(s => !s.inventoryLink && computeSalesStatus(s.dates?.start, s.dates?.end, now) !== 'Expired')
+        .filter(s => !s.inventoryLink && computeSalesStatus(s.dates?.start, s.dates?.end, now, s.terminatedAt) !== 'Expired'
+            && computeSalesStatus(s.dates?.start, s.dates?.end, now, s.terminatedAt) !== 'Terminated')
         .reduce((acc, s) => acc + (s.capacity?.value || 0), 0);
 
     // Use mrcSales and filter for Active orders with valid contract dates
-    const getEffectiveSalesStatus = (sale) => computeSalesStatus(sale.dates?.start, sale.dates?.end, now);
+    const getEffectiveSalesStatus = (sale) => computeSalesStatus(sale.dates?.start, sale.dates?.end, now, sale.terminatedAt);
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 

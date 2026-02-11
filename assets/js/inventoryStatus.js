@@ -16,6 +16,7 @@
         sales.forEach(sale => {
             const resourceId = sale.inventoryLink;
             if (!resourceId) return;
+            if (sale.terminatedAt) return;
             if (getSaleStatus(sale, now) === 'Expired') return;
             const list = byResourceId.get(resourceId) || [];
             list.push(sale);
