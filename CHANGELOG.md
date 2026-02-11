@@ -7,6 +7,13 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 ---
 
 ### Added
+- **Early Termination** - Sales orders can be terminated before contract end date
+  - New Terminate button (⊘) for Active orders in list and detail views
+  - Termination modal with date picker and optional reason field
+  - "Terminated" status filter in sales list dropdown
+  - Terminated orders excluded from MRR, capacity, inventory status, and CSV export
+  - `badge-terminated` CSS style (gray + line-through)
+  - DB migration `007_add_termination_fields.sql` adds `terminated_at` and `termination_reason` columns
 - **Agent Guidance** - `AGENTS.md` with architecture, workflows, and testing references
 - **Automated Test Runner** - `tests/run.js` for status and financial calculation checks
 - **Regression Checklist** - `docs/regression-checklist.md` for manual QA coverage
