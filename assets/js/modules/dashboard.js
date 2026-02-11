@@ -21,8 +21,13 @@ export function renderDashboard(context) {
     const totalSoldCapacity = Array.from(soldByResourceId.values()).reduce((acc, value) => acc + value, 0);
     const capacityUsagePercent = totalCapacity > 0 ? Math.round((totalSoldCapacity / totalCapacity) * 100) : 0;
 
-    // Use mrcSales and filter for Active orders with valid contract dates
+    // Resale capacity: sum capacity from sales without inventory link (pure resale)
     const now = new Date();
+    const totalResaleCapacity = sales
+        .filter(s => !s.inventoryLink && computeSalesStatus(s.dates?.start, s.dates?.end, now) !== 'Expired')
+        .reduce((acc, s) => acc + (s.capacity?.value || 0), 0);
+
+    // Use mrcSales and filter for Active orders with valid contract dates
     const getEffectiveSalesStatus = (sale) => computeSalesStatus(sale.dates?.start, sale.dates?.end, now);
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -126,20 +131,27 @@ export function renderDashboard(context) {
     const html = `
         <!-- Top Stats -->
         <div class="grid-4 mb-6 dashboard-grid-metrics">
-            <div class="card metric-card capacity-card">
-                <div class="capacity-left">
-                    <span class="metric-label"><ion-icon name="cube-outline" class="metric-icon"></ion-icon> Capacity</span>
-                    <span class="metric-value" style="color: var(--accent-primary)">
-                        <span class="capacity-sold">${totalSoldCapacity.toLocaleString()}</span><span class="capacity-total" style="font-size:0.65em; color:var(--text-muted)">/${totalCapacity.toLocaleString()}</span><span style="font-size:0.5em; color:var(--text-muted); margin-left:0.25rem">Gbps</span>
-                    </span>
-                </div>
-                <div class="capacity-right">
-                    <div class="capacity-bar-wrapper">
-                        <div style="width:100%; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden;">
+            <div class="card metric-card capacity-card" style="flex-direction:column; gap:0.5rem;">
+                <span class="metric-label"><ion-icon name="cube-outline" class="metric-icon"></ion-icon> Capacity</span>
+                <!-- Inventory row -->
+                <div style="display:flex; align-items:center; gap:0.75rem; width:100%;">
+                    <div style="min-width:0; flex:1;">
+                        <div style="display:flex; align-items:baseline; gap:0.25rem;">
+                            <span style="font-size:0.65rem; color:var(--accent-success); font-weight:600;">INV</span>
+                            <span style="font-size:1.1rem; font-weight:700; color:var(--accent-primary);">${totalSoldCapacity.toLocaleString()}</span>
+                            <span style="font-size:0.7rem; color:var(--text-muted)">/${totalCapacity.toLocaleString()} Gbps</span>
+                        </div>
+                        <div style="width:100%; height:5px; background:var(--border-color); border-radius:3px; overflow:hidden; margin-top:3px;">
                             <div style="width:${capacityUsagePercent}%; height:100%; background:${capacityUsagePercent >= 80 ? 'var(--accent-danger)' : capacityUsagePercent >= 50 ? 'var(--accent-warning)' : 'var(--accent-success)'}; transition:width 0.3s;"></div>
                         </div>
-                        <span style="font-size:0.7rem; color:var(--text-muted)">${capacityUsagePercent}%</span>
                     </div>
+                    <span style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap;">${capacityUsagePercent}%</span>
+                </div>
+                <!-- Resale row -->
+                <div style="display:flex; align-items:baseline; gap:0.25rem; width:100%;">
+                    <span style="font-size:0.65rem; color:#635bff; font-weight:600;">RSL</span>
+                    <span style="font-size:1.1rem; font-weight:700; color:#635bff;">${totalResaleCapacity.toLocaleString()}</span>
+                    <span style="font-size:0.7rem; color:var(--text-muted)">Gbps</span>
                 </div>
             </div>
             <div class="card metric-card simple-metric">

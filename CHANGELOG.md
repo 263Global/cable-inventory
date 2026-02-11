@@ -23,6 +23,7 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
   - PapaParse (CSV) and SheetJS (Excel) via CDN
 
 ### Changed
+- **Dashboard Capacity Card** - Split single capacity display into dual-row layout showing INV (inventory utilization with progress bar) and RSL (resale volume in Gbps); resale orders without inventory links now contribute to the RSL metric
 - **Computed Status Everywhere** - Sales and inventory status is now dynamically computed from contract dates instead of relying on stored `status` field
   - Dashboard, sales list, sales details, CSV/bulk exports all use `computeSalesStatus()`
   - Inventory exports use `computeInventoryStatus()` for accurate status
