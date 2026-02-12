@@ -10,6 +10,15 @@
 const { getAlertBadgeClass, getAlertAccentColor, isExpiringWithin } = window.StatusUi;
 const { computeSalesStatus } = window.SalesStatus;
 const { escapeHtml } = window.DomUtils;
+const computeOrderFinancials = window.computeOrderFinancials;
+
+/** Returns the number of days from now until the given date string (negative = past) */
+function getDaysDiff(dateStr) {
+    if (!dateStr) return 0;
+    const target = new Date(dateStr);
+    const now = new Date();
+    return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+}
 
 export function renderDashboard(context) {
     const inventory = window.Store.getInventory();
