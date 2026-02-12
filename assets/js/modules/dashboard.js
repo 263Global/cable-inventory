@@ -151,7 +151,7 @@ export function renderDashboard(context) {
                             <span style="font-size:1.1rem; font-weight:700; color:var(--accent-primary);">${totalSoldCapacity.toLocaleString()}</span>
                             <span style="font-size:0.7rem; color:var(--text-muted)">/${totalCapacity.toLocaleString()} Gbps</span>
                         </div>
-                        <div style="width:100%; height:5px; background:var(--border-color); border-radius:3px; overflow:hidden; margin-top:3px;">
+                        <div class="capacity-progress" style="width:100%; height:5px; background:var(--border-color); border-radius:3px; overflow:hidden; margin-top:3px;">
                             <div style="width:${capacityUsagePercent}%; height:100%; background:${capacityUsagePercent >= 80 ? 'var(--accent-danger)' : capacityUsagePercent >= 50 ? 'var(--accent-warning)' : 'var(--accent-success)'}; transition:width 0.3s;"></div>
                         </div>
                     </div>
@@ -230,7 +230,7 @@ export function renderDashboard(context) {
         </div>
 
         <!-- Bottom Analytics -->
-        <div class="grid-3 mb-4 dashboard-grid-bottom dashboard-secondary mobile-hidden">
+        <div class="grid-3 mb-4 dashboard-grid-bottom dashboard-secondary">
             <!-- 1. MRR Trend Chart -->
             <div class="card" style="border-left: 4px solid var(--accent-success);">
                 <h3 class="mb-4" style="color: var(--accent-success)"><ion-icon name="trending-up-outline"></ion-icon> MRR Trend (6 Months)</h3>

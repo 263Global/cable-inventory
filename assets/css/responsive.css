@@ -531,11 +531,27 @@
 
     /* Dashboard optimizations */
     .dashboard-grid-metrics {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(3, 1fr) !important;
         gap: 0.75rem;
     }
 
+    /* Capacity card spans full width above the 3 KPI cards */
+    .dashboard-grid-metrics .capacity-card {
+        grid-column: 1 / -1;
+    }
+
+    /* Hide progress bar on mobile — percentage number is sufficient */
+    .capacity-progress {
+        display: none !important;
+    }
+
+    /* Show MRR trend chart on mobile, hide other analytics */
     .dashboard-secondary {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    .dashboard-secondary>.card:nth-child(n+2) {
         display: none !important;
     }
 
@@ -778,19 +794,24 @@
         display: none;
     }
 
-    /* Simple metric cards - horizontal layout on mobile */
+    /* Simple metric cards - vertical centered layout on mobile */
     .simple-metric {
-        flex-direction: row !important;
-        justify-content: space-between;
+        flex-direction: column !important;
         align-items: center;
+        text-align: center;
+        gap: 0.25rem;
+        padding: 0.75rem 0.5rem !important;
     }
 
     .simple-metric .metric-label {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
     }
 
     .simple-metric .metric-value {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        white-space: nowrap;
     }
 
     /* Alert grid - stack on mobile */
@@ -821,21 +842,23 @@
     }
 
     .alert-item {
-        padding: 0.35rem 0;
-        font-size: 0.75rem;
+        padding: 0.5rem 0;
+        font-size: 0.8rem;
         gap: 0.5rem;
+        min-height: 44px;
     }
 
     .alert-item-id {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 
     .alert-item-name {
-        max-width: 120px;
+        max-width: 140px;
+        font-size: 0.8rem;
     }
 
     .alert-item-days {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 
     /* Metric icon - hide on mobile */
