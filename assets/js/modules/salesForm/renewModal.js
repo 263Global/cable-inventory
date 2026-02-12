@@ -1,5 +1,7 @@
 /**
- * Sales renew modal flow extracted from modal.js.
+ * Sales renew modal flow.
+ * Redesigned: costs always visible, per-cost checkboxes with
+ * independent dates, auto-zeroed NRC, loading state on submit.
  */
 
 import { createRenewalCostContext, buildCostRenewalHtml } from './renewModalCostContext.js';
@@ -14,7 +16,7 @@ export function openRenewModal(context, salesOrderId) {
         return;
     }
 
-    // Calculate default new start date (original end date + 1 day)
+    // Calculate default new start date (customer contract end + 1 day)
     const originalEndDate = order.dates?.end || '';
     let newStartDate = '';
     if (originalEndDate) {
@@ -25,7 +27,7 @@ export function openRenewModal(context, salesOrderId) {
 
     const originalTerm = order.dates?.term || 12;
 
-    // Get current pricing info
+    // Current customer pricing
     const currentMRC = order.financials?.mrcSales || 0;
     const currentNRC = order.financials?.nrcSales || 0;
 
@@ -33,7 +35,8 @@ export function openRenewModal(context, salesOrderId) {
     const costRenewalHTML = buildCostRenewalHtml(costContext);
 
     const modalContent = `
-        <div style="max-width: 450px; margin: 0 auto;">
+        <div style="max-width: 480px; margin: 0 auto;">
+            <!-- Order info -->
             <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <ion-icon name="refresh-outline" style="font-size: 1.25rem; color: var(--accent-warning);"></ion-icon>
@@ -50,24 +53,39 @@ export function openRenewModal(context, salesOrderId) {
                     <div style="font-size: 0.9rem; color: var(--text-primary);">${order.dates?.start || '-'} 至 ${originalEndDate || '-'} (${originalTerm} 个月)</div>
                 </div>
             </div>
-            
-            <!-- 价格信息区域 -->
+
+            <!-- Customer contract section -->
             <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02)); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                    <ion-icon name="pricetag-outline" style="font-size: 1.25rem; color: var(--accent-primary);"></ion-icon>
-                    <h4 style="margin: 0; color: var(--text-primary);">续约价格</h4>
+                    <ion-icon name="calendar-outline" style="font-size: 1.25rem; color: var(--accent-primary);"></ion-icon>
+                    <h4 style="margin: 0; color: var(--text-primary);">客户合同</h4>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 100px 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="renew-start-date">新合同开始日期</label>
+                        <input type="date" class="form-control" name="renewStartDate" id="renew-start-date" value="${newStartDate}" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="renew-term">期限 (月)</label>
+                        <input type="number" class="form-control" name="renewTerm" id="renew-term" value="${originalTerm}" min="1" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="renew-end-date">结束日期</label>
+                        <input type="date" class="form-control" name="renewEndDate" id="renew-end-date" readonly style="background: var(--bg-card-hover);">
+                    </div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" style="font-size: 0.8rem;">
+                        <label class="form-label" for="renew-mrc" style="font-size: 0.8rem;">
                             月费 MRC ($)
                             <small style="color: var(--text-muted); display: block;">原: $${currentMRC.toLocaleString()}</small>
                         </label>
                         <input type="number" class="form-control" name="renewMRC" id="renew-mrc" value="${currentMRC}" min="0" step="0.01">
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" style="font-size: 0.8rem;">
+                        <label class="form-label" for="renew-nrc" style="font-size: 0.8rem;">
                             一次性费用 NRC ($)
                             <small style="color: var(--text-muted); display: block;">原: $${currentNRC.toLocaleString()}</small>
                         </label>
@@ -76,23 +94,8 @@ export function openRenewModal(context, salesOrderId) {
                 </div>
             </div>
             
-            <!-- 成本续约区域 (可折叠) -->
+            <!-- Cost renewal section (always visible, not collapsed) -->
             ${costRenewalHTML}
-            
-            <div class="form-group">
-                <label class="form-label">新合同开始日期</label>
-                <input type="date" class="form-control" name="renewStartDate" id="renew-start-date" value="${newStartDate}" required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">新合同期限 (月)</label>
-                <input type="number" class="form-control" name="renewTerm" id="renew-term" value="${originalTerm}" min="1" required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">新合同结束日期 <small style="color: var(--text-muted);">(自动计算)</small></label>
-                <input type="date" class="form-control" name="renewEndDate" id="renew-end-date" readonly style="background: var(--bg-card-hover);">
-            </div>
         </div>
     `;
 
@@ -111,7 +114,7 @@ export function openRenewModal(context, salesOrderId) {
         // Calculate new status based on dates
         const newStatus = computeSalesStatus(startDate, endDate);
 
-        // Start with base updated data
+        // Build updated data
         const updatedData = {
             ...order,
             dates: {
@@ -130,16 +133,13 @@ export function openRenewModal(context, salesOrderId) {
         const { nextCosts, costChanges } = applyRenewalCostUpdates({
             form,
             order,
-            ctx: costContext,
-            startDate,
-            term,
-            endDate
+            ctx: costContext
         });
         if (nextCosts) {
             updatedData.costs = nextCosts;
         }
 
-        // ===== Snapshot pre-renewal state into renewalHistory =====
+        // Snapshot pre-renewal state into renewalHistory
         const snapshot = {
             renewedAt: new Date().toISOString(),
             dates: order.dates ? { ...order.dates } : null,
@@ -165,51 +165,95 @@ export function openRenewModal(context, salesOrderId) {
 
         let costChangeMsg = '';
         if (costChanges.length > 0) {
-            costChangeMsg = ` | 成本更新: ${costChanges.join(', ')}`;
+            costChangeMsg = ` | 成本: ${costChanges.join(', ')}`;
         }
 
-        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！${priceChangeMsg ? '价格已更新:' + priceChangeMsg : ''}${costChangeMsg}`) : null;
+        context.showToast ? context.showToast(`订单 ${salesOrderId} 续约成功！${priceChangeMsg ? ' 价格:' + priceChangeMsg : ''}${costChangeMsg}`) : null;
 
         context.renderView('sales');
         return true;
     }, false);
 
-    // Attach event listeners for auto-calculating end date and cost panel toggle
+    // Wire up event listeners after modal renders
     setTimeout(() => {
-        const startInput = document.getElementById('renew-start-date');
-        const termInput = document.getElementById('renew-term');
-        const endInput = document.getElementById('renew-end-date');
-
-        const calculateEndDate = () => {
-            if (!startInput.value || !termInput.value) return;
-            const start = new Date(startInput.value);
-            const months = parseInt(termInput.value) || 0;
-            const end = new Date(start);
-            end.setMonth(end.getMonth() + months);
-            end.setDate(end.getDate() - 1); // End date is the last day of the term
-            endInput.value = end.toISOString().split('T')[0];
-        };
-
-        if (startInput && termInput) {
-            startInput.addEventListener('change', calculateEndDate);
-            termInput.addEventListener('input', calculateEndDate);
-            // Calculate initial end date
-            calculateEndDate();
-        }
-
-        // Cost panel toggle
-        const costHeader = document.getElementById('cost-renew-header');
-        const costBody = document.getElementById('cost-renew-body');
-        const costChevron = document.getElementById('cost-renew-chevron');
-
-        if (costHeader && costBody) {
-            costHeader.addEventListener('click', () => {
-                const isExpanded = costBody.style.display !== 'none';
-                costBody.style.display = isExpanded ? 'none' : 'block';
-                if (costChevron) {
-                    costChevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-                }
-            });
-        }
+        wireCustomerDateListeners();
+        wireCostCheckboxListeners();
+        wireCostDateListeners();
     }, 100);
+}
+
+// ─── Customer contract date auto-calculation ─────────────────────
+
+function wireCustomerDateListeners() {
+    const startInput = document.getElementById('renew-start-date');
+    const termInput = document.getElementById('renew-term');
+    const endInput = document.getElementById('renew-end-date');
+
+    const calculateEndDate = () => {
+        if (!startInput?.value || !termInput?.value) return;
+        const start = new Date(startInput.value);
+        const months = parseInt(termInput.value) || 0;
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + months);
+        end.setDate(end.getDate() - 1);
+        endInput.value = end.toISOString().split('T')[0];
+    };
+
+    if (startInput && termInput) {
+        startInput.addEventListener('change', calculateEndDate);
+        termInput.addEventListener('input', calculateEndDate);
+        calculateEndDate();
+    }
+}
+
+// ─── Per-cost checkbox toggle ────────────────────────────────────
+
+function wireCostCheckboxListeners() {
+    document.querySelectorAll('.cost-renew-check').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const key = e.target.dataset.costKey;
+            const card = e.target.closest('.cost-renew-item');
+            const body = card?.querySelector(`.cost-renew-body[data-cost-key="${key}"]`);
+            if (!card || !body) return;
+
+            if (e.target.checked) {
+                card.style.opacity = '1';
+                body.style.display = 'block';
+                // Trigger per-cost date calculation
+                calculateCostEndDate(key);
+            } else {
+                card.style.opacity = '0.5';
+                body.style.display = 'none';
+            }
+        });
+    });
+}
+
+// ─── Per-cost date auto-calculation ──────────────────────────────
+
+function calculateCostEndDate(key) {
+    const startInput = document.getElementById(`renew-${key}-start`);
+    const termInput = document.getElementById(`renew-${key}-term`);
+    const endInput = document.getElementById(`renew-${key}-end`);
+
+    if (!startInput?.value || !termInput?.value) return;
+    const start = new Date(startInput.value);
+    const months = parseInt(termInput.value) || 0;
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + months);
+    end.setDate(end.getDate() - 1);
+    endInput.value = end.toISOString().split('T')[0];
+}
+
+function wireCostDateListeners() {
+    document.querySelectorAll('.cost-date-start, .cost-date-term').forEach(input => {
+        const key = input.dataset.costKey;
+        const eventType = input.classList.contains('cost-date-start') ? 'change' : 'input';
+        input.addEventListener(eventType, () => calculateCostEndDate(key));
+    });
+
+    // Calculate initial end dates for all checked costs
+    document.querySelectorAll('.cost-renew-check:checked').forEach(checkbox => {
+        calculateCostEndDate(checkbox.dataset.costKey);
+    });
 }

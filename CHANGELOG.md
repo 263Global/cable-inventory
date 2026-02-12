@@ -6,6 +6,21 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ---
 
+## [1.15.0] - 2026-02-12
+
+### Changed
+- **Sales Renewal Modal Redesign** - Per-cost renewal with independent date management
+  - Each cost component (Cable, Backhaul, Cross-Connect, Other) has its own checkbox for selective renewal
+  - Independent start date, term, and auto-calculated end date per cost item
+  - Costs expiring within 90 days of customer contract end are auto-selected for renewal
+  - One-time-only costs (e.g. Other with only `oneOff` fee) marked as non-renewable and disabled
+  - NRC/one-off fees auto-zeroed on renewal with original value shown as reference
+  - Costs section always visible (no longer hidden behind collapsible accordion)
+  - Replaced emoji icons with `ion-icon` SVGs for professional appearance
+  - Info note explaining auto-selection logic and one-time fee zeroing
+
+---
+
 ## [1.9.0] - 2026-02-12
 
 ### Added
