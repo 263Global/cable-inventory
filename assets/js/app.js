@@ -22,7 +22,7 @@
  */
 
 // ES module lazy loaders (native code splitting, no build step)
-const APP_VERSION = '1.14.1';
+const APP_VERSION = '1.15.0';
 const moduleLoaders = {
     dashboard: () => import(`./modules/dashboard.js?v=${APP_VERSION}`),
     inventory: () => import(`./modules/inventory.js?v=${APP_VERSION}`),
