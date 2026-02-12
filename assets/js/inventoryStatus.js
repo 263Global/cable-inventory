@@ -66,7 +66,9 @@
         const endDate = parseDateInput(item.dates?.end, { endOfDay: true });
 
         let calculatedStatus = 'Available';
-        if (endDate && referenceNow > endDate) {
+        if (item?.terminatedAt) {
+            calculatedStatus = 'Terminated';
+        } else if (endDate && referenceNow > endDate) {
             calculatedStatus = 'Expired';
         } else if (startDate && referenceNow < startDate) {
             calculatedStatus = 'Draft';
@@ -78,12 +80,14 @@
     };
 
     const getInventoryStatusBadgeClass = (calculatedStatus) => {
+        if (calculatedStatus === 'Terminated') return 'badge-danger';
         if (calculatedStatus === 'Available') return 'badge-success';
         if (calculatedStatus === 'Sold Out' || calculatedStatus === 'Expired') return 'badge-danger';
         return 'badge-warning';
     };
 
     const getInventoryProgressColor = (usagePercent, calculatedStatus) => {
+        if (calculatedStatus === 'Terminated') return 'var(--text-muted)';
         if (usagePercent >= 100) return 'var(--accent-danger)';
         if (usagePercent >= 50) return 'var(--accent-warning)';
         if (calculatedStatus === 'Expired') return 'var(--text-muted)';

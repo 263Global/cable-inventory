@@ -65,6 +65,17 @@ test('InventoryStatus.computeInventoryStatus handles sold out', () => {
     assert.strictEqual(result.calculatedStatus, 'Sold Out');
 });
 
+test('InventoryStatus.computeInventoryStatus handles terminated resources', () => {
+    const item = {
+        terminatedAt: '2024-06-10',
+        dates: { start: '2024-01-01', end: '2024-12-31' },
+        capacity: { value: 10 }
+    };
+    const now = new Date('2024-06-15');
+    const result = window.InventoryStatus.computeInventoryStatus(item, 0, now);
+    assert.strictEqual(result.calculatedStatus, 'Terminated');
+});
+
 test('InventoryStatus.buildSalesIndex aggregates by resource', () => {
     const sales = [
         { inventoryLink: 'INV-1', capacity: { value: 2 } },
@@ -333,6 +344,35 @@ test('Store.replaceInventoryBatches aborts when delete fails', async () => {
     }
 });
 
+test('Store.getAvailableResources excludes terminated resources', () => {
+    const store = realStore;
+    const previousInventory = store.inventory;
+    const previousSales = store.salesOrders;
+
+    try {
+        store.inventory = [
+            {
+                resourceId: 'INV-TERM',
+                terminatedAt: '2024-06-10',
+                dates: { start: '2024-01-01', end: '2024-12-31' },
+                capacity: { value: 10, unit: 'Gbps' }
+            },
+            {
+                resourceId: 'INV-ACTIVE',
+                dates: { start: '2024-01-01', end: '2026-12-31' },
+                capacity: { value: 10, unit: 'Gbps' }
+            }
+        ];
+        store.salesOrders = [];
+
+        const result = store.getAvailableResources();
+        assert.deepStrictEqual(result.map((item) => item.resourceId), ['INV-ACTIVE']);
+    } finally {
+        store.inventory = previousInventory;
+        store.salesOrders = previousSales;
+    }
+});
+
 test('Store.replaceInventoryBatches attempts rollback when insert fails', async () => {
     const store = realStore;
     const previousWindowStore = window.Store;
@@ -524,6 +564,270 @@ test('Store.replaceSalesOrderBatches attempts rollback when insert fails', async
     }
 });
 
+test('Store.addSalesOrder rolls back created order when batch allocation save fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousSales = store.salesOrders;
+    const previousBatchAllocations = store.salesOrderBatches;
+
+    let rollbackDeleteCalled = false;
+
+    try {
+        window.Store = store;
+        store.salesOrders = [];
+        store.salesOrderBatches = [];
+
+        window.SupabaseClient = {
+            from(table) {
+                if (table === 'sales_orders') {
+                    return {
+                        insert() {
+                            return {
+                                select() {
+                                    return {
+                                        async single() {
+                                            return {
+                                                data: {
+                                                    sales_order_id: 'SO-NEW',
+                                                    inventory_link: null,
+                                                    status: 'Pending',
+                                                    customer_name: 'ACME',
+                                                    customer_id: null,
+                                                    salesperson: 'Jane',
+                                                    sales_model: 'Lease',
+                                                    sales_type: 'Resale',
+                                                    capacity_value: 10,
+                                                    capacity_unit: 'Gbps',
+                                                    start_date: '2026-01-01',
+                                                    end_date: '2026-12-31',
+                                                    term_months: 12,
+                                                    costs: {},
+                                                    notes: ''
+                                                },
+                                                error: null
+                                            };
+                                        }
+                                    };
+                                }
+                            };
+                        },
+                        delete() {
+                            return {
+                                async eq(column, value) {
+                                    assert.strictEqual(column, 'sales_order_id');
+                                    assert.strictEqual(value, 'SO-NEW');
+                                    rollbackDeleteCalled = true;
+                                    return { error: null };
+                                }
+                            };
+                        }
+                    };
+                }
+
+                if (table === 'sales_order_batches') {
+                    return {
+                        delete() {
+                            return {
+                                async eq() {
+                                    return { error: null };
+                                }
+                            };
+                        },
+                        insert() {
+                            return {
+                                error: null,
+                                async select() {
+                                    return { data: null, error: new Error('batch insert failed') };
+                                }
+                            };
+                        }
+                    };
+                }
+
+                throw new Error(`Unexpected table: ${table}`);
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.addSalesOrder({
+                salesOrderId: 'SO-NEW',
+                customerName: 'ACME',
+                salesperson: 'Jane',
+                salesModel: 'Lease',
+                salesType: 'Resale',
+                capacity: { value: 10, unit: 'Gbps' },
+                dates: { start: '2026-01-01', end: '2026-12-31', term: 12 },
+                financials: { mrcSales: 1000, nrcSales: 0, otc: 0, omRate: 0, annualOm: 0 },
+                costs: {},
+                batchAllocations: [{ batchId: 'BAT-1', capacityAllocated: 10 }]
+            }), /batch insert failed/);
+        });
+
+        assert.strictEqual(rollbackDeleteCalled, true);
+        assert.strictEqual(store.salesOrders.length, 0);
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.salesOrders = previousSales;
+        store.salesOrderBatches = previousBatchAllocations;
+    }
+});
+
+test('Store.updateSalesOrder rolls back order row when batch allocation save fails', async () => {
+    const store = realStore;
+    const previousWindowStore = window.Store;
+    const previousSupabase = window.SupabaseClient;
+    const previousSales = store.salesOrders;
+    const previousBatchAllocations = store.salesOrderBatches;
+
+    let salesOrderUpdateCalls = 0;
+    let batchInsertCalls = 0;
+
+    try {
+        window.Store = store;
+        store.salesOrders = [{
+            salesOrderId: 'SO-ROLLBACK-3',
+            inventoryLink: '',
+            status: 'Pending',
+            customerName: 'OLD-ACME',
+            customerId: null,
+            salesperson: 'Old Rep',
+            salesModel: 'Lease',
+            salesType: 'Resale',
+            capacity: { value: 10, unit: 'Gbps' },
+            dates: { start: '2026-01-01', end: '2026-12-31', term: 12 },
+            location: { aEnd: { city: '', pop: '' }, zEnd: { city: '', pop: '' } },
+            financials: { mrcSales: 1000, nrcSales: 0, otc: 0, omRate: 0, annualOm: 0, totalMrr: 1000 },
+            costs: {},
+            notes: 'old'
+        }];
+        store.salesOrderBatches = [{
+            salesOrderId: 'SO-ROLLBACK-3',
+            batchId: 'BAT-OLD',
+            capacityAllocated: 8
+        }];
+
+        window.SupabaseClient = {
+            from(table) {
+                if (table === 'sales_orders') {
+                    return {
+                        update(payload) {
+                            return {
+                                eq() {
+                                    return {
+                                        select() {
+                                            return {
+                                                async single() {
+                                                    salesOrderUpdateCalls += 1;
+                                                    if (salesOrderUpdateCalls === 1) {
+                                                        assert.strictEqual(payload.customer_name, 'NEW-ACME');
+                                                        return {
+                                                            data: {
+                                                                sales_order_id: 'SO-ROLLBACK-3',
+                                                                inventory_link: '',
+                                                                status: 'Pending',
+                                                                customer_name: 'NEW-ACME',
+                                                                customer_id: null,
+                                                                salesperson: 'New Rep',
+                                                                sales_model: 'Lease',
+                                                                sales_type: 'Resale',
+                                                                capacity_value: 10,
+                                                                capacity_unit: 'Gbps',
+                                                                start_date: '2026-01-01',
+                                                                end_date: '2026-12-31',
+                                                                term_months: 12,
+                                                                costs: {},
+                                                                notes: 'new'
+                                                            },
+                                                            error: null
+                                                        };
+                                                    }
+                                                    assert.strictEqual(payload.customer_name, 'OLD-ACME');
+                                                    return {
+                                                        data: {
+                                                            sales_order_id: 'SO-ROLLBACK-3',
+                                                            inventory_link: '',
+                                                            status: 'Pending',
+                                                            customer_name: 'OLD-ACME',
+                                                            customer_id: null,
+                                                            salesperson: 'Old Rep',
+                                                            sales_model: 'Lease',
+                                                            sales_type: 'Resale',
+                                                            capacity_value: 10,
+                                                            capacity_unit: 'Gbps',
+                                                            start_date: '2026-01-01',
+                                                            end_date: '2026-12-31',
+                                                            term_months: 12,
+                                                            costs: {},
+                                                            notes: 'old'
+                                                        },
+                                                        error: null
+                                                    };
+                                                }
+                                            };
+                                        }
+                                    };
+                                }
+                            };
+                        }
+                    };
+                }
+
+                if (table === 'sales_order_batches') {
+                    return {
+                        delete() {
+                            return {
+                                async eq() {
+                                    return { error: null };
+                                }
+                            };
+                        },
+                        insert(payload) {
+                            batchInsertCalls += 1;
+                            if (batchInsertCalls === 1) {
+                                assert.deepStrictEqual(payload, [{
+                                    sales_order_id: 'SO-ROLLBACK-3',
+                                    batch_id: 'BAT-NEW',
+                                    capacity_allocated: 5
+                                }]);
+                                return {
+                                    error: null,
+                                    async select() {
+                                        return { data: null, error: new Error('batch insert failed') };
+                                    }
+                                };
+                            }
+                            return { error: null };
+                        }
+                    };
+                }
+
+                throw new Error(`Unexpected table: ${table}`);
+            }
+        };
+
+        await withSilencedConsoleError(async () => {
+            await assert.rejects(() => store.updateSalesOrder('SO-ROLLBACK-3', {
+                customerName: 'NEW-ACME',
+                salesperson: 'New Rep',
+                notes: 'new',
+                batchAllocations: [{ batchId: 'BAT-NEW', capacityAllocated: 5 }]
+            }), /batch insert failed/);
+        });
+
+        assert.strictEqual(salesOrderUpdateCalls, 2);
+        assert.strictEqual(batchInsertCalls, 2);
+        assert.strictEqual(store.salesOrders[0].customerName, 'OLD-ACME');
+        assert.strictEqual(store.salesOrders[0].salesperson, 'Old Rep');
+    } finally {
+        window.Store = previousWindowStore;
+        window.SupabaseClient = previousSupabase;
+        store.salesOrders = previousSales;
+        store.salesOrderBatches = previousBatchAllocations;
+    }
+});
+
 test('CsvImportParsers.parseExcel normalizes date-like values to YYYY-MM-DD', async () => {
     const previousXlsx = global.XLSX;
     const previousFileReader = global.FileReader;
@@ -710,6 +1014,15 @@ test('UI modules should not contain inline HTML event handlers', () => {
             );
         }
     }
+});
+
+test('renderSimpleDropdown escapes interpolated values', () => {
+    const dropdownModulePath = path.join(rootDir, 'assets/js/modules/searchableDropdown.js');
+    const content = fs.readFileSync(dropdownModulePath, 'utf8');
+    assert.ok(content.includes('data-value="${escapeHtml(opt.value)}"'));
+    assert.ok(content.includes('data-label="${escapeHtml(opt.label)}"'));
+    assert.ok(content.includes('value="${escapeHtml(selectedValue)}"'));
+    assert.ok(content.includes('${escapeHtml(displayText)}'));
 });
 
 let failed = 0;

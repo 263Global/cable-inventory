@@ -95,6 +95,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
                 <option value="Draft" ${statusFilter === 'Draft' ? 'selected' : ''}>Draft</option>
                 <option value="Sold Out" ${statusFilter === 'Sold Out' ? 'selected' : ''}>Sold Out</option>
                 <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
+                <option value="Terminated" ${statusFilter === 'Terminated' ? 'selected' : ''}>Terminated</option>
                 <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring Soon</option>
             </select>
             <div class="page-info" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">
@@ -235,7 +236,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
                                             <button type="button" class="action-dropdown-item" data-action="renew-resource" data-resource-id="${escapeHtml(item.resourceId)}">
                                                 <ion-icon name="refresh-outline" style="color: var(--accent-warning);"></ion-icon> Renew
                                             </button>
-                                            ${item.status !== 'Terminated' ? `<button type="button" class="action-dropdown-item" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}">
+                                            ${calculatedStatus !== 'Terminated' ? `<button type="button" class="action-dropdown-item" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}">
                                                 <ion-icon name="close-circle-outline" style="color: var(--accent-danger);"></ion-icon> Terminate
                                             </button>` : ''}
                                             <button type="button" class="action-dropdown-item action-dropdown-item--danger" data-action="delete-resource" data-resource-id="${escapeHtml(item.resourceId)}">
@@ -254,7 +255,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
                                     <button type="button" class="mca-btn mca-warning" data-action="renew-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Renew">
                                         <ion-icon name="refresh-outline"></ion-icon>
                                     </button>
-                                    ${item.status !== 'Terminated' ? `<button type="button" class="mca-btn mca-danger" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Terminate">
+                                    ${calculatedStatus !== 'Terminated' ? `<button type="button" class="mca-btn mca-danger" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Terminate">
                                         <ion-icon name="close-circle-outline"></ion-icon>
                                     </button>` : ''}
                                     <button type="button" class="mca-btn mca-muted" data-action="delete-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Delete">
@@ -335,6 +336,10 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
             }
         });
     });
+    if (context._inventoryDocumentClickHandler) {
+        document.removeEventListener('click', context._inventoryDocumentClickHandler);
+        context._inventoryDocumentClickHandler = null;
+    }
     const inventoryDocClickHandler = (e) => {
         if (!e.target.closest('.action-dropdown')) closeAllDropdowns();
     };

@@ -533,7 +533,20 @@ class Store {
         const newOrder = this.dbToSalesOrder(data);
         this.salesOrders.unshift(newOrder);
         if (order.batchAllocations?.length) {
-            await this.replaceSalesOrderBatches(newOrder.salesOrderId, order.batchAllocations);
+            try {
+                await this.replaceSalesOrderBatches(newOrder.salesOrderId, order.batchAllocations);
+            } catch (batchError) {
+                const { error: rollbackError } = await window.SupabaseClient
+                    .from('sales_orders')
+                    .delete()
+                    .eq('sales_order_id', newOrder.salesOrderId);
+                if (rollbackError) {
+                    console.error('Failed to rollback sales order after batch allocation error:', rollbackError);
+                    throw new Error(`Failed to save sales order batches and rollback order ${newOrder.salesOrderId}.`);
+                }
+                this.salesOrders = this.salesOrders.filter(s => s.salesOrderId !== newOrder.salesOrderId);
+                throw batchError;
+            }
         }
 
         // Update linked inventory status
@@ -571,7 +584,25 @@ class Store {
         const updated = this.dbToSalesOrder(data);
         this.salesOrders[index] = updated;
         if (Array.isArray(updates.batchAllocations)) {
-            await this.replaceSalesOrderBatches(id, updates.batchAllocations);
+            try {
+                await this.replaceSalesOrderBatches(id, updates.batchAllocations);
+            } catch (batchError) {
+                const rollbackDbRow = this.salesOrderToDb(previousOrder);
+                const { data: rollbackData, error: rollbackError } = await window.SupabaseClient
+                    .from('sales_orders')
+                    .update(rollbackDbRow)
+                    .eq('sales_order_id', id)
+                    .select()
+                    .single();
+                if (rollbackError) {
+                    console.error('Failed to rollback sales order after batch allocation error:', rollbackError);
+                    throw new Error(`Failed to update sales order batches and rollback order ${id}.`);
+                }
+
+                this.salesOrders[index] = this.dbToSalesOrder(rollbackData);
+                this.attachBatchAllocationsToSales();
+                throw batchError;
+            }
         }
 
         const currentInventoryLink = updated.inventoryLink;

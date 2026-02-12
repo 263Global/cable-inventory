@@ -169,6 +169,10 @@ const App = {
                 document.removeEventListener('click', this._salesDocumentClickHandler);
                 this._salesDocumentClickHandler = null;
             }
+            if (viewName !== 'inventory' && this._inventoryDocumentClickHandler) {
+                document.removeEventListener('click', this._inventoryDocumentClickHandler);
+                this._inventoryDocumentClickHandler = null;
+            }
 
             switch (viewName) {
                 case 'dashboard':

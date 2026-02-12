@@ -263,17 +263,17 @@ export function renderSimpleDropdown(config) {
 
     const optionsHtml = options.map(opt => `
         <div class="simple-dropdown-option ${opt.value === selectedValue ? 'selected' : ''}" 
-             data-value="${opt.value}" 
-             data-label="${opt.label}">
-            ${opt.label}
+             data-value="${escapeHtml(opt.value)}" 
+             data-label="${escapeHtml(opt.label)}">
+            ${escapeHtml(opt.label)}
         </div>
     `).join('');
 
     return `
         <div class="simple-dropdown" id="${id}-container">
-            <input type="hidden" name="${name}" id="${id}" value="${selectedValue}">
+            <input type="hidden" name="${escapeHtml(name)}" id="${escapeHtml(id)}" value="${escapeHtml(selectedValue)}">
             <div class="simple-dropdown-trigger ${isPlaceholder ? 'placeholder' : ''}">
-                <span class="simple-dropdown-text">${displayText}</span>
+                <span class="simple-dropdown-text">${escapeHtml(displayText)}</span>
                 <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
             </div>
             <div class="simple-dropdown-menu" style="display: none;">
