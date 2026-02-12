@@ -300,9 +300,17 @@ const App = {
     updateFAB(viewName) {
         let fab = document.getElementById('mobile-fab');
 
-        // Remove existing FAB if present
+        // Cleanup existing FAB + scroll listener
         if (fab) {
             fab.remove();
+        }
+        if (this._fabScrollHandler) {
+            window.removeEventListener('scroll', this._fabScrollHandler, true);
+            this._fabScrollHandler = null;
+        }
+        if (this._fabScrollTimer) {
+            clearTimeout(this._fabScrollTimer);
+            this._fabScrollTimer = null;
         }
 
         // Views that should show FAB
@@ -334,6 +342,18 @@ const App = {
             }
 
             document.body.appendChild(fab);
+
+            // Scroll-shrink: add .scrolling on scroll, remove after 300ms idle
+            this._fabScrollHandler = () => {
+                const f = document.getElementById('mobile-fab');
+                if (!f) return;
+                f.classList.add('scrolling');
+                if (this._fabScrollTimer) clearTimeout(this._fabScrollTimer);
+                this._fabScrollTimer = setTimeout(() => {
+                    f.classList.remove('scrolling');
+                }, 300);
+            };
+            window.addEventListener('scroll', this._fabScrollHandler, true);
         }
     },
 

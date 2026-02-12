@@ -32,6 +32,11 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
   - Root cause: generic `space-between` CSS override forced column layout on the sales row
   - Changed row layout to `flex-wrap` with `linked-sale-row` class excluded from the override
   - Added `padding-bottom: 5rem` to `.modal-body` so the bottom nav bar no longer clips the last section
+- **Mobile FAB Scroll-Shrink** - Floating action button shrinks and fades during scroll
+  - Base size reduced from 56px to 44px (40px on small screens)
+  - During scroll: shrinks to 36px and fades to 40% opacity
+  - Restores to full size 300ms after scroll stops
+  - Smooth CSS transitions for all states
 
 ---
 

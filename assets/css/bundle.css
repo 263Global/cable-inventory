@@ -1789,8 +1789,8 @@ textarea.is-invalid:focus {
     position: fixed;
     bottom: calc(90px + env(safe-area-inset-bottom, 0px) + 1rem);
     right: 1rem;
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--accent-primary);
     color: #fff;
@@ -1800,11 +1800,24 @@ textarea.is-invalid:focus {
     z-index: 100;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: width 0.25s ease, height 0.25s ease, opacity 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .fab ion-icon {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
+    transition: font-size 0.25s ease;
+}
+
+/* FAB shrinks and fades while scrolling */
+.fab.scrolling {
+    width: 36px;
+    height: 36px;
+    opacity: 0.4 !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.fab.scrolling ion-icon {
+    font-size: 1.1rem;
 }
 
 .fab:hover {
@@ -3566,13 +3579,22 @@ body {
     }
 
     .fab {
-        width: 52px;
-        height: 52px;
+        width: 40px;
+        height: 40px;
         right: 0.75rem;
     }
 
     .fab ion-icon {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
+    }
+
+    .fab.scrolling {
+        width: 32px;
+        height: 32px;
+    }
+
+    .fab.scrolling ion-icon {
+        font-size: 1rem;
     }
 }
 
