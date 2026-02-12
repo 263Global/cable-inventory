@@ -6,6 +6,8 @@
 import { renderInventoryList } from './inventory/listView.js';
 import { viewInventoryDetailsModal } from './inventory/detailsView.js';
 import { openInventoryFormModal } from './inventory/resourceModal.js';
+import { openInventoryTerminateModal } from './inventoryForm/terminateModal.js';
+import { openInventoryRenewModal } from './inventoryForm/renewModal.js';
 
 export { attachInventoryFormListeners } from './inventory/formListeners.js';
 
@@ -19,4 +21,12 @@ export function viewInventoryDetails(context, resourceId) {
 
 export function openInventoryModal(context, resourceId = null) {
     return openInventoryFormModal(context, resourceId);
+}
+
+export function openTerminateModal(context, resourceId) {
+    return openInventoryTerminateModal(context, resourceId);
+}
+
+export function openRenewModal(context, resourceId) {
+    return openInventoryRenewModal(context, resourceId);
 }

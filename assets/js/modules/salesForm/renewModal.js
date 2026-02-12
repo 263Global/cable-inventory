@@ -52,7 +52,7 @@ export function openRenewModal(context, salesOrderId) {
             </div>
             
             <!-- 价格信息区域 -->
-            <div style="background: linear-gradient(135deg, rgba(99, 91, 255, 0.08), rgba(99, 91, 255, 0.02)); border: 1px solid rgba(99, 91, 255, 0.2); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+            <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02)); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <ion-icon name="pricetag-outline" style="font-size: 1.25rem; color: var(--accent-primary);"></ion-icon>
                     <h4 style="margin: 0; color: var(--text-primary);">续约价格</h4>

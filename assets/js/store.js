@@ -140,7 +140,10 @@ class Store {
             usage: {
                 currentUser: row.current_user_name,
                 orderLink: row.order_link
-            }
+            },
+            terminatedAt: row.terminated_at || null,
+            terminationReason: row.termination_reason || null,
+            renewalHistory: row.renewal_history || []
         };
     }
 
@@ -189,7 +192,10 @@ class Store {
             start_date: item.dates?.start,
             end_date: item.dates?.end,
             current_user_name: item.usage?.currentUser,
-            order_link: item.usage?.orderLink
+            order_link: item.usage?.orderLink,
+            terminated_at: item.terminatedAt || null,
+            termination_reason: item.terminationReason || null,
+            renewal_history: item.renewalHistory || []
         };
     }
 

@@ -22,13 +22,14 @@
  */
 
 // ES module lazy loaders (native code splitting, no build step)
+const APP_VERSION = '1.14.1';
 const moduleLoaders = {
-    dashboard: () => import('./modules/dashboard.js'),
-    inventory: () => import('./modules/inventory.js'),
-    sales: () => import('./modules/sales.js'),
-    salesForm: () => import('./modules/salesForm.js'),
-    customers: () => import('./modules/customers.js'),
-    suppliers: () => import('./modules/suppliers.js')
+    dashboard: () => import(`./modules/dashboard.js?v=${APP_VERSION}`),
+    inventory: () => import(`./modules/inventory.js?v=${APP_VERSION}`),
+    sales: () => import(`./modules/sales.js?v=${APP_VERSION}`),
+    salesForm: () => import(`./modules/salesForm.js?v=${APP_VERSION}`),
+    customers: () => import(`./modules/customers.js?v=${APP_VERSION}`),
+    suppliers: () => import(`./modules/suppliers.js?v=${APP_VERSION}`)
 };
 
 const moduleCache = {};
@@ -510,6 +511,16 @@ const App = {
     async attachInventoryFormListeners() {
         const mod = await loadModule('inventory');
         mod.attachInventoryFormListeners(this);
+    },
+
+    async openInventoryTerminateModal(resourceId) {
+        const mod = await loadModule('inventory');
+        mod.openTerminateModal(this, resourceId);
+    },
+
+    async openInventoryRenewModal(resourceId) {
+        const mod = await loadModule('inventory');
+        mod.openRenewModal(this, resourceId);
     },
     //#endregion Inventory
 

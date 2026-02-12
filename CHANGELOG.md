@@ -6,6 +6,42 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ---
 
+## [1.9.0] - 2026-02-12
+
+### Added
+- **Inventory Early Termination** - Terminate inventory resources before contract end date
+  - Terminate option in kebab dropdown for non-terminated items
+  - Modal with date picker and optional reason field
+  - Sets status to "Terminated" and records termination date/reason
+  - DB migration `008_add_inventory_termination_renewal.sql` adds `terminated_at`, `termination_reason`, `renewal_history` columns
+- **Inventory Renewal** - Renew inventory resource contracts with updated dates and costs
+  - Renew option in kebab dropdown for all items
+  - Modal with new start date, contract term, auto-calculated end date
+  - Optional MRC/NRC/OTC cost adjustments based on ownership type
+  - Renewal history snapshots stored as JSONB
+  - Clears termination state and resets status to "Available"
+- **Inventory Kebab Menu** - Action buttons replaced with View + Edit + ⋮ dropdown (Renew / Terminate / Delete)
+  - Matches sales page kebab pattern with fixed positioning and click-outside dismiss
+- **Module Cache Busting** - `APP_VERSION` constant in `app.js` appended to all dynamic `import()` calls
+  - Prevents stale ES Module cache after code updates
+  - Version also set on `<script>` tag in `index.html`
+
+### Changed
+- **Dashboard Profit** - Rounded to integer (no decimal places)
+- **Dashboard MRR Trend** - Replaced bar chart with SVG line + area chart
+  - Dynamic Y-axis baseline (starts near minimum value, not zero) for visible trend differences
+  - Gradient area fill, data point circles, and per-point value labels
+  - Removed Y-axis text labels to reduce clutter
+
+### Improved
+- **UI Readability** - Global typography and color contrast improvements
+  - Sidebar active item uses primary accent color
+  - Login page button uses primary blue instead of purple
+  - Consistent font sizing across dashboard metric cards
+  - Better header and navigation color alignment
+
+---
+
 ## [1.8.4] - 2026-02-12
 
 ### Fixed
