@@ -262,6 +262,25 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         `;
     }).join('');
 
+    // Fallback: if no cable segments from costs, try to pull cable info from linked inventory
+    let inventoryCableHtml = '';
+    if (cableSegments.length === 0 && order.inventoryLink) {
+        const linkedInv = window.Store.getInventory().find(inv => inv.resourceId === order.inventoryLink);
+        if (linkedInv && linkedInv.cableSystem) {
+            const invCapacity = linkedInv.capacity?.value ? `${linkedInv.capacity.value} ${linkedInv.capacity.unit || 'Gbps'}` : '';
+            const invMeta = [invCapacity].filter(Boolean).join(' • ');
+            inventoryCableHtml = `
+                <tr>
+                    <td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable System</td>
+                    <td>
+                        <div style="font-weight:600; color:var(--accent-primary);">${escapeHtml(linkedInv.cableSystem)}</div>
+                        ${invMeta ? `<div style="font-size:0.8rem; color:var(--text-muted);">${invMeta}</div>` : ''}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
 
 
     const detailsHtml = `
@@ -346,12 +365,12 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                     </div>
                 </div>
 
-                <!-- Cable System Information (Resale only) -->
-                ${salesType === 'Resale' && cableSegments.length ? `
+                <!-- Cable System Information -->
+                ${(cableSegments.length || inventoryCableHtml) ? `
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">🔌 Cable System</h4>
                     <table style="width:100%;">
-                        ${cableSegmentRows}
+                        ${cableSegments.length ? cableSegmentRows : inventoryCableHtml}
                     </table>
                 </div>
                 ` : ''}
