@@ -81,7 +81,6 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Bundle Strategy** - Removed unused legacy `assets/js/bundle.js`; app now has a single JS loading path via explicit script/module imports in `index.html`
 
 ### Fixed
-- **Sales Financial Calc Crash** - Added null guards to all DOM element accesses in `calculateSalesFinancials` to prevent `Cannot set properties of null (setting 'textContent')` error when profitability widget elements haven't rendered yet
 - **Renew Modal Cost Mutation** - Replaced direct `updatedData.costs` writes with a `nextCosts` accumulator to prevent backhaul/cross-connect ends from overwriting each other
 - **Renew Modal Status Resolution** - Renew flow now explicitly uses `window.SalesStatus.computeSalesStatus` in module scope
 - **Null Clearing in Resource Status** - Switched from `??` to `hasOwnProperty` check so `null` values correctly clear `currentUser` and `orderLink` fields
@@ -114,6 +113,13 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Expired Sales Exclusion** - Added test verifying `buildSalesIndex` excludes expired sales from capacity aggregation
 - **Store Batch Replace Safety** - Added rollback/error-path tests for `replaceInventoryBatches` and `replaceSalesOrderBatches`
 - **Inline Handler Guard** - Added recursive test to fail if inline HTML event handlers (e.g., `onclick=`, `ondrop=`) appear in `assets/js/modules/**/*.js`
+
+## [1.8.3] - 2026-02-12
+
+### Fixed
+- **Sales Financial Calc Crash** - Added null guards to all DOM element accesses in `calculateSalesFinancials` to prevent `Cannot set properties of null (setting 'textContent')` error when profitability widget elements haven't rendered yet
+
+---
 
 ## [1.8.2] - 2026-02-05
 
