@@ -154,6 +154,9 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         return `<span title="${tip}" style="margin-left:0.35rem; font-size:0.7rem; color:${color}; cursor:help;">${icon}</span>`;
     };
 
+    const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+    const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+
     const mismatchAlertHtml = mismatches.length === 0 ? '' : `
         <div style="${sectionStyle} border-left: 3px solid var(--accent-warning); padding-left: 0.75rem;">
             <h4 style="color: var(--accent-warning); margin-bottom: 0.5rem; font-size: 0.9rem;">⚠️ Contract Term Mismatches</h4>
@@ -259,8 +262,7 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         `;
     }).join('');
 
-    const sectionStyle = 'background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
-    const highlightStyle = 'background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);';
+
 
     const detailsHtml = `
         <!-- Contract Summary - Highlighted -->
