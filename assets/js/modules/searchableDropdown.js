@@ -74,6 +74,9 @@ export function renderSearchableDropdown(config) {
 export function initSearchableDropdown(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (typeof container._cleanupDropdown === 'function') {
+        container._cleanupDropdown();
+    }
 
     const inputWrapper = container.querySelector('.searchable-dropdown-input-wrapper');
     const input = container.querySelector('.searchable-dropdown-input');
@@ -287,6 +290,9 @@ export function renderSimpleDropdown(config) {
 export function initSimpleDropdown(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (typeof container._cleanupDropdown === 'function') {
+        container._cleanupDropdown();
+    }
 
     const trigger = container.querySelector('.simple-dropdown-trigger');
     const textEl = container.querySelector('.simple-dropdown-text');

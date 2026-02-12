@@ -1,10 +1,30 @@
 // Shared inventory status helpers for non-module and module scripts.
 (() => {
+    const parseDateInput = (value, options = {}) => {
+        if (!value) return null;
+        const { endOfDay = false } = options;
+
+        if (typeof value === 'string') {
+            const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (match) {
+                const normalized = endOfDay
+                    ? `${match[1]}-${match[2]}-${match[3]}T23:59:59.999`
+                    : `${match[1]}-${match[2]}-${match[3]}T00:00:00.000`;
+                const parsedLocal = new Date(normalized);
+                if (!Number.isNaN(parsedLocal.getTime())) return parsedLocal;
+            }
+        }
+
+        const parsed = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed;
+    };
+
     const getSaleStatus = (sale, now) => {
         const start = sale?.dates?.start;
         const end = sale?.dates?.end;
         if (window.SalesStatus?.computeSalesStatus) {
-            return window.SalesStatus.computeSalesStatus(start, end, now);
+            return window.SalesStatus.computeSalesStatus(start, end, now, sale?.terminatedAt);
         }
         return sale?.status || 'Active';
     };
@@ -27,6 +47,7 @@
     };
 
     const computeInventoryStatus = (item, totalSoldCapacity, now) => {
+        const referenceNow = parseDateInput(now) || new Date();
         const baseCapacity = item.capacity?.value || 0;
         let totalCapacity = baseCapacity;
         if (item.costMode === 'batches' && Array.isArray(item.batches)) {
@@ -34,20 +55,20 @@
                 const status = batch.status || '';
                 if (status === 'Ended' || status === 'Planned') return sum;
                 if (batch.startDate) {
-                    const start = new Date(batch.startDate);
-                    if (Number.isNaN(start.getTime()) || start > now) return sum;
+                    const start = parseDateInput(batch.startDate);
+                    if (!start || start > referenceNow) return sum;
                 }
                 return sum + (batch.capacity?.value || 0);
             }, 0);
             totalCapacity = activeCapacity;
         }
-        const startDate = item.dates?.start ? new Date(item.dates.start) : null;
-        const endDate = item.dates?.end ? new Date(item.dates.end) : null;
+        const startDate = parseDateInput(item.dates?.start);
+        const endDate = parseDateInput(item.dates?.end, { endOfDay: true });
 
         let calculatedStatus = 'Available';
-        if (endDate && now > endDate) {
+        if (endDate && referenceNow > endDate) {
             calculatedStatus = 'Expired';
-        } else if (startDate && now < startDate) {
+        } else if (startDate && referenceNow < startDate) {
             calculatedStatus = 'Draft';
         } else if (totalCapacity > 0 && totalSoldCapacity >= totalCapacity) {
             calculatedStatus = 'Sold Out';

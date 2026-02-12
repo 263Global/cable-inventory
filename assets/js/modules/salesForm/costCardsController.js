@@ -189,16 +189,23 @@ export function initCostCardsController(context, { createSupplierDropdown }) {
     const costTypeTrigger = document.getElementById('cost-type-trigger');
     const costTypeMenu = document.getElementById('cost-type-menu');
     if (costTypeTrigger && costTypeMenu) {
+        if (context._costTypeMenuOutsideClickHandler) {
+            document.removeEventListener('click', context._costTypeMenuOutsideClickHandler);
+            context._costTypeMenuOutsideClickHandler = null;
+        }
+
         costTypeTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
             costTypeMenu.classList.toggle('open');
         });
         // Close on outside click
-        document.addEventListener('click', (e) => {
+        const outsideClickHandler = (e) => {
             if (!costTypeMenu.contains(e.target) && e.target !== costTypeTrigger) {
                 costTypeMenu.classList.remove('open');
             }
-        });
+        };
+        document.addEventListener('click', outsideClickHandler);
+        context._costTypeMenuOutsideClickHandler = outsideClickHandler;
     }
 
     document.querySelectorAll('.cost-toggle-btn').forEach((btn) => {

@@ -6,6 +6,20 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ---
 
+## [1.8.4] - 2026-02-12
+
+### Fixed
+- **Date Boundary Off-by-One** - Date-only strings (e.g. `2026-02-12`) are now parsed as local time with end dates set to `23:59:59.999`, preventing items from showing Expired on their end date afternoon
+- **Event Listener Leaks** - Sales list dropdown, cost-type menu, and searchable/simple dropdown `document.click` handlers are now properly cleaned up on re-render and modal close
+- **XSS Hardening** - Sales detail modal now escapes all user-supplied text (labels, notes, dates, supplier info) via `safeText()` wrapper
+- **Inventory Status `terminatedAt`** - `getSaleStatus` in `inventoryStatus.js` now passes `terminatedAt` to `computeSalesStatus`
+
+### Tests
+- **Date-Inclusive End Date** - Added tests for `computeSalesStatus`, `computeInventoryStatus`, and `isExpiringWithin` verifying same-day date-only expiry
+- **StatusUi Coverage** - `statusUi.js` now loaded in test runner
+
+---
+
 ## [1.8.3] - 2026-02-12
 
 ### Added

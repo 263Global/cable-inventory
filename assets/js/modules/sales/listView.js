@@ -359,7 +359,11 @@ export function renderSalesList(context, filters = {}) {
             }
         });
     });
-    document.addEventListener('click', closeAllDropdowns, { once: false });
+    if (context._salesDocumentClickHandler) {
+        document.removeEventListener('click', context._salesDocumentClickHandler);
+    }
+    context._salesDocumentClickHandler = closeAllDropdowns;
+    document.addEventListener('click', context._salesDocumentClickHandler);
 
     // Add filter event listeners
     const applyFilters = (page = 1) => {

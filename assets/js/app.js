@@ -164,6 +164,10 @@ const App = {
 
             // Manage FAB based on view
             this.updateFAB(viewName);
+            if (viewName !== 'sales' && this._salesDocumentClickHandler) {
+                document.removeEventListener('click', this._salesDocumentClickHandler);
+                this._salesDocumentClickHandler = null;
+            }
 
             switch (viewName) {
                 case 'dashboard':
@@ -421,6 +425,15 @@ const App = {
         const form = document.getElementById('modal-form');
 
         const close = () => {
+            this.modalContainer.querySelectorAll('.searchable-dropdown, .simple-dropdown').forEach((dropdown) => {
+                if (typeof dropdown._cleanupDropdown === 'function') {
+                    dropdown._cleanupDropdown();
+                }
+            });
+            if (this._costTypeMenuOutsideClickHandler) {
+                document.removeEventListener('click', this._costTypeMenuOutsideClickHandler);
+                this._costTypeMenuOutsideClickHandler = null;
+            }
             this.modalContainer.innerHTML = '';
         };
 
@@ -460,6 +473,15 @@ const App = {
     },
 
     closeModal() {
+        this.modalContainer.querySelectorAll('.searchable-dropdown, .simple-dropdown').forEach((dropdown) => {
+            if (typeof dropdown._cleanupDropdown === 'function') {
+                dropdown._cleanupDropdown();
+            }
+        });
+        if (this._costTypeMenuOutsideClickHandler) {
+            document.removeEventListener('click', this._costTypeMenuOutsideClickHandler);
+            this._costTypeMenuOutsideClickHandler = null;
+        }
         this.modalContainer.innerHTML = '';
     },
     //#endregion Modal System

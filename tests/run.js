@@ -17,6 +17,7 @@ const loadScript = (relativePath) => {
 
 loadScript('assets/js/inventoryStatus.js');
 loadScript('assets/js/salesStatus.js');
+loadScript('assets/js/statusUi.js');
 loadScript('assets/js/modules/financials.js');
 loadScript('assets/js/store.js');
 loadScript('assets/js/modules/importCore/schemas.js');
@@ -117,6 +118,11 @@ test('SalesStatus.computeSalesStatus returns pending/active/expired', () => {
     assert.strictEqual(window.SalesStatus.computeSalesStatus('2024-01-01', '2024-06-01', now), 'Expired');
 });
 
+test('SalesStatus.computeSalesStatus treats date-only end date as inclusive', () => {
+    const now = new Date(2026, 1, 12, 12, 0, 0, 0);
+    assert.strictEqual(window.SalesStatus.computeSalesStatus('2026-02-01', '2026-02-12', now), 'Active');
+});
+
 test('SalesStatus.computeSalesStatus returns Terminated when terminatedAt is set', () => {
     const now = new Date('2024-06-15');
     // Even if dates say Active, terminatedAt takes priority
@@ -154,6 +160,21 @@ test('InventoryStatus.buildSalesIndex excludes terminated sales', () => {
     } finally {
         global.Date = realDate;
     }
+});
+
+test('InventoryStatus.computeInventoryStatus treats date-only end date as inclusive', () => {
+    const now = new Date(2026, 1, 12, 12, 0, 0, 0);
+    const item = {
+        dates: { start: '2026-01-01', end: '2026-02-12' },
+        capacity: { value: 10 }
+    };
+    const result = window.InventoryStatus.computeInventoryStatus(item, 0, now);
+    assert.strictEqual(result.calculatedStatus, 'Available');
+});
+
+test('StatusUi.isExpiringWithin includes same-day date-only expiry', () => {
+    const now = new Date(2026, 1, 12, 12, 0, 0, 0);
+    assert.strictEqual(window.StatusUi.isExpiringWithin('2026-02-12', 0, now, '2026-01-01'), true);
 });
 
 test('computeCapacityRatio converts Tbps to Gbps', () => {

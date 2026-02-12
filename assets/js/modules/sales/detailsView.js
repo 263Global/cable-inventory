@@ -5,6 +5,7 @@
 const { computeSalesStatus, getSalesStatusBadgeClass } = window.SalesStatus;
 const computeOrderFinancials = window.computeOrderFinancials;
 const escapeHtml = window.DomUtils?.escapeHtml || (s => s);
+const safeText = (value) => escapeHtml(value === null || value === undefined ? '' : String(value));
 
 export function viewSalesDetailsModal(context, salesOrderId) {
     const order = window.Store.getSales().find(s => s.salesOrderId === salesOrderId);
@@ -160,14 +161,14 @@ export function viewSalesDetailsModal(context, salesOrderId) {
     const mismatchAlertHtml = mismatches.length === 0 ? '' : `
         <div style="${sectionStyle} border-left: 3px solid var(--accent-warning); padding-left: 0.75rem;">
             <h4 style="color: var(--accent-warning); margin-bottom: 0.5rem; font-size: 0.9rem;">⚠️ Contract Term Mismatches</h4>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Sales order ends: ${salesEndDate}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Sales order ends: ${safeText(salesEndDate)}</div>
             <table style="width:100%;">
                 ${mismatches.map(m => {
         const icon = m.direction === 'early' ? '🔴' : '🟡';
         const msg = m.direction === 'early'
-            ? `Expires ${m.months}mo early (${m.costEnd})`
-            : `Extends ${m.months}mo past (${m.costEnd})`;
-        return `<tr><td style="padding:0.3rem 0; font-size:0.85rem;">${icon} ${m.label}</td><td style="font-size:0.8rem; color:var(--text-muted);">${msg}</td></tr>`;
+            ? `Expires ${m.months}mo early (${safeText(m.costEnd)})`
+            : `Extends ${m.months}mo past (${safeText(m.costEnd)})`;
+        return `<tr><td style="padding:0.3rem 0; font-size:0.85rem;">${icon} ${safeText(m.label)}</td><td style="font-size:0.8rem; color:var(--text-muted);">${msg}</td></tr>`;
     }).join('')}
             </table>
         </div>`;
@@ -242,15 +243,15 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         return supplier ? (supplier.short_name || supplier.full_name || supplierId) : supplierId;
     };
     const cableSegmentRows = cableSegments.map((seg, index) => {
-        const supplierName = resolveSupplierName(seg.supplier) || '-';
-        const system = seg.cableSystem || '-';
-        const capacity = seg.capacity ? `${seg.capacity} ${seg.capacityUnit || 'Gbps'}` : '';
-        const model = seg.model || 'Lease';
+        const supplierName = safeText(resolveSupplierName(seg.supplier) || '-');
+        const system = safeText(seg.cableSystem || '-');
+        const capacity = seg.capacity ? `${safeText(seg.capacity)} ${safeText(seg.capacityUnit || 'Gbps')}` : '';
+        const model = safeText(seg.model || 'Lease');
         const protection = seg.protection && seg.protection !== 'Unprotected'
-            ? `${seg.protection}${seg.protectionCableSystem ? ` (${seg.protectionCableSystem})` : ''}`
+            ? `${safeText(seg.protection)}${seg.protectionCableSystem ? ` (${safeText(seg.protectionCableSystem)})` : ''}`
             : '';
         const meta = [capacity, model, protection].filter(Boolean).join(' • ');
-        const orderNo = seg.orderNo ? ` (${seg.orderNo})` : '';
+        const orderNo = seg.orderNo ? ` (${safeText(seg.orderNo)})` : '';
         return `
             <tr>
                 <td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Segment ${index + 1}</td>
@@ -283,7 +284,9 @@ export function viewSalesDetailsModal(context, salesOrderId) {
     const hasCableSystemInSegments = cableSegments.some(seg => seg.cableSystem);
     let inventoryCableHtml = '';
     if (!hasCableSystemInSegments && linkedInventoryItem && linkedInventoryItem.cableSystem) {
-        const invCapacity = linkedInventoryItem.capacity?.value ? `${linkedInventoryItem.capacity.value} ${linkedInventoryItem.capacity.unit || 'Gbps'}` : '';
+        const invCapacity = linkedInventoryItem.capacity?.value
+            ? `${safeText(linkedInventoryItem.capacity.value)} ${safeText(linkedInventoryItem.capacity.unit || 'Gbps')}`
+            : '';
         const invMeta = [invCapacity].filter(Boolean).join(' • ');
         inventoryCableHtml = `
             <tr>
@@ -331,14 +334,14 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">Order Information</h4>
                     <table style="width:100%;">
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${order.salesOrderId}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${order.customerName}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${order.salesperson || '-'}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${salesModel}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${salesType}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${order.capacity?.value || '-'} ${order.capacity?.unit || ''}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Order ID</td><td class="font-mono">${safeText(order.salesOrderId)}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Customer</td><td style="font-weight:600">${safeText(order.customerName)}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Salesperson</td><td>${safeText(order.salesperson || '-')}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Model</td><td>${safeText(salesModel)}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Sales Type</td><td>${safeText(salesType)}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Capacity</td><td class="font-mono" style="color:var(--accent-primary)">${safeText(order.capacity?.value || '-')} ${safeText(order.capacity?.unit || '')}</td></tr>
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Status</td><td><span class="badge ${statusClass}">${effectiveStatus}</span></td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${order.inventoryLink || '-'}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Linked Resource</td><td class="font-mono">${safeText(order.inventoryLink || '-')}</td></tr>
                     </table>
                 </div>
 
@@ -357,9 +360,9 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                     </div>
                     <table style="width:100%;">
                         <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Term</td><td class="font-mono">${term} months</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${order.dates?.start || '-'}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${order.dates?.end || '-'}</td></tr>
-                        ${order.terminatedAt ? `<tr><td style="padding:0.4rem 0; color:var(--accent-danger); font-size:0.85rem; font-weight:600;">⛔ Terminated</td><td style="color:var(--accent-danger);">${order.terminatedAt}${order.terminationReason ? ` — ${escapeHtml(order.terminationReason)}` : ''}</td></tr>` : ''}
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Start Date</td><td>${safeText(order.dates?.start || '-')}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">End Date</td><td>${safeText(order.dates?.end || '-')}</td></tr>
+                        ${order.terminatedAt ? `<tr><td style="padding:0.4rem 0; color:var(--accent-danger); font-size:0.85rem; font-weight:600;">⛔ Terminated</td><td style="color:var(--accent-danger);">${safeText(order.terminatedAt)}${order.terminationReason ? ` - ${safeText(order.terminationReason)}` : ''}</td></tr>` : ''}
                     </table>
                 </div>
 
@@ -369,14 +372,14 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
                             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">A-End</div>
-                            <div style="font-weight: 600; margin-top: 0.25rem;">${aEndCity}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">${aEndPop}</div>
+                            <div style="font-weight: 600; margin-top: 0.25rem;">${safeText(aEndCity)}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${safeText(aEndPop)}</div>
                         </div>
                         <ion-icon name="arrow-forward-outline" style="font-size: 1.5rem; color: var(--text-muted);"></ion-icon>
                         <div style="flex: 1; text-align: center; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
                             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Z-End</div>
-                            <div style="font-weight: 600; margin-top: 0.25rem;">${zEndCity}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">${zEndPop}</div>
+                            <div style="font-weight: 600; margin-top: 0.25rem;">${safeText(zEndCity)}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${safeText(zEndPop)}</div>
                         </div>
                     </div>
                 </div>
@@ -396,34 +399,36 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-success); margin-bottom: 0.75rem; font-size: 0.9rem;">Revenue</h4>
                     <table style="width:100%;">
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel1}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
-                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${revenueLabel2}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${safeText(revenueLabel1)}</td><td class="font-mono" style="color:var(--accent-success)">$${mrrDisplay.toLocaleString()}</td></tr>
+                        <tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${safeText(revenueLabel2)}</td><td class="font-mono">$${nrcDisplay.toLocaleString()}</td></tr>
                         <tr style="border-top: 1px solid var(--border-color)"><td style="padding:0.5rem 0; color:var(--text-muted); font-size:0.85rem;">Annual Revenue</td><td class="font-mono" style="font-weight:600">$${annualRevenue.toLocaleString()}</td></tr>
                     </table>
                 </div>
 
                 <!-- Cost Breakdown MRC with Supplier Details -->
                 <div style="${sectionStyle}">
-                    <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${monthlyCostsLabel}</h4>
+                    <h4 style="color: var(--accent-danger); margin-bottom: 0.75rem; font-size: 0.9rem;">${safeText(monthlyCostsLabel)}</h4>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                         ${(function renderCostCards() {
             const renderCard = ({ label, mrc, supplier, orderNo, startDate, endDate, termMonths, model, mismatchKey, notes }) => {
                 const metaParts = [];
                 if (supplier) metaParts.push(resolveSupplierName(supplier) || supplier);
                 if (orderNo) metaParts.push(orderNo);
-                const metaLine = metaParts.length > 0 ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${metaParts.join('  •  ')}</div>` : '';
+                const metaLine = metaParts.length > 0
+                    ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${safeText(metaParts.join('  •  '))}</div>`
+                    : '';
                 let dateLine = '';
                 if (startDate) {
-                    const dateParts = [`${startDate} → ${endDate || '?'}`];
+                    const dateParts = [`${safeText(startDate)} -> ${safeText(endDate || '?')}`];
                     if (termMonths) dateParts.push(`${termMonths}mo`);
                     if (model === 'IRU') dateParts.push('IRU');
-                    dateLine = `<div style="font-size: 0.7rem; color: var(--text-muted);">${dateParts.join('  •  ')}</div>`;
+                    dateLine = `<div style="font-size: 0.7rem; color: var(--text-muted);">${safeText(dateParts.join('  •  '))}</div>`;
                 }
-                const notesLine = notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin-top: 0.15rem;">📝 ${notes}</div>` : '';
+                const notesLine = notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin-top: 0.15rem;">📝 ${safeText(notes)}</div>` : '';
                 return `
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
                                     <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 0.85rem; font-weight: 600;">${label}${mismatchBadge(mismatchKey || label)}</div>
+                                        <div style="font-size: 0.85rem; font-weight: 600;">${safeText(label)}${mismatchBadge(mismatchKey || label)}</div>
                                         ${metaLine}
                                         ${dateLine}
                                         ${notesLine}
@@ -448,7 +453,7 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 html += renderCard({ label: 'Cross Connect Z', mrc: xcZMrc, supplier: xcZ?.supplier, orderNo: xcZ?.orderNo, startDate: xcZ?.startDate, endDate: xcZ?.endDate, termMonths: xcZ?.termMonths, model: null, mismatchKey: 'XC Z', notes: xcZ?.notes });
             }
             if (otherMonthly > 0 || otherOneOff > 0) {
-                html += renderCard({ label: `Other${otherCosts?.description ? ' — ' + otherCosts.description : ''}`, mrc: otherMonthly, supplier: otherCosts?.supplier, orderNo: otherCosts?.orderNo, startDate: otherCosts?.startDate, endDate: otherCosts?.endDate, termMonths: otherCosts?.termMonths, model: null, mismatchKey: 'Other', notes: otherCosts?.notes });
+                html += renderCard({ label: `Other${otherCosts?.description ? ' - ' + otherCosts.description : ''}`, mrc: otherMonthly, supplier: otherCosts?.supplier, orderNo: otherCosts?.orderNo, startDate: otherCosts?.startDate, endDate: otherCosts?.endDate, termMonths: otherCosts?.termMonths, model: null, mismatchKey: 'Other', notes: otherCosts?.notes });
             }
             return html;
         })()}
@@ -462,11 +467,11 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 <!-- Cost Breakdown NRC -->
                 ${totalOneTimeCosts > 0 ? `
                 <div style="${sectionStyle}">
-                    <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">${oneTimeCostLabel}</h4>
+                    <h4 style="color: var(--accent-warning); margin-bottom: 0.75rem; font-size: 0.9rem;">${safeText(oneTimeCostLabel)}</h4>
                     <table style="width:100%;">
-                        ${cableOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${cableOneTimeLabel}</td><td class="font-mono">$${cableOneTimeCost.toLocaleString()}</td></tr>` : ''}
-                        ${backhaulAOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${backhaulAOneTimeLabel}</td><td class="font-mono">$${backhaulAOneTimeCost.toLocaleString()}</td></tr>` : ''}
-                        ${backhaulZOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${backhaulZOneTimeLabel}</td><td class="font-mono">$${backhaulZOneTimeCost.toLocaleString()}</td></tr>` : ''}
+                        ${cableOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${safeText(cableOneTimeLabel)}</td><td class="font-mono">$${cableOneTimeCost.toLocaleString()}</td></tr>` : ''}
+                        ${backhaulAOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${safeText(backhaulAOneTimeLabel)}</td><td class="font-mono">$${backhaulAOneTimeCost.toLocaleString()}</td></tr>` : ''}
+                        ${backhaulZOneTimeCost > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">${safeText(backhaulZOneTimeLabel)}</td><td class="font-mono">$${backhaulZOneTimeCost.toLocaleString()}</td></tr>` : ''}
                         ${xcANrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC A NRC</td><td class="font-mono">$${xcANrc.toLocaleString()}</td></tr>` : ''}
                         ${xcZNrc > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">XC Z NRC</td><td class="font-mono">$${xcZNrc.toLocaleString()}</td></tr>` : ''}
                         ${otherOneOff > 0 ? `<tr><td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Other One-off</td><td class="font-mono">$${otherOneOff.toLocaleString()}</td></tr>` : ''}
@@ -531,8 +536,8 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                         <div style="position: absolute; left: -1.35rem; top: 0.1rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-warning); border: 2px solid var(--bg-card);"></div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem; font-weight: 600;">第 ${i + 1} 期 · 续约于 ${renewDate}</div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 1rem; font-size: 0.85rem;">
-                            <div><span style="color: var(--text-muted);">期限:</span> ${d.start || '-'} ~ ${d.end || '-'}</div>
-                            <div><span style="color: var(--text-muted);">合同月数:</span> ${d.term || '-'}</div>
+                            <div><span style="color: var(--text-muted);">期限:</span> ${safeText(d.start || '-')} ~ ${safeText(d.end || '-')}</div>
+                            <div><span style="color: var(--text-muted);">合同月数:</span> ${safeText(d.term || '-')}</div>
                             <div><span style="color: var(--accent-success);">MRC:</span> ${mrc}</div>
                             <div><span style="color: var(--accent-warning);">NRC:</span> ${nrc}</div>
                             ${otc ? `<div><span style="color: var(--text-muted);">OTC:</span> ${otc}</div>` : ''}
@@ -553,7 +558,7 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         ${order.notes ? `
         <div style="${sectionStyle}">
             <h4 style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.9rem;">Notes</h4>
-            <p style="margin: 0; font-size: 0.9rem; line-height: 1.5;">${order.notes}</p>
+            <p style="margin: 0; font-size: 0.9rem; line-height: 1.5;">${safeText(order.notes)}</p>
         </div>
         ` : ''}
     `;
