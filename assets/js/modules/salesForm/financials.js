@@ -237,11 +237,14 @@ export function calculateSalesFinancials(context) {
     const profitColor = (val) => !hasData ? mutedColor : (val >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)');
     const marginColor = (val) => !hasData ? mutedColor : (val >= 20 ? 'var(--accent-success)' : (val > 0 ? 'var(--accent-warning)' : 'var(--accent-danger)'));
 
-    document.getElementById('disp-total-cost').textContent = fmt(totalMonthlyCost);
+    const totalCostEl = document.getElementById('disp-total-cost');
+    if (totalCostEl) totalCostEl.textContent = fmt(totalMonthlyCost);
 
     const marginEl = document.getElementById('disp-gross-margin');
-    marginEl.textContent = fmt(monthlyProfit);
-    marginEl.style.color = profitColor(monthlyProfit);
+    if (marginEl) {
+        marginEl.textContent = fmt(monthlyProfit);
+        marginEl.style.color = profitColor(monthlyProfit);
+    }
 
     const percentEl = document.getElementById('disp-margin-percent');
     const marginLabel = document.getElementById('margin-percent-label');
@@ -250,29 +253,37 @@ export function calculateSalesFinancials(context) {
 
     if (isIruResale) {
         // Show dual margins for IRU Resale
-        marginLabel.textContent = '首月利润率:';
-        percentEl.textContent = firstMonthMargin.toFixed(1) + '%';
-        percentEl.style.color = marginColor(firstMonthMargin);
+        if (marginLabel) marginLabel.textContent = '首月利润率:';
+        if (percentEl) {
+            percentEl.textContent = firstMonthMargin.toFixed(1) + '%';
+            percentEl.style.color = marginColor(firstMonthMargin);
+        }
 
         // Show recurring margin row
-        recurringRow.style.display = 'flex';
-        recurringEl.textContent = recurringMargin.toFixed(1) + '%';
-        recurringEl.style.color = marginColor(recurringMargin);
+        if (recurringRow) recurringRow.style.display = 'flex';
+        if (recurringEl) {
+            recurringEl.textContent = recurringMargin.toFixed(1) + '%';
+            recurringEl.style.color = marginColor(recurringMargin);
+        }
     } else {
         // Standard single margin display
-        marginLabel.textContent = 'Margin (%):';
-        percentEl.textContent = marginPercent.toFixed(1) + '%';
-        percentEl.style.color = marginColor(marginPercent);
+        if (marginLabel) marginLabel.textContent = 'Margin (%):';
+        if (percentEl) {
+            percentEl.textContent = marginPercent.toFixed(1) + '%';
+            percentEl.style.color = marginColor(marginPercent);
+        }
 
         // Hide recurring margin row
-        recurringRow.style.display = 'none';
+        if (recurringRow) recurringRow.style.display = 'none';
     }
 
     // NRC Profit display - for IRU Resale show first month profit, otherwise show regular NRC
     const nrcEl = document.getElementById('disp-nrc-profit');
     if (isIruResale) {
-        nrcEl.textContent = fmt(firstMonthProfit) + ' (1st Mo)';
-        nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        if (nrcEl) {
+            nrcEl.textContent = fmt(firstMonthProfit) + ' (1st Mo)';
+            nrcEl.style.color = firstMonthProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        }
     } else {
         const nrcSales = getValue('financials.nrcSales');
         const cableNrc = cableNrcTotal;
@@ -280,8 +291,10 @@ export function calculateSalesFinancials(context) {
         const xcNrc = getValue('costs.crossConnect.aEnd.nrc') + getValue('costs.crossConnect.zEnd.nrc');
         const otherOneOff = getValue('costs.otherCosts.oneOff');
         const nrcProfit = nrcSales - cableNrc - bhNrc - xcNrc - otherOneOff;
-        nrcEl.textContent = fmt(nrcProfit);
-        nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        if (nrcEl) {
+            nrcEl.textContent = fmt(nrcProfit);
+            nrcEl.style.color = nrcProfit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+        }
     }
 
     // ===== Check for cost date mismatch warning =====
@@ -296,7 +309,7 @@ export function calculateSalesFinancials(context) {
 
     if (warningEl && salesStartDate && cableStartDate && cableStartDate < salesStartDate) {
         warningEl.style.display = 'block';
-        warningText.textContent = `成本开始日期 (${cableStartDate}) 早于销售合同 (${salesStartDate})`;
+        if (warningText) warningText.textContent = `成本开始日期 (${cableStartDate}) 早于销售合同 (${salesStartDate})`;
     } else if (warningEl) {
         warningEl.style.display = 'none';
     }
