@@ -262,23 +262,39 @@ export function viewSalesDetailsModal(context, salesOrderId) {
         `;
     }).join('');
 
-    // Fallback: if no cable segments from costs, try to pull cable info from linked inventory
-    let inventoryCableHtml = '';
-    if (cableSegments.length === 0 && order.inventoryLink) {
-        const linkedInv = window.Store.getInventory().find(inv => inv.resourceId === order.inventoryLink);
-        if (linkedInv && linkedInv.cableSystem) {
-            const invCapacity = linkedInv.capacity?.value ? `${linkedInv.capacity.value} ${linkedInv.capacity.unit || 'Gbps'}` : '';
-            const invMeta = [invCapacity].filter(Boolean).join(' • ');
-            inventoryCableHtml = `
-                <tr>
-                    <td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable System</td>
-                    <td>
-                        <div style="font-weight:600; color:var(--accent-primary);">${escapeHtml(linkedInv.cableSystem)}</div>
-                        ${invMeta ? `<div style="font-size:0.8rem; color:var(--text-muted);">${invMeta}</div>` : ''}
-                    </td>
-                </tr>
-            `;
+    // Resolve linked inventory item for cable system info
+    // Look up via inventoryLink (direct) or batchAllocations (batch system)
+    let linkedInventoryItem = null;
+    if (order.inventoryLink) {
+        linkedInventoryItem = window.Store.getInventory().find(inv => inv.resourceId === order.inventoryLink);
+    }
+    if (!linkedInventoryItem && Array.isArray(order.batchAllocations) && order.batchAllocations.length > 0) {
+        // Resolve through batch: batchAllocation -> inventoryBatch -> inventory item
+        const allInventory = window.Store.getInventory();
+        for (const alloc of order.batchAllocations) {
+            const invItem = allInventory.find(inv =>
+                Array.isArray(inv.batches) && inv.batches.some(b => b.batchId === alloc.batchId)
+            );
+            if (invItem) { linkedInventoryItem = invItem; break; }
         }
+    }
+
+    // Show cable system from inventory when cost-level cable segments don't have it
+    const hasCableSystemInSegments = cableSegments.some(seg => seg.cableSystem);
+    let inventoryCableHtml = '';
+    if (!hasCableSystemInSegments && linkedInventoryItem && linkedInventoryItem.cableSystem) {
+        const invCapacity = linkedInventoryItem.capacity?.value ? `${linkedInventoryItem.capacity.value} ${linkedInventoryItem.capacity.unit || 'Gbps'}` : '';
+        const invMeta = [invCapacity].filter(Boolean).join(' • ');
+        inventoryCableHtml = `
+            <tr>
+                <td style="padding:0.4rem 0; color:var(--text-muted); font-size:0.85rem;">Cable System</td>
+                <td>
+                    <div style="font-weight:600; color:var(--accent-primary);">${escapeHtml(linkedInventoryItem.cableSystem)}</div>
+                    ${invMeta ? `<div style="font-size:0.8rem; color:var(--text-muted);">${invMeta}</div>` : ''}
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">via ${escapeHtml(linkedInventoryItem.resourceId)}</div>
+                </td>
+            </tr>
+        `;
     }
 
 
@@ -366,11 +382,11 @@ export function viewSalesDetailsModal(context, salesOrderId) {
                 </div>
 
                 <!-- Cable System Information -->
-                ${(cableSegments.length || inventoryCableHtml) ? `
+                ${(hasCableSystemInSegments || inventoryCableHtml) ? `
                 <div style="${sectionStyle}">
                     <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem; font-size: 0.9rem;">🔌 Cable System</h4>
                     <table style="width:100%;">
-                        ${cableSegments.length ? cableSegmentRows : inventoryCableHtml}
+                        ${inventoryCableHtml || cableSegmentRows}
                     </table>
                 </div>
                 ` : ''}
