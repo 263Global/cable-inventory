@@ -1018,6 +1018,29 @@ select.form-control:focus {
         font-size: 0.75rem;
         word-break: break-all;
     }
+
+    /* Detail modal - Contract Summary: 4 cols -> 2x2 on mobile */
+    .modal-body div[style*="repeat(4"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+
+    .modal-body div[style*="repeat(4"] .font-mono {
+        font-size: 1rem !important;
+        word-break: normal;
+    }
+
+    /* Detail modal - Section headers with action buttons: stack vertically */
+    .modal-body div[style*="space-between"] {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+
+    .modal-body div[style*="space-between"]>div[style*="gap: 0.5rem"] {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 /* Cards - Mobile adjustments */
@@ -2888,8 +2911,12 @@ body {
 
     /* Table: horizontal scroll */
     .table-container {
-        overflow-x: auto;
+        overflow-x: visible;
         -webkit-overflow-scrolling: touch;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
     }
 
     table {
@@ -2942,6 +2969,70 @@ body {
 
     .mobile-capacity-info {
         display: block !important;
+    }
+
+    /* Mobile card meta rows — show on mobile */
+    .mobile-card-meta {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.4rem;
+    }
+
+    /* Hide desktop action buttons on mobile, show mobile toolbar */
+    .mobile-card-actions {
+        display: flex !important;
+        justify-content: space-around;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        gap: 0;
+    }
+
+    /* Hide the desktop View/Edit/Kebab on mobile */
+    td>.flex.gap-4 {
+        display: none !important;
+    }
+
+    /* Mobile card action buttons */
+    .mca-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        font-size: 1.15rem;
+    }
+
+    .mca-btn:active {
+        transform: scale(0.92);
+    }
+
+    .mca-btn.mca-primary {
+        color: var(--accent-primary);
+        background: rgba(37, 99, 235, 0.1);
+    }
+
+    .mca-btn.mca-warning {
+        color: var(--accent-warning);
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .mca-btn.mca-danger {
+        color: var(--accent-danger);
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .mca-btn.mca-muted {
+        color: var(--text-muted);
+        opacity: 0.6;
     }
 
     /* Shorter nav labels on mobile */
@@ -3034,26 +3125,34 @@ body {
         display: none !important;
     }
 
-    /* ===== Inventory & Sales Table - Card Layout for Mobile ===== */
+    /* ===== Table Card Layout for Mobile ===== */
     .inventory-table,
-    .sales-table {
+    .sales-table,
+    .customers-table,
+    .suppliers-table {
         min-width: unset !important;
     }
 
     .inventory-table thead,
-    .sales-table thead {
+    .sales-table thead,
+    .customers-table thead,
+    .suppliers-table thead {
         display: none;
     }
 
     .inventory-table tbody,
-    .sales-table tbody {
+    .sales-table tbody,
+    .customers-table tbody,
+    .suppliers-table tbody {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
     }
 
     .inventory-table tbody tr,
-    .sales-table tbody tr {
+    .sales-table tbody tr,
+    .customers-table tbody tr,
+    .suppliers-table tbody tr {
         display: grid;
         grid-template-columns: 1fr auto;
         grid-template-rows: auto auto auto;
@@ -3063,6 +3162,32 @@ body {
         border-radius: 10px;
         gap: 0.5rem 1rem;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    /* CRM tables (Customers/Suppliers): card layout */
+    .customers-table tbody td,
+    .suppliers-table tbody td {
+        border-bottom: none;
+        padding: 0;
+    }
+
+    .customers-table tbody td:first-child,
+    .suppliers-table tbody td:first-child {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        font-size: 1rem;
+    }
+
+    .customers-table tbody td:last-child,
+    .suppliers-table tbody td:last-child {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding-top: 0.5rem;
+    }
+
+    .customers-table tbody td:last-child>.flex,
+    .suppliers-table tbody td:last-child>.flex {
+        display: none !important;
     }
 
     .inventory-table tbody td,
@@ -3139,15 +3264,6 @@ body {
         color: var(--text-highlight);
     }
 
-    /* Revenue for Sales */
-    .sales-table tbody td:nth-child(6) {
-        grid-column: 1;
-        grid-row: 3;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--accent-success);
-        padding-top: 0.5rem;
-    }
 
     /* Row 3: Actions */
     .inventory-table tbody td:last-child {
@@ -3155,7 +3271,6 @@ body {
         grid-row: 3;
         padding-top: 0.75rem;
         margin-top: 0.5rem;
-        border-top: 1px solid var(--border-color);
     }
 
     .inventory-table tbody td:last-child .flex {
@@ -3169,9 +3284,9 @@ body {
     }
 
     .sales-table tbody td:last-child {
-        grid-column: 2;
+        grid-column: 1 / -1;
         grid-row: 3;
-        justify-self: end;
+        justify-self: stretch;
         align-self: center;
         padding-top: 0.5rem;
     }
@@ -3190,7 +3305,11 @@ body {
     .inventory-table tbody .col-cost-info,
     .inventory-table tbody .col-location,
     .sales-table tbody td:nth-child(3),
-    .sales-table tbody td:nth-child(4) {
+    .sales-table tbody td:nth-child(4),
+    .sales-table tbody td:nth-child(6),
+    .sales-table tbody td:nth-child(7),
+    .sales-table tbody td:nth-child(8),
+    .sales-table tbody td:nth-child(9) {
         display: none !important;
     }
 
@@ -3468,7 +3587,63 @@ body {
     display: block;
 }
 
+/* ===== Action Dropdown (desktop kebab menu) ===== */
+.action-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.action-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 150px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+}
+
+.action-dropdown-menu.open {
+    display: flex;
+    flex-direction: column;
+}
+
+.action-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.action-dropdown-item:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.action-dropdown-item--danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
 /* Mobile-only capacity info - hidden on desktop */
 .mobile-capacity-info {
+    display: none;
+}
+
+/* Mobile-only card meta rows and action toolbar - hidden on desktop */
+.mobile-card-meta {
+    display: none;
+}
+
+.mobile-card-actions {
     display: none;
 }

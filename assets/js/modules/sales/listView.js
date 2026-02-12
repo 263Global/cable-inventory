@@ -88,7 +88,7 @@ export function renderSalesList(context, filters = {}) {
 
     // Add Import button
     const importBtn = document.createElement('button');
-    importBtn.className = 'btn btn-secondary';
+    importBtn.className = 'btn btn-secondary mobile-hidden';
     importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
     importBtn.onclick = () => openImportModalWithFallback('sales');
     context.headerActions.appendChild(importBtn);
@@ -240,6 +240,14 @@ export function renderSalesList(context, filters = {}) {
                                 <div class="customer-name" style="font-weight:600" title="${escapeHtml(item.customerName)}">${escapeHtml(item.customerName)}</div>
                                 <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-primary); margin-top:0.25rem; font-weight:500;">📦 ${item.capacity?.value || '-'} ${item.capacity?.unit || 'Gbps'}</div>
                                 ${item.inventoryLink ? `<div class="inventory-link">🔗 ${escapeHtml(item.inventoryLink)}</div>` : ''}
+                                <div class="mobile-card-meta">
+                                    <span class="type-icon ${typeClass}" style="font-size:0.7rem; padding:2px 6px;">${typeIcon} ${salesType} · ${salesModel}</span>
+                                    <span style="font-size:0.8rem; font-weight:600; color:var(--accent-success);">MRC $${mrr.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                    <span class="margin-badge ${marginClass}" style="font-size:0.7rem; padding:2px 6px;">${marginPercent}%</span>
+                                </div>
+                                <div class="mobile-card-meta">
+                                    ${item.dates?.end ? `<span style="font-size:0.75rem; color:var(--text-muted);">📅 到期 ${escapeHtml(item.dates.end)}</span>` : ''}
+                                </div>
                             </td>
                             <td>
                                 <span class="type-icon ${typeClass}">${typeIcon} ${salesType} · ${salesModel}</span>
@@ -274,6 +282,23 @@ export function renderSalesList(context, filters = {}) {
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="mobile-card-actions">
+                                    <button type="button" class="mca-btn" data-action="view-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" title="View">
+                                        <ion-icon name="eye-outline"></ion-icon>
+                                    </button>
+                                    <button type="button" class="mca-btn mca-primary" data-action="edit-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" title="Edit">
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </button>
+                                    <button type="button" class="mca-btn mca-warning" data-action="renew-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" title="Renew">
+                                        <ion-icon name="refresh-outline"></ion-icon>
+                                    </button>
+                                    ${effectiveStatus === 'Active' ? `<button type="button" class="mca-btn mca-danger" data-action="terminate-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" title="Terminate">
+                                        <ion-icon name="close-circle-outline"></ion-icon>
+                                    </button>` : ''}
+                                    <button type="button" class="mca-btn mca-muted" data-action="delete-sales-order" data-sales-order-id="${escapeHtml(item.salesOrderId)}" title="Delete">
+                                        <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
