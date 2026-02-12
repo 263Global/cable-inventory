@@ -27,6 +27,12 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 - **Desktop Action Dropdown** - Added missing CSS for `.action-dropdown` kebab menu
   - Dropdown properly hidden by default, shown on `.open` toggle
 
+### Fixed
+- **Mobile Linked Sales View Button** - View button on inventory detail's Linked Sales Orders section was invisible on mobile
+  - Root cause: generic `space-between` CSS override forced column layout on the sales row
+  - Changed row layout to `flex-wrap` with `linked-sale-row` class excluded from the override
+  - Added `padding-bottom: 5rem` to `.modal-body` so the bottom nav bar no longer clips the last section
+
 ---
 
 ## [1.15.0] - 2026-02-12

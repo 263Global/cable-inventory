@@ -1031,15 +1031,29 @@ select.form-control:focus {
     }
 
     /* Detail modal - Section headers with action buttons: stack vertically */
-    .modal-body div[style*="space-between"] {
+    .modal-body div[style*="space-between"]:not(.linked-sale-row) {
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 0.5rem !important;
     }
 
-    .modal-body div[style*="space-between"]>div[style*="gap: 0.5rem"] {
+    .modal-body div[style*="space-between"]:not(.linked-sale-row)>div[style*="gap: 0.5rem"] {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    /* Linked sales rows - ensure View button is visible on mobile */
+    .modal-body .linked-sale-row {
+        flex-wrap: wrap !important;
+    }
+
+    .modal-body .linked-sale-row .btn {
+        margin-left: auto;
+    }
+
+    /* Prevent bottom nav from clipping last section */
+    .modal-body {
+        padding-bottom: 5rem !important;
     }
 }
 

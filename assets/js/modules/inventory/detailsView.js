@@ -55,13 +55,13 @@ export function viewInventoryDetailsModal(context, resourceId) {
     const linkedSalesHtml = linkedSales.length === 0
         ? '<div style="color:var(--text-muted); padding: 0.5rem 0;">No sales orders linked to this resource</div>'
         : linkedSales.map(s => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
-                <div>
+            <div class="linked-sale-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+                <div style="flex: 1; min-width: 0;">
                     <span class="font-mono" style="color: var(--accent-primary);">${escapeHtml(s.salesOrderId)}</span>
                     <span style="margin-left: 0.5rem; font-weight: 600;">${escapeHtml(s.customerName)}</span>
                     <span style="margin-left: 0.5rem; color: var(--text-muted);">${s.capacity?.value || 0} ${escapeHtml(s.capacity?.unit || 'Gbps')}</span>
                 </div>
-                <button type="button" class="btn btn-secondary" data-action="open-linked-sale" data-sales-order-id="${escapeHtml(s.salesOrderId)}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
+                <button type="button" class="btn btn-secondary" data-action="open-linked-sale" data-sales-order-id="${escapeHtml(s.salesOrderId)}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; flex-shrink: 0;">
                     <ion-icon name="eye-outline"></ion-icon> View
                 </button>
             </div>
