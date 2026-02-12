@@ -6,6 +6,29 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ---
 
+## [1.16.0] - 2026-02-12
+
+### Added
+- **Mobile Card View for Customers & Suppliers** - CRM entity lists now display as cards on mobile
+  - Each card shows Short Name (bold) + Full Name from hidden columns via `mobile-card-meta`
+  - Edit and Delete icon buttons via `mobile-card-actions`
+  - Import button hidden on mobile via `mobile-hidden` class
+
+### Changed
+- **Mobile Sales/Inventory Card Fixes** - Resolved multiple card layout regressions
+  - Action buttons evenly distributed across card width (was squeezed to right)
+  - Hidden overflow cells (Revenue, Margin, Margin%, Salesperson) that caused extra "long cards"
+  - Removed ghost background from `.table-container` card styling on mobile
+  - Removed gray lines from inventory card actions border
+  - Import button hidden on mobile for Sales and Inventory pages
+- **Mobile Detail Page Layout** - Optimized Sales detail view for narrow screens
+  - Contract Summary grid: 4-column → 2×2 layout to prevent number wrapping
+  - Contract Period section: Renew/Terminate buttons stack below title instead of inline
+- **Desktop Action Dropdown** - Added missing CSS for `.action-dropdown` kebab menu
+  - Dropdown properly hidden by default, shown on `.open` toggle
+
+---
+
 ## [1.15.0] - 2026-02-12
 
 ### Changed

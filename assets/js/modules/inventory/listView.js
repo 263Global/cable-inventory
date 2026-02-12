@@ -70,7 +70,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
 
     // Add Import button
     const importBtn = document.createElement('button');
-    importBtn.className = 'btn btn-secondary';
+    importBtn.className = 'btn btn-secondary mobile-hidden';
     importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
     importBtn.onclick = () => openImportModalWithFallback('inventory');
     context.headerActions.appendChild(importBtn);
@@ -243,6 +243,23 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="mobile-card-actions">
+                                    <button type="button" class="mca-btn" data-action="view-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="View">
+                                        <ion-icon name="eye-outline"></ion-icon>
+                                    </button>
+                                    <button type="button" class="mca-btn mca-primary" data-action="edit-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Edit">
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </button>
+                                    <button type="button" class="mca-btn mca-warning" data-action="renew-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Renew">
+                                        <ion-icon name="refresh-outline"></ion-icon>
+                                    </button>
+                                    ${item.status !== 'Terminated' ? `<button type="button" class="mca-btn mca-danger" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Terminate">
+                                        <ion-icon name="close-circle-outline"></ion-icon>
+                                    </button>` : ''}
+                                    <button type="button" class="mca-btn mca-muted" data-action="delete-resource" data-resource-id="${escapeHtml(item.resourceId)}" title="Delete">
+                                        <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
                                 </div>
                             </td>
                         </tr>

@@ -71,7 +71,7 @@ export function initCrmEntityModule(App, config) {
         this.headerActions.innerHTML = '';
 
         const importBtn = document.createElement('button');
-        importBtn.className = 'btn btn-secondary';
+        importBtn.className = 'btn btn-secondary mobile-hidden';
         importBtn.type = 'button';
         importBtn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import';
         importBtn.addEventListener('click', () => openImportModalWithFallback(importEntityType));
@@ -93,13 +93,22 @@ export function initCrmEntityModule(App, config) {
         const rowsHtml = paginatedData.length === 0
             ? `<tr><td colspan="${columns.length + 1}" style="text-align:center; color:var(--text-muted); padding:2rem;">${escapeHtml(emptyMessage)}</td></tr>`
             : paginatedData.map(item => {
-                const cells = columns.map(col => {
+                const hiddenCols = columns.filter(col => col.className && col.className.includes('mobile-hidden'));
+                const mobileMetaHtml = hiddenCols.length > 0
+                    ? `<div class="mobile-card-meta">${hiddenCols.map(col => {
+                        const val = col.getValue(item);
+                        return val && val !== '-' ? `<span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(col.label)}: ${escapeHtml(val)}</span>` : '';
+                    }).filter(Boolean).join('')}</div>`
+                    : '';
+
+                const cells = columns.map((col, idx) => {
                     const classAttr = col.className ? ` class="${escapeHtml(col.className)}"` : '';
                     const dataLabelAttr = col.dataLabel ? ` data-label="${escapeHtml(col.dataLabel)}"` : '';
                     const rawValue = col.getValue(item);
                     const safeValue = escapeHtml(rawValue || '-');
                     const renderedValue = col.strong ? `<strong>${safeValue}</strong>` : safeValue;
-                    return `<td${classAttr}${dataLabelAttr}>${renderedValue}</td>`;
+                    const mobileContent = (idx === 0) ? mobileMetaHtml : '';
+                    return `<td${classAttr}${dataLabelAttr}>${renderedValue}${mobileContent}</td>`;
                 }).join('');
 
                 const itemId = escapeHtml(item.id);
@@ -113,6 +122,14 @@ export function initCrmEntityModule(App, config) {
                                 </button>
                                 <button type="button" class="btn btn-icon" data-action="delete" data-id="${itemId}" title="Delete">
                                     <ion-icon name="trash-outline" style="color:var(--accent-danger)"></ion-icon>
+                                </button>
+                            </div>
+                            <div class="mobile-card-actions">
+                                <button type="button" class="mca-btn mca-primary" data-action="edit" data-id="${itemId}" title="Edit">
+                                    <ion-icon name="create-outline"></ion-icon>
+                                </button>
+                                <button type="button" class="mca-btn mca-danger" data-action="delete" data-id="${itemId}" title="Delete">
+                                    <ion-icon name="trash-outline"></ion-icon>
                                 </button>
                             </div>
                         </td>
