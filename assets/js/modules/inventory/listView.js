@@ -107,7 +107,7 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
             ` : ''}
         </div>
         ${context._inventorySelectionMode ? `
-        <div id="inventory-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+        <div id="inventory-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(37, 99, 235, 0.1); border-radius: 8px; margin-bottom: 1rem;">
             <span style="font-weight: 600; color: var(--accent-primary);">
                 <ion-icon name="checkbox-outline"></ion-icon>
                 <span id="inventory-selection-count">${context._selectedInventory.size}</span> selected
@@ -121,9 +121,12 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
         </div>
         ` : ''}
         <style>
-            .inventory-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
-            .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
+            .inventory-table tbody tr:hover {background: rgba(37, 99, 235, 0.08); }
+            .inventory-table tbody tr:nth-child(even) {background: rgba(255, 255, 255, 0.015); }
+            .row-selected { background: rgba(37, 99, 235, 0.12) !important; }
             .inventory-row-checkbox, #inventory-select-all { cursor: pointer; width: 16px; height: 16px; }
+            .col-location div { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .col-cost-info .font-mono { font-variant-numeric: tabular-nums; }
         </style>
         <div class="table-container">
             <table class="inventory-table">
@@ -167,63 +170,79 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
                             <td>
                                 <span class="badge ${statusBadgeClass}">${calculatedStatus}</span>
                                 <!-- Usage Progress Bar -->
-                                <div style="margin-top:0.5rem; width:100px;">
-                                    <div style="background:var(--border-color); border-radius:4px; height:6px; overflow:hidden;">
+                                <div style="margin-top:0.35rem; width:80px;">
+                                    <div style="background:var(--border-color); border-radius:4px; height:5px; overflow:hidden;">
                                         <div style="width:${usagePercent}%; height:100%; background:${progressColor}; transition:width 0.3s;"></div>
                                     </div>
-                                    <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:2px;">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); text-align:center; margin-top:1px;">
                                         ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
                                     </div>
                                 </div>
-                                ${linkedSales.length > 0 ? `<div style="font-size:0.65rem; color:var(--accent-primary); margin-top:4px;">📋 ${linkedSales.length} order${linkedSales.length > 1 ? 's' : ''}</div>` : ''}
                             </td>
                             <td class="col-acquisition">
                                 <div style="font-weight:500">${escapeHtml(item.acquisition?.type || 'Purchased')}</div>
                                 <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHtml(item.acquisition?.ownership || '')}</div>
                             </td>
                             <td>
-                                <div style="font-weight:600">${escapeHtml(item.cableSystem)}</div>
-                                ${item.protection === 'Protected' && item.protectionCableSystem ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;">${escapeHtml(item.protectionCableSystem)}</div>` : ''}
-                                <div style="font-size:0.8em; color:var(--text-muted)">
-                                    ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'}
+                                <div style="font-weight:700; color:var(--text-highlight)">${escapeHtml(item.cableSystem)}</div>
+                                ${item.protection === 'Protected' && item.protectionCableSystem ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.1rem;">${escapeHtml(item.protectionCableSystem)}</div>` : ''}
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">
+                                    ${item.capacity?.value || 0} ${item.capacity?.unit || 'Gbps'} · ${escapeHtml(item.segmentType || '')} · ${escapeHtml(item.protection || '')}
                                 </div>
                                 ${isBatchMode ? `
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">
-                                    Lit ${litCapacity}/${baseCapacity} ${item.capacity?.unit || 'Gbps'} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
+                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.1rem;">
+                                    Lit ${litCapacity}/${baseCapacity} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
                                 </div>
                                 ` : ''}
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
-                                    ${escapeHtml(item.segmentType || '')} (${escapeHtml(item.protection || '')})
-                                </div>
-                                <div class="mobile-capacity-info" style="font-size:0.75rem; color:var(--accent-warning); margin-top:0.35rem; font-weight:500;">
+                                <div class="mobile-capacity-info" style="font-size:0.7rem; color:var(--accent-warning); margin-top:0.25rem; font-weight:500;">
                                     📊 已售 ${totalSoldCapacity}/${totalCapacity} ${item.capacity?.unit || 'Gbps'}
                                 </div>
                                 ${isBatchMode ? `
-                                <div class="mobile-capacity-info" style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">
-                                    🔆 Lit ${litCapacity}/${baseCapacity} ${item.capacity?.unit || 'Gbps'} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
+                                <div class="mobile-capacity-info" style="font-size:0.65rem; color:var(--text-muted); margin-top:0.1rem;">
+                                    🔆 Lit ${litCapacity}/${baseCapacity} · Unlit ${unlitCapacity} ${item.capacity?.unit || 'Gbps'}
                                 </div>
                                 ` : ''}
                             </td>
                             <td class="col-cost-info">
                                 ${item.acquisition?.ownership !== 'IRU' ? `<div class="font-mono">MRC: $${(item.financials?.mrc || 0).toLocaleString()}</div>` : ''}
                                 <div class="font-mono" style="font-size:0.8em; color:var(--text-muted)">${item.acquisition?.ownership === 'IRU' ? 'OTC' : 'NRC'}: $${(item.acquisition?.ownership === 'IRU' ? item.financials?.otc : item.financials?.nrc || 0).toLocaleString()}</div>
-                                <div style="font-size:0.75rem; color:var(--accent-danger); margin-top:0.2rem;">Expires: ${escapeHtml(item.dates?.end || 'N/A')}</div>
+                                ${(() => {
+                const endStr = item.dates?.end;
+                if (!endStr) return '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">Expires: N/A</div>';
+                const endDate = new Date(endStr);
+                const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+                const expiryColor = daysLeft < 90 ? 'var(--accent-danger)' : daysLeft < 365 ? 'var(--accent-warning)' : 'var(--text-muted)';
+                return `<div style="font-size:0.75rem; color:${expiryColor}; margin-top:0.2rem;">Expires: ${escapeHtml(endStr)}</div>`;
+            })()}
                             </td>
                             <td class="col-location" style="font-size:0.85rem">
                                 <div><strong style="color:var(--accent-primary)">A:</strong> ${escapeHtml(item.location?.aEnd?.pop || '-')} (${escapeHtml(item.location?.aEnd?.city || '')})</div>
                                 <div><strong style="color:var(--accent-secondary)">Z:</strong> ${escapeHtml(item.location?.zEnd?.pop || '-')} (${escapeHtml(item.location?.zEnd?.city || '')})</div>
                             </td>
                             <td>
-                                <div class="flex gap-4">
+                                <div class="flex gap-4" style="align-items:center">
                                     <button type="button" class="btn btn-secondary" data-action="view-resource" data-resource-id="${escapeHtml(item.resourceId)}" style="padding:0.4rem" title="View">
                                         <ion-icon name="eye-outline"></ion-icon>
                                     </button>
                                     <button type="button" class="btn btn-primary" data-action="edit-resource" data-resource-id="${escapeHtml(item.resourceId)}" style="padding:0.4rem" title="Edit">
                                         <ion-icon name="create-outline"></ion-icon>
                                     </button>
-                                    <button type="button" class="btn btn-danger" data-action="delete-resource" data-resource-id="${escapeHtml(item.resourceId)}" style="padding:0.4rem" title="Delete">
-                                        <ion-icon name="trash-outline"></ion-icon>
-                                    </button>
+                                    <div class="action-dropdown">
+                                        <button type="button" class="btn btn-secondary action-dropdown-trigger" style="padding:0.4rem" title="More actions">
+                                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                                        </button>
+                                        <div class="action-dropdown-menu">
+                                            <button type="button" class="action-dropdown-item" data-action="renew-resource" data-resource-id="${escapeHtml(item.resourceId)}">
+                                                <ion-icon name="refresh-outline" style="color: var(--accent-warning);"></ion-icon> Renew
+                                            </button>
+                                            ${item.status !== 'Terminated' ? `<button type="button" class="action-dropdown-item" data-action="terminate-resource" data-resource-id="${escapeHtml(item.resourceId)}">
+                                                <ion-icon name="close-circle-outline" style="color: var(--accent-danger);"></ion-icon> Terminate
+                                            </button>` : ''}
+                                            <button type="button" class="action-dropdown-item action-dropdown-item--danger" data-action="delete-resource" data-resource-id="${escapeHtml(item.resourceId)}">
+                                                <ion-icon name="trash-outline"></ion-icon> Delete
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -264,6 +283,47 @@ export function renderInventoryList(context, searchQuery = '', page = 1, statusF
     context.container.querySelectorAll('[data-action="delete-resource"]').forEach(btn => {
         btn.addEventListener('click', () => context.deleteInventoryWithConfirm(btn.dataset.resourceId || ''));
     });
+    context.container.querySelectorAll('[data-action="renew-resource"]').forEach(btn => {
+        btn.addEventListener('click', () => context.openInventoryRenewModal(btn.dataset.resourceId || ''));
+    });
+    context.container.querySelectorAll('[data-action="terminate-resource"]').forEach(btn => {
+        btn.addEventListener('click', () => context.openInventoryTerminateModal(btn.dataset.resourceId || ''));
+    });
+
+    // Kebab dropdown toggle + close-on-outside-click
+    const closeAllDropdowns = () => {
+        context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.position = '';
+            m.style.top = '';
+            m.style.left = '';
+            m.style.right = '';
+            m.style.bottom = '';
+        });
+    };
+    context.container.querySelectorAll('.action-dropdown-trigger').forEach(trigger => {
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = trigger.nextElementSibling;
+            const wasOpen = menu.classList.contains('open');
+            closeAllDropdowns();
+            if (!wasOpen) {
+                menu.classList.add('open');
+                // Fixed positioning to escape table overflow
+                const rect = trigger.getBoundingClientRect();
+                menu.style.position = 'fixed';
+                menu.style.top = `${rect.bottom + 4}px`;
+                menu.style.right = `${window.innerWidth - rect.right}px`;
+                menu.style.left = 'auto';
+            }
+        });
+    });
+    const inventoryDocClickHandler = (e) => {
+        if (!e.target.closest('.action-dropdown')) closeAllDropdowns();
+    };
+    document.addEventListener('click', inventoryDocClickHandler);
+    // Store handler reference for cleanup
+    context._inventoryDocumentClickHandler = inventoryDocClickHandler;
 
     // Add filter event listeners
     const searchInput = document.getElementById('inventory-search');

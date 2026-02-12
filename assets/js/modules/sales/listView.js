@@ -132,7 +132,7 @@ export function renderSalesList(context, filters = {}) {
             ` : ''}
         </div>
         ${context._salesSelectionMode ? `
-        <div id="sales-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(99, 91, 255, 0.1); border-radius: 8px; margin-bottom: 1rem;">
+        <div id="sales-bulk-toolbar" class="bulk-toolbar" style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(37, 99, 235, 0.1); border-radius: 8px; margin-bottom: 1rem;">
             <span style="font-weight: 600; color: var(--accent-primary);">
                 <ion-icon name="checkbox-outline"></ion-icon>
                 <span id="sales-selection-count">${context._selectedSales.size}</span> selected
@@ -146,21 +146,22 @@ export function renderSalesList(context, filters = {}) {
         </div>
         ` : ''}
         <style>
-            .sales-table tbody tr:hover {background: rgba(99, 91, 255, 0.08); }
-            .margin-badge {padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-            .margin-high {background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
-            .margin-mid {background: rgba(255, 179, 71, 0.15); color: #ffb347; }
-            .margin-low {background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
-            .type-icon {font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; margin-right: 0.3rem; white-space: nowrap; }
-            .type-resale {background: rgba(99, 91, 255, 0.2); color: #635bff; }
-            .type-inventory {background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
-            .type-hybrid {background: rgba(255, 179, 71, 0.2); color: #ffb347; }
-            .type-swap {background: rgba(150, 150, 150, 0.2); color: #999; }
-            .order-id-cell { white-space: nowrap; color: #5a6a85 !important; }
+            .sales-table tbody tr:hover {background: rgba(37, 99, 235, 0.08); }
+            .sales-table tbody tr:nth-child(even) {background: rgba(255, 255, 255, 0.015); }
+            .margin-badge {padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; }
+            .margin-high {background: rgba(52, 211, 153, 0.12); color: #34D399; }
+            .margin-mid {background: rgba(251, 191, 36, 0.12); color: #FBBF24; }
+            .margin-low {background: rgba(248, 113, 113, 0.12); color: #F87171; }
+            .type-icon {font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; white-space: nowrap; }
+            .type-resale {background: rgba(37, 99, 235, 0.15); color: #60A5FA; }
+            .type-inventory {background: rgba(52, 211, 153, 0.15); color: #34D399; }
+            .type-hybrid {background: rgba(251, 191, 36, 0.15); color: #FBBF24; }
+            .type-swap {background: rgba(150, 150, 150, 0.15); color: #9CA3AF; }
+            .order-id-cell { white-space: nowrap; color: var(--text-muted) !important; font-size: 0.8rem; }
             .customer-name { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-            .col-revenue, .col-margin, .col-margin-percent { text-align: right; }
-            .inventory-link { font-size: 0.7rem; color: #999 !important; margin-top: 2px; }
-            .row-selected { background: rgba(99, 91, 255, 0.12) !important; }
+            .col-revenue, .col-margin, .col-margin-percent { text-align: right; font-variant-numeric: tabular-nums; }
+            .inventory-link { font-size: 0.7rem; color: var(--text-muted) !important; margin-top: 2px; }
+            .row-selected { background: rgba(37, 99, 235, 0.12) !important; }
             .sales-row-checkbox, #sales-select-all { cursor: pointer; width: 16px; height: 16px; }
         </style>
         <div class="table-container">
@@ -241,13 +242,12 @@ export function renderSalesList(context, filters = {}) {
                                 ${item.inventoryLink ? `<div class="inventory-link">🔗 ${escapeHtml(item.inventoryLink)}</div>` : ''}
                             </td>
                             <td>
-                                <span class="type-icon ${typeClass}">${typeIcon} ${salesType}</span>
-                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${salesModel}</div>
+                                <span class="type-icon ${typeClass}">${typeIcon} ${salesType} · ${salesModel}</span>
                             </td>
                             <td class="font-mono" style="color: var(--accent-primary)">${item.capacity?.value || '-'} ${item.capacity?.unit || ''}</td>
                             <td><span class="badge ${statusClass}">${effectiveStatus}</span></td>
-                            <td class="col-revenue font-mono" style="text-align:right; color: var(--accent-success)">$${mrr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">$${margin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td class="col-revenue font-mono" style="text-align:right; color: var(--text-main)">$${mrr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td class="col-margin font-mono" style="text-align:right; color: ${margin >= 0 ? 'var(--text-main)' : 'var(--accent-danger)'}">$${margin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td class="col-margin-percent" style="text-align:right">${marginPercentCell}</td>
                             <td class="col-salesperson" style="font-size:0.85rem; color:var(--text-muted)">${escapeHtml(item.salesperson || '-')}</td>
                             <td>

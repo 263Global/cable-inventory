@@ -159,8 +159,8 @@ export function renderDashboard(context) {
                 </div>
                 <!-- Resale row -->
                 <div style="display:flex; align-items:baseline; gap:0.25rem; width:100%;">
-                    <span style="font-size:0.65rem; color:#635bff; font-weight:600;">RSL</span>
-                    <span style="font-size:1.1rem; font-weight:700; color:#635bff;">${totalResaleCapacity.toLocaleString()}</span>
+                    <span style="font-size:0.65rem; color:var(--accent-secondary); font-weight:600;">RSL</span>
+                    <span style="font-size:1.1rem; font-weight:700; color:var(--accent-secondary);">${totalResaleCapacity.toLocaleString()}</span>
                     <span style="font-size:0.7rem; color:var(--text-muted)">Gbps</span>
                 </div>
             </div>
@@ -175,7 +175,7 @@ export function renderDashboard(context) {
             <div class="card metric-card simple-metric">
                 <span class="metric-label"><ion-icon name="trending-up-outline" class="metric-icon"></ion-icon> Profit</span>
                 <span class="metric-value" style="color: ${profit >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">
-                    $${profit.toLocaleString()}
+                    $${Math.round(profit).toLocaleString()}
                 </span>
             </div>
         </div>
@@ -234,21 +234,57 @@ export function renderDashboard(context) {
             <!-- 1. MRR Trend Chart -->
             <div class="card" style="border-left: 4px solid var(--accent-success);">
                 <h3 class="mb-4" style="color: var(--accent-success)"><ion-icon name="trending-up-outline"></ion-icon> MRR Trend (6 Months)</h3>
-                <div style="display: flex; align-items: flex-end; gap: 0.5rem; height: 120px; padding-bottom: 1.5rem; position: relative;">
-                    ${mrrTrendData.map(([month, mrr]) => {
-        const height = maxMrrTrend > 0 ? Math.max((mrr / maxMrrTrend) * 100, 2) : 2;
-        const [year, mon] = month.split('-');
-        const shortYear = year.slice(2);
-        const label = `${shortYear}/${mon}`;
-        return `
-                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem;">$${(mrr / 1000).toFixed(0)}k</div>
-                                <div style="width: 100%; height: ${height}%; background: linear-gradient(180deg, var(--accent-success), rgba(0, 212, 170, 0.5)); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s;"></div>
-                                <div style="font-size: 0.6rem; color: var(--text-muted); margin-top: 0.25rem;">${label}</div>
-                            </div>
-                        `;
-    }).join('')}
-                </div>
+                ${(() => {
+            const values = mrrTrendData.map(d => d[1]);
+            const labels = mrrTrendData.map(d => { const [y, m] = d[0].split('-'); return `${y.slice(2)}/${m}`; });
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            // Dynamic baseline: floor to nearest 10k below minimum
+            const yMin = Math.max(0, Math.floor(minVal / 10000) * 10000 - 10000);
+            const yMax = Math.ceil(maxVal / 10000) * 10000 + 10000;
+            const range = yMax - yMin || 1;
+
+            const W = 320, H = 110, padL = 16, padR = 16, padT = 16, padB = 24;
+            const plotW = W - padL - padR;
+            const plotH = H - padT - padB;
+
+            const pts = values.map((v, i) => {
+                const x = padL + (i / Math.max(values.length - 1, 1)) * plotW;
+                const y = padT + plotH - ((v - yMin) / range) * plotH;
+                return { x, y, v };
+            });
+
+            const linePoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+            const areaPoints = `${pts[0].x},${padT + plotH} ${linePoints} ${pts[pts.length - 1].x},${padT + plotH}`;
+
+            // Grid lines (no labels — each data point already shows its value)
+            const yTicks = [yMin, yMin + range / 2, yMax];
+
+            return `
+            <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:130px;" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <linearGradient id="mrrAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="var(--accent-success)" stop-opacity="0.3"/>
+                        <stop offset="100%" stop-color="var(--accent-success)" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <!-- Grid lines only -->
+                ${yTicks.map(tick => {
+                const y = padT + plotH - ((tick - yMin) / range) * plotH;
+                return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border-color)" stroke-width="0.5" stroke-dasharray="3,3"/>`;
+            }).join('')}
+                <!-- Area -->
+                <polygon points="${areaPoints}" fill="url(#mrrAreaGrad)"/>
+                <!-- Line -->
+                <polyline points="${linePoints}" fill="none" stroke="var(--accent-success)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                <!-- Data points + labels -->
+                ${pts.map((p, i) => `
+                    <circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--bg-primary)" stroke="var(--accent-success)" stroke-width="1.5"/>
+                    <text x="${p.x}" y="${p.y - 6}" text-anchor="middle" fill="var(--text-secondary)" font-size="7" font-weight="600" font-family="var(--font-mono)">$${(p.v / 1000).toFixed(0)}k</text>
+                    <text x="${p.x}" y="${padT + plotH + 12}" text-anchor="middle" fill="var(--text-muted)" font-size="6.5">${labels[i]}</text>
+                `).join('')}
+            </svg>`;
+        })()}
             </div>
 
             <!-- 2. Margin Distribution -->
@@ -278,7 +314,7 @@ export function renderDashboard(context) {
                         <div style="position: relative; width: 120px; height: 120px;">
                             <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
                                 ${(() => {
-                const colors = { Resale: '#635bff', Inventory: '#00d4aa', Hybrid: '#ffb347' };
+                const colors = { Resale: '#3B82F6', Inventory: '#00d4aa', Hybrid: '#ffb347' };
                 let offset = 0;
                 return ['Resale', 'Inventory', 'Hybrid'].map(type => {
                     const pct = totalSalesCount > 0 ? (salesTypeCount[type] / totalSalesCount) * 100 : 0;
@@ -290,7 +326,7 @@ export function renderDashboard(context) {
                             </svg>
                         </div>
                         <div style="font-size: 0.85rem;">
-                            <div style="margin-bottom: 0.4rem;"><span style="display:inline-block;width:10px;height:10px;background:#635bff;border-radius:2px;margin-right:6px;"></span>Resale: ${salesTypeCount.Resale} (${Math.round(salesTypeCount.Resale / totalSalesCount * 100)}%)</div>
+                            <div style="margin-bottom: 0.4rem;"><span style="display:inline-block;width:10px;height:10px;background:#3B82F6;border-radius:2px;margin-right:6px;"></span>Resale: ${salesTypeCount.Resale} (${Math.round(salesTypeCount.Resale / totalSalesCount * 100)}%)</div>
                             <div style="margin-bottom: 0.4rem;"><span style="display:inline-block;width:10px;height:10px;background:#00d4aa;border-radius:2px;margin-right:6px;"></span>Inventory: ${salesTypeCount.Inventory} (${Math.round(salesTypeCount.Inventory / totalSalesCount * 100)}%)</div>
                             <div><span style="display:inline-block;width:10px;height:10px;background:#ffb347;border-radius:2px;margin-right:6px;"></span>Hybrid: ${salesTypeCount.Hybrid} (${Math.round(salesTypeCount.Hybrid / totalSalesCount * 100)}%)</div>
                         </div>

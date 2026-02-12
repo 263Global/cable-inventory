@@ -29,7 +29,7 @@
 .btn-primary:hover {
     background: var(--accent-primary-hover, #5851ea);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(99, 91, 255, 0.25);
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25);
 }
 
 .btn-secondary {
@@ -190,7 +190,7 @@ tbody tr:hover {
 }
 
 .badge-primary {
-    background: rgba(99, 91, 255, 0.12);
+    background: rgba(37, 99, 235, 0.12);
     color: var(--accent-primary);
 }
 
@@ -307,7 +307,7 @@ tbody tr:hover {
 .form-control:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .form-control::placeholder {
@@ -378,7 +378,7 @@ select.form-control:focus {
 
 .quick-action-card:hover {
     border-color: var(--accent-primary);
-    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.15);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
     transform: translateY(-2px);
 }
 
@@ -717,7 +717,7 @@ select.form-control:focus {
 }
 
 .searchable-dropdown-option:hover {
-    background: rgba(99, 91, 255, 0.05);
+    background: rgba(37, 99, 235, 0.05);
 }
 
 .searchable-dropdown-option:hover .option-label {
@@ -726,7 +726,7 @@ select.form-control:focus {
 
 .searchable-dropdown-option.selected {
     color: var(--accent-primary);
-    background: rgba(99, 91, 255, 0.05);
+    background: rgba(37, 99, 235, 0.05);
 }
 
 .searchable-dropdown-option .option-label {
@@ -863,7 +863,7 @@ select.form-control:focus {
 }
 
 .simple-dropdown-option.selected {
-    background-color: rgba(99, 91, 255, 0.08);
+    background-color: rgba(37, 99, 235, 0.08);
     color: var(--accent-primary);
     font-weight: 500;
 }
