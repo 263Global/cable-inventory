@@ -322,19 +322,44 @@ export function renderSalesList(context, filters = {}) {
     });
 
     // Kebab dropdown toggle + close-on-outside-click
+    // Uses fixed positioning to escape table-container overflow clipping
+    const closeAllDropdowns = () => {
+        context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.position = '';
+            m.style.top = '';
+            m.style.left = '';
+            m.style.right = '';
+            m.style.bottom = '';
+        });
+    };
     context.container.querySelectorAll('.action-dropdown-trigger').forEach(trigger => {
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();
             const menu = trigger.nextElementSibling;
             const wasOpen = menu.classList.contains('open');
-            // Close all open dropdowns first
-            context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open'));
-            if (!wasOpen) menu.classList.add('open');
+            closeAllDropdowns();
+            if (!wasOpen) {
+                // Position menu using fixed so it escapes overflow containers
+                const rect = trigger.getBoundingClientRect();
+                const menuHeight = 160; // approximate height
+                const spaceBelow = window.innerHeight - rect.bottom;
+                menu.style.position = 'fixed';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                menu.style.left = 'auto';
+                if (spaceBelow < menuHeight) {
+                    // Open upward when near the bottom
+                    menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                    menu.style.top = 'auto';
+                } else {
+                    menu.style.top = (rect.bottom + 4) + 'px';
+                    menu.style.bottom = 'auto';
+                }
+                menu.classList.add('open');
+            }
         });
     });
-    document.addEventListener('click', () => {
-        context.container.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open'));
-    }, { once: false });
+    document.addEventListener('click', closeAllDropdowns, { once: false });
 
     // Add filter event listeners
     const applyFilters = (page = 1) => {
