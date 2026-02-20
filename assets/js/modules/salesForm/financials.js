@@ -3,6 +3,10 @@
  */
 
 export function calculateSalesFinancials(context) {
+    // MVP: Financial calculations disabled — profitability sidebar is hidden.
+    // This no-op keeps the 17 call sites across the codebase working without errors.
+    // Re-enable by removing this early return when the profitability panel is restored.
+    return;
     // ===== Helper Functions =====
     const getValue = (name) => Number(document.querySelector(`[name="${name}"]`)?.value || 0);
     const getVal = (name) => document.querySelector(`[name="${name}"]`)?.value || '';

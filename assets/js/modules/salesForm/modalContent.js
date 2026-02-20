@@ -16,10 +16,10 @@ export function buildSalesModalContent({
 }) {
     return `
             <!-- 2-Column Layout: Profitability (sticky) | Right Container -->
-            <div class="sales-form-grid" style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;">
+            <div class="sales-form-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; align-items: start;">
                 
-                <!-- COLUMN 1: Profitability Analysis (Sticky) -->
-                <div style="position: sticky; top: 0; z-index: 10;">
+                <!-- COLUMN 1: Profitability Analysis (MVP: hidden) -->
+                <div style="display: none; position: sticky; top: 0; z-index: 10;">
                     <div id="profitability-widget" style="
                         background: var(--bg-secondary);
                         border-radius: 12px;

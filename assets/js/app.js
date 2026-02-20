@@ -69,7 +69,7 @@ const App = {
         this.cacheDOM();
         this.bindEvents();
         this.initTheme();
-        this.renderView('dashboard');
+        this.renderView('inventory');
         // Selection state
         this._selectedSales = new Set();
         this._selectedInventory = new Set();
@@ -176,7 +176,7 @@ const App = {
 
             switch (viewName) {
                 case 'dashboard':
-                    this.pageTitle.textContent = 'Operational Dashboard';
+                    this.pageTitle.textContent = 'Dashboard';
                     await this.renderDashboard();
                     break;
                 case 'inventory':
@@ -220,8 +220,8 @@ const App = {
                     await this.renderSuppliers();
                     break;
                 default:
-                    this.pageTitle.textContent = 'Operational Dashboard';
-                    await this.renderDashboard();
+                    this.pageTitle.textContent = 'Inventory Resources';
+                    await this.renderInventory();
             }
         } catch (err) {
             this.handleError(err, { viewName });
@@ -381,8 +381,17 @@ const App = {
     //#region Dashboard
 
     async renderDashboard() {
-        const mod = await loadModule('dashboard');
-        mod.renderDashboard(this);
+        // MVP: Dashboard disabled — show placeholder
+        this.container.innerHTML = `
+            <div class="section-card" style="max-width: 600px; margin: 4rem auto; text-align: center; padding: 3rem 2rem;">
+                <ion-icon name="construct-outline" style="font-size: 3rem; color: var(--accent-primary); margin-bottom: 1rem;"></ion-icon>
+                <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">Dashboard Under Construction</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
+                    We're redesigning the dashboard with new metrics.<br>
+                    In the meantime, use the sidebar to manage Inventory and Sales.
+                </p>
+            </div>
+        `;
     },
     //#endregion Dashboard
 

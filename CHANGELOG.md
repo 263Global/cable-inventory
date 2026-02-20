@@ -4,7 +4,9 @@ All notable changes to the Cable Inventory Manager will be documented in this fi
 
 ## [Unreleased]
 
----
+### Changed
+- **MVP Pivot: Dashboard Hidden** — Dashboard replaced with "Under Construction" placeholder; app now opens on Inventory by default
+- **MVP Pivot: Sales Profitability Disabled** — Profitability Analysis sidebar hidden in Sales form; `calculateSalesFinancials()` is now a no-op; Sales form, Cost Cards, Revenue fields, Renewal, and Termination remain fully functional
 
 ## [1.16.0] - 2026-02-12
 
