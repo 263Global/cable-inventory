@@ -130,6 +130,8 @@ export interface InventoryCircuit {
     current_interface_type_id: string | null
     original_type?: { name: string } | null // joined
     current_type?: { name: string } | null // joined
+    handover_location_a_id: string | null
+    handover_location_z_id: string | null
     status: 'Available' | 'Allocated' | 'Reserved'
     notes: string | null
     created_at: string

@@ -2,10 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, MapPin, DollarSign, BarChart3, Loader2,
-    Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw,
+    Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers,
 } from 'lucide-react'
 import { fetchInventoryById } from './api'
-import { fetchCircuits, createCircuit, updateCircuit, deleteCircuit, fetchInterfaceTypes } from '@/lib/reference-api'
+import {
+    fetchCircuits, createCircuit, updateCircuit, deleteCircuit,
+    fetchInterfaceTypes, fetchBatches, createBatch, deleteBatch,
+    fetchHandoverLocations,
+} from '@/lib/reference-api'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import type { InventoryResource, InventoryCircuit } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -31,6 +35,12 @@ const circuitStatusColors: Record<string, string> = {
     'Reserved': 'text-info',
 }
 
+const batchStatusColors: Record<string, string> = {
+    'Planned': 'bg-info/15 text-info',
+    'Active': 'bg-status-available/15 text-status-available',
+    'Ended': 'bg-status-expired/15 text-status-expired',
+}
+
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
     return (
         <div>
@@ -40,37 +50,51 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
     )
 }
 
+interface BatchRecord {
+    id: string
+    batch_number: number
+    capacity: number
+    model: string
+    start_date: string | null
+    term_months: number | null
+    otc: number | null
+    om_rate: number | null
+    annual_om_cost: number | null
+    mrc: number | null
+    status: string
+}
+
 export function InventoryDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const [resource, setResource] = useState<InventoryResource | null>(null)
     const [loading, setLoading] = useState(true)
     const [circuits, setCircuits] = useState<InventoryCircuit[]>([])
+    const [batches, setBatches] = useState<BatchRecord[]>([])
     const [interfaceTypes, setInterfaceTypes] = useState<{ id: string; name: string }[]>([])
+    const [handoverLocations, setHandoverLocations] = useState<{ id: string; name: string; country: string; city: string; type: string }[]>([])
     const [showAddCircuit, setShowAddCircuit] = useState(false)
-    const [newCircuit, setNewCircuit] = useState({ capacity: '', interface_type_id: '' })
+    const [newCircuit, setNewCircuit] = useState({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
     const [savingCircuit, setSavingCircuit] = useState(false)
 
     const loadCircuits = useCallback(async () => {
         if (!id) return
-        try {
-            const data = await fetchCircuits(id)
-            setCircuits(data as InventoryCircuit[])
-        } catch (err) {
-            console.error('Failed to load circuits:', err)
-        }
+        try { setCircuits(await fetchCircuits(id) as InventoryCircuit[]) } catch (err) { console.error(err) }
+    }, [id])
+
+    const loadBatches = useCallback(async () => {
+        if (!id) return
+        try { setBatches(await fetchBatches(id) as BatchRecord[]) } catch (err) { console.error(err) }
     }, [id])
 
     useEffect(() => {
         if (!id) return
-        fetchInventoryById(id)
-            .then(setResource)
-            .catch(console.error)
-            .finally(() => setLoading(false))
-
+        fetchInventoryById(id).then(setResource).catch(console.error).finally(() => setLoading(false))
         loadCircuits()
+        loadBatches()
         fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
-    }, [id, loadCircuits])
+        fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
+    }, [id, loadCircuits, loadBatches])
 
     const handleAddCircuit = async () => {
         if (!id || !newCircuit.capacity || !newCircuit.interface_type_id) return
@@ -84,14 +108,22 @@ export function InventoryDetailPage() {
                 original_interface_type_id: newCircuit.interface_type_id,
                 current_interface_type_id: newCircuit.interface_type_id,
             })
-            setNewCircuit({ capacity: '', interface_type_id: '' })
+            // If circuit has handover locations, update them
+            if (newCircuit.handover_a_id || newCircuit.handover_z_id) {
+                const created = (await fetchCircuits(id)) as InventoryCircuit[]
+                const newest = created[created.length - 1]
+                if (newest) {
+                    await updateCircuit(newest.id, {
+                        handover_location_a_id: newCircuit.handover_a_id || null,
+                        handover_location_z_id: newCircuit.handover_z_id || null,
+                    })
+                }
+            }
+            setNewCircuit({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
             setShowAddCircuit(false)
             loadCircuits()
-        } catch (err) {
-            console.error('Failed to add circuit:', err)
-        } finally {
-            setSavingCircuit(false)
-        }
+        } catch (err) { console.error(err) }
+        finally { setSavingCircuit(false) }
     }
 
     const handleChangeInterfaceType = async (circuitId: string, newTypeId: string) => {
@@ -105,32 +137,41 @@ export function InventoryDetailPage() {
         loadCircuits()
     }
 
+    const handleAddQuickBatch = async () => {
+        if (!id) return
+        const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.batch_number)) + 1 : 1
+        await createBatch({ inventory_resource_id: id, batch_number: nextNum, capacity: 0, model: 'IRU' })
+        loadBatches()
+    }
+
+    const handleDeleteBatch = async (batchId: string) => {
+        if (!confirm('Delete this batch?')) return
+        await deleteBatch(batchId)
+        loadBatches()
+    }
+
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
-        )
+        return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 text-primary animate-spin" /></div>
     }
 
     if (!resource) {
         return (
             <div className="text-center py-20">
                 <p className="text-text-muted text-lg">Resource not found</p>
-                <button onClick={() => navigate('/inventory')} className="mt-4 text-primary hover:underline cursor-pointer">
-                    ← Back to Inventory
-                </button>
+                <button onClick={() => navigate('/inventory')} className="mt-4 text-primary hover:underline cursor-pointer">← Back to Inventory</button>
             </div>
         )
     }
 
+    const isBatchMode = resource.cost_mode === 'Base+Batch'
     const isIRU = resource.acquisition_type === 'IRU'
     const isLease = resource.acquisition_type === 'Lease'
     const totalCap = Number(resource.total_capacity ?? 0)
     const usedCap = Number(resource.used_capacity ?? 0)
     const usagePct = totalCap > 0 ? Math.min((usedCap / totalCap) * 100, 100) : 0
     const remaining = totalCap - usedCap
-    const circuitTotal = circuits.reduce((sum, c) => sum + Number(c.capacity), 0)
+    const batchTotalCap = batches.reduce((sum, b) => sum + Number(b.capacity ?? 0), 0)
+    const batchPct = totalCap > 0 ? Math.min((batchTotalCap / totalCap) * 100, 100) : 0
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -145,6 +186,7 @@ export function InventoryDetailPage() {
                             <h1 className="text-2xl font-bold">{resource.resource_id}</h1>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[resource.type]}`}>{resource.type}</span>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[resource.status]}`}>{resource.status}</span>
+                            {isBatchMode && <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">Base+Batch</span>}
                         </div>
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}
                     </div>
@@ -164,21 +206,13 @@ export function InventoryDetailPage() {
                         <InfoRow label="Supplier" value={resource.supplier_name} />
                         <InfoRow label="Acquisition" value={resource.acquisition_type} />
                         <div className="flex items-center gap-2">
-                            {resource.protection === 'Protected'
-                                ? <Shield className="h-4 w-4 text-primary" />
-                                : <ShieldOff className="h-4 w-4 text-text-dim" />}
+                            {resource.protection === 'Protected' ? <Shield className="h-4 w-4 text-primary" /> : <ShieldOff className="h-4 w-4 text-text-dim" />}
                             <span className="text-sm">{resource.protection}</span>
                         </div>
                         <InfoRow label="Contract Ref" value={resource.contract_ref} />
                         <InfoRow label="Cost Mode" value={resource.cost_mode} />
-                        <InfoRow label="Capacity" value={totalCap > 0 ? `${totalCap}G` : null} />
+                        <InfoRow label={isBatchMode ? 'Base Capacity' : 'Capacity'} value={totalCap > 0 ? `${totalCap}G` : null} />
                     </div>
-                    {resource.notes && (
-                        <div className="mt-4 pt-4 border-t border-border-subtle">
-                            <p className="text-xs text-text-dim">Notes</p>
-                            <p className="text-sm mt-1 text-text-muted">{resource.notes}</p>
-                        </div>
-                    )}
                 </div>
 
                 {/* Card 2: Locations */}
@@ -202,28 +236,74 @@ export function InventoryDetailPage() {
                             {resource.handover_z_name && <p className="text-xs text-text-muted mt-0.5">🏢 {resource.handover_z_name}</p>}
                         </div>
                     </div>
-                    {resource.route_description && <p className="text-sm text-text-muted mt-3">{resource.route_description}</p>}
                 </div>
 
-                {/* Card 3: Capacity Usage + Circuits */}
+                {/* Card 3: Batches (Base+Batch mode only) */}
+                {isBatchMode && (
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Layers className="h-4 w-4 text-primary" />
+                                <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Batches</h2>
+                                <span className="text-xs text-text-dim ml-2">{batchTotalCap}G lit of {totalCap}G base ({Math.round(batchPct)}%)</span>
+                            </div>
+                            <button onClick={handleAddQuickBatch}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-medium transition-colors cursor-pointer">
+                                <Plus className="h-3.5 w-3.5" /> Add Batch
+                            </button>
+                        </div>
+                        {/* Batch capacity bar */}
+                        <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden mb-4">
+                            <div className={`h-full rounded-full transition-all ${batchPct > 100 ? 'bg-destructive' : 'bg-primary'}`}
+                                style={{ width: `${Math.min(batchPct, 100)}%` }} />
+                        </div>
+                        {batches.length === 0 ? (
+                            <p className="text-sm text-text-dim text-center py-4">No batches defined yet.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {batches.map((b) => (
+                                    <div key={b.id} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border-subtle">
+                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface text-xs font-bold text-text-muted">
+                                            B{b.batch_number}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium">{b.capacity}G</span>
+                                                <span className="text-xs text-text-dim">{b.model}</span>
+                                                <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${batchStatusColors[b.status]}`}>{b.status}</span>
+                                            </div>
+                                            <div className="text-xs text-text-dim mt-0.5">
+                                                {b.start_date || '—'} · {b.term_months ? `${b.term_months}mo` : '—'}
+                                                {b.model === 'IRU' && b.otc ? ` · OTC ${formatCurrency(Number(b.otc))}` : ''}
+                                                {b.model === 'Lease' && b.mrc ? ` · MRC ${formatCurrency(Number(b.mrc))}` : ''}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDeleteBatch(b.id)}
+                                            className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Card 4: Capacity Usage + Circuits */}
                 {totalCap > 0 && (
                     <div className="bg-surface rounded-xl border border-border-subtle p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <BarChart3 className="h-4 w-4 text-primary" />
-                            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Capacity Usage</h2>
+                            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Capacity & Circuits</h2>
                         </div>
-                        {/* Progress bar */}
                         <div className="mb-3">
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="font-medium">{usedCap}G / {totalCap}G Used</span>
                                 <span className="text-text-muted">{Math.round(usagePct)}%</span>
                             </div>
                             <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all ${usagePct >= 100 ? 'bg-status-full' : usagePct >= 50 ? 'bg-status-partial' : 'bg-status-available'
-                                        }`}
-                                    style={{ width: `${usagePct}%` }}
-                                />
+                                <div className={`h-full rounded-full transition-all ${usagePct >= 100 ? 'bg-status-full' : usagePct >= 50 ? 'bg-status-partial' : 'bg-status-available'}`}
+                                    style={{ width: `${usagePct}%` }} />
                             </div>
                         </div>
                         <div className="flex gap-6 text-sm mt-2">
@@ -231,56 +311,75 @@ export function InventoryDetailPage() {
                             <div><span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" /><span className="text-text-muted">Used: </span><span className="font-medium">{usedCap}G</span></div>
                         </div>
 
-                        {/* Circuits section */}
+                        {/* Circuits */}
                         <div className="mt-6 pt-4 border-t border-border-subtle">
                             <div className="flex items-center justify-between mb-3">
-                                <div>
-                                    <h3 className="text-sm font-semibold">Circuits</h3>
-                                    <p className="text-xs text-text-dim mt-0.5">
-                                        {circuits.length} circuit{circuits.length !== 1 ? 's' : ''} · {circuitTotal}G mapped of {totalCap}G total
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setShowAddCircuit(!showAddCircuit)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-medium transition-colors cursor-pointer"
-                                >
+                                <h3 className="text-sm font-semibold">Circuits</h3>
+                                <button onClick={() => setShowAddCircuit(!showAddCircuit)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-medium transition-colors cursor-pointer">
                                     <Plus className="h-3.5 w-3.5" /> Add Circuit
                                 </button>
                             </div>
 
-                            {/* Add circuit form */}
                             {showAddCircuit && (
-                                <div className="flex items-end gap-3 mb-4 p-3 bg-background rounded-lg border border-border-subtle">
-                                    <div className="flex-1">
-                                        <label className="block text-xs text-text-dim mb-1">Capacity (G)</label>
-                                        <input type="number" value={newCircuit.capacity}
-                                            onChange={(e) => setNewCircuit((p) => ({ ...p, capacity: e.target.value }))}
-                                            placeholder="100"
-                                            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                                <div className="mb-4 p-3 bg-background rounded-lg border border-border-subtle space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-text-dim mb-1">Capacity (G)</label>
+                                            <input type="number" value={newCircuit.capacity}
+                                                onChange={(e) => setNewCircuit((p) => ({ ...p, capacity: e.target.value }))}
+                                                placeholder="100"
+                                                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-text-dim mb-1">Interface Type</label>
+                                            <SearchableSelect
+                                                options={interfaceTypes.map((t) => ({ value: t.id, label: t.name }))}
+                                                value={newCircuit.interface_type_id}
+                                                onChange={(v) => setNewCircuit((p) => ({ ...p, interface_type_id: v }))}
+                                                placeholder="Select type..."
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="block text-xs text-text-dim mb-1">Interface Type</label>
-                                        <SearchableSelect
-                                            options={interfaceTypes.map((t) => ({ value: t.id, label: t.name }))}
-                                            value={newCircuit.interface_type_id}
-                                            onChange={(v) => setNewCircuit((p) => ({ ...p, interface_type_id: v }))}
-                                            placeholder="Select type..."
-                                        />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-text-dim mb-1">Handover A (optional, override)</label>
+                                            <SearchableSelect
+                                                options={handoverLocations.map((h) => ({ value: h.id, label: h.name, sublabel: `${h.city || ''}, ${h.country}` }))}
+                                                value={newCircuit.handover_a_id}
+                                                onChange={(v) => setNewCircuit((p) => ({ ...p, handover_a_id: v }))}
+                                                placeholder="Default from resource..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-text-dim mb-1">Handover Z (optional, override)</label>
+                                            <SearchableSelect
+                                                options={handoverLocations.map((h) => ({ value: h.id, label: h.name, sublabel: `${h.city || ''}, ${h.country}` }))}
+                                                value={newCircuit.handover_z_id}
+                                                onChange={(v) => setNewCircuit((p) => ({ ...p, handover_z_id: v }))}
+                                                placeholder="Default from resource..."
+                                            />
+                                        </div>
                                     </div>
-                                    <button onClick={handleAddCircuit} disabled={savingCircuit}
-                                        className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                                        {savingCircuit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                                    </button>
+                                    <div className="flex justify-end">
+                                        <button onClick={handleAddCircuit} disabled={savingCircuit}
+                                            className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                                            {savingCircuit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Circuits list */}
                             {circuits.length > 0 ? (
                                 <div className="space-y-2">
                                     {circuits.map((circuit) => {
                                         const origName = (circuit.original_type as { name: string } | null)?.name ?? '—'
                                         const currName = (circuit.current_type as { name: string } | null)?.name ?? '—'
                                         const wasConverted = circuit.original_interface_type_id !== circuit.current_interface_type_id
+                                        const circuitHandoverA = circuit.handover_location_a_id
+                                        const circuitHandoverZ = circuit.handover_location_z_id
+                                        const hLocA = circuitHandoverA ? handoverLocations.find((h) => h.id === circuitHandoverA) : null
+                                        const hLocZ = circuitHandoverZ ? handoverLocations.find((h) => h.id === circuitHandoverZ) : null
 
                                         return (
                                             <div key={circuit.id} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border-subtle">
@@ -301,9 +400,13 @@ export function InventoryDetailPage() {
                                                             </>
                                                         )}
                                                     </div>
+                                                    {(hLocA || hLocZ) && (
+                                                        <div className="text-xs text-text-dim mt-0.5">
+                                                            🏢 {hLocA?.name ?? '(default)'} → {hLocZ?.name ?? '(default)'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    {/* Quick change interface type */}
                                                     <div className="w-28">
                                                         <SearchableSelect
                                                             options={interfaceTypes.map((t) => ({ value: t.id, label: t.name }))}
@@ -322,45 +425,43 @@ export function InventoryDetailPage() {
                                     })}
                                 </div>
                             ) : (
-                                <p className="text-sm text-text-dim text-center py-4">No circuits defined yet. Add circuits to track interface types.</p>
+                                <p className="text-sm text-text-dim text-center py-4">No circuits defined yet.</p>
                             )}
-                        </div>
-
-                        {/* Linked Sales placeholder */}
-                        <div className="mt-4 pt-4 border-t border-border-subtle">
-                            <p className="text-xs text-text-dim">Linked Sales Orders</p>
-                            <p className="text-sm text-text-muted mt-1">No sales orders linked yet</p>
                         </div>
                     </div>
                 )}
 
-                {/* Card 4: Contract & Financials */}
+                {/* Card 5: Contract & Financials */}
                 <div className="bg-surface rounded-xl border border-border-subtle p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <DollarSign className="h-4 w-4 text-primary" />
-                        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Contract & Financials</h2>
+                        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+                            {isBatchMode ? 'Base Contract & Financials' : 'Contract & Financials'}
+                        </h2>
                     </div>
                     <div className="grid grid-cols-3 gap-6 mb-6">
                         <div className="flex items-start gap-2">
                             <Calendar className="h-4 w-4 text-text-dim mt-0.5" />
-                            <InfoRow label="Term" value={resource.term_months ? `${resource.term_months} months` : null} />
+                            <InfoRow label={isBatchMode ? 'Base Term' : 'Term'} value={resource.term_months ? `${resource.term_months} months` : null} />
                         </div>
                         <InfoRow label="Start Date" value={resource.start_date} />
                         <InfoRow label="End Date" value={resource.end_date} />
                     </div>
 
-                    {isIRU && (
+                    {(isIRU || isBatchMode) && (
                         <div className="p-4 bg-background rounded-lg border border-border-subtle">
-                            <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">IRU Financials</h3>
+                            <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">
+                                {isBatchMode ? 'Base IRU Cost' : 'IRU Financials'}
+                            </h3>
                             <div className="grid grid-cols-3 gap-6">
-                                <InfoRow label="OTC" value={resource.otc ? formatCurrency(Number(resource.otc)) : null} />
-                                <InfoRow label="O&M Rate" value={resource.om_rate ? `${resource.om_rate}%` : null} />
+                                <InfoRow label={isBatchMode ? 'Base OTC' : 'OTC'} value={resource.otc ? formatCurrency(Number(resource.otc)) : null} />
+                                <InfoRow label={isBatchMode ? 'Base O&M Rate' : 'O&M Rate'} value={resource.om_rate ? `${resource.om_rate}%` : null} />
                                 <InfoRow label="Annual O&M" value={resource.annual_om_cost ? formatCurrency(Number(resource.annual_om_cost)) : null} />
                             </div>
                         </div>
                     )}
 
-                    {isLease && (
+                    {isLease && !isBatchMode && (
                         <div className="p-4 bg-background rounded-lg border border-border-subtle">
                             <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Lease Financials</h3>
                             <div className="grid grid-cols-2 gap-6">

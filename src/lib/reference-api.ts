@@ -159,3 +159,71 @@ export async function fetchAllCountries() {
     if (error) throw error
     return data ?? []
 }
+
+// ============================================
+// Suppliers
+// ============================================
+
+export async function fetchSuppliers() {
+    const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .order('name')
+    if (error) throw error
+    return data ?? []
+}
+
+// ============================================
+// Inventory Batches (Base+Batch mode)
+// ============================================
+
+export async function fetchBatches(inventoryResourceId: string) {
+    const { data, error } = await supabase
+        .from('inventory_batches')
+        .select('*')
+        .eq('inventory_resource_id', inventoryResourceId)
+        .order('batch_number')
+    if (error) throw error
+    return data ?? []
+}
+
+export async function createBatch(batch: {
+    inventory_resource_id: string
+    batch_number: number
+    capacity: number
+    model: string
+    start_date?: string
+    term_months?: number
+    otc?: number
+    om_rate?: number
+    annual_om_cost?: number
+    mrc?: number
+    status?: string
+}) {
+    const { data, error } = await supabase
+        .from('inventory_batches')
+        .insert(batch)
+        .select()
+        .single()
+    if (error) throw error
+    return data
+}
+
+export async function updateBatch(id: string, updates: Record<string, unknown>) {
+    const { data, error } = await supabase
+        .from('inventory_batches')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+    if (error) throw error
+    return data
+}
+
+export async function deleteBatch(id: string) {
+    const { error } = await supabase
+        .from('inventory_batches')
+        .delete()
+        .eq('id', id)
+    if (error) throw error
+}

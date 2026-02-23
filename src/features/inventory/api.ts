@@ -22,6 +22,7 @@ export async function fetchInventoryResources(typeFilter?: string): Promise<Inve
         .select(`
       *,
       cable_system:cable_systems(name),
+      supplier:suppliers(name),
       country_a:countries!country_a_id(name),
       country_z:countries!country_z_id(name),
       landing_station_a:landing_stations!landing_station_a_id(name),
@@ -42,6 +43,7 @@ export async function fetchInventoryResources(typeFilter?: string): Promise<Inve
     return (data ?? []).map((r) => ({
         ...r,
         cable_system_name: (r.cable_system as { name: string } | null)?.name ?? null,
+        supplier_name: (r.supplier as { name: string } | null)?.name ?? null,
         country_a: (r.country_a as { name: string } | null)?.name ?? null,
         country_z: (r.country_z as { name: string } | null)?.name ?? null,
         landing_station_a_name: (r.landing_station_a as { name: string } | null)?.name ?? null,
@@ -58,6 +60,7 @@ export async function fetchInventoryById(id: string): Promise<InventoryResource 
         .select(`
       *,
       cable_system:cable_systems(name),
+      supplier:suppliers(name),
       country_a:countries!country_a_id(name),
       country_z:countries!country_z_id(name),
       landing_station_a:landing_stations!landing_station_a_id(name),
@@ -74,6 +77,7 @@ export async function fetchInventoryById(id: string): Promise<InventoryResource 
     return {
         ...data,
         cable_system_name: (data.cable_system as { name: string } | null)?.name ?? null,
+        supplier_name: (data.supplier as { name: string } | null)?.name ?? null,
         country_a: (data.country_a as { name: string } | null)?.name ?? null,
         country_z: (data.country_z as { name: string } | null)?.name ?? null,
         landing_station_a_name: (data.landing_station_a as { name: string } | null)?.name ?? null,
