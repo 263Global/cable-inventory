@@ -33,7 +33,16 @@ interface InvResource {
 }
 
 const STATUSES: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
-const ITEM_TYPES: SalesItemType[] = ['Capacity', 'Backhaul', 'Local Access', 'Cross-Connect', 'NRC', 'Other']
+const ITEM_TYPES: SalesItemType[] = ['Capacity', 'Backhaul', 'Cross-Connect', 'NRC', 'Other']
+
+// Field visibility config per item type
+const FIELD_CFG: Record<string, { disposal: boolean; resource: boolean | 'terrestrial'; circuits: boolean; capacity: boolean; description: 'optional' | 'required'; term: boolean; mrc: boolean; nrc: boolean }> = {
+    'Capacity': { disposal: true, resource: true, circuits: true, capacity: true, description: 'optional', term: true, mrc: true, nrc: true },
+    'Backhaul': { disposal: true, resource: 'terrestrial', circuits: false, capacity: true, description: 'optional', term: true, mrc: true, nrc: true },
+    'Cross-Connect': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: true, mrc: true, nrc: true },
+    'NRC': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: false, mrc: false, nrc: true },
+    'Other': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: true, mrc: true, nrc: true },
+}
 const DISPOSAL_TYPES: DisposalType[] = ['IRU Out', 'Lease Out', 'Swap Out', 'Self Use']
 
 interface ItemDraft {
@@ -235,6 +244,15 @@ export function SalesFormPage() {
                     updated.end_date = start.toISOString().split('T')[0]
                 }
             }
+            // Clear irrelevant fields on type change
+            if (field === 'type') {
+                const cfg = FIELD_CFG[value] ?? FIELD_CFG['Other']
+                if (!cfg.resource) { updated.inventory_resource_id = ''; updated.selectedCircuitIds = []; updated.existingCircuitIds = [] }
+                if (!cfg.capacity) { updated.capacity = ''; updated.spec = '' }
+                if (!cfg.disposal) { updated.disposal_type = 'IRU Out' as DisposalType }
+                if (!cfg.term) { updated.term_months = ''; updated.end_date = '' }
+                if (!cfg.mrc) { updated.sell_mrc = ''; updated.sell_otc = ''; updated.sell_om_rate = ''; updated.sell_annual_om = '' }
+            }
             return updated
         }))
     }
@@ -309,7 +327,7 @@ export function SalesFormPage() {
     }
 
     const isIRUStyle = (dt: DisposalType) => dt === 'IRU Out' || dt === 'Swap Out'
-    const canLinkInventory = (type: SalesItemType) => type === 'Capacity' || type === 'Backhaul'
+    const canLinkInventory = (type: SalesItemType) => !!(FIELD_CFG[type]?.resource)
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -407,6 +425,7 @@ export function SalesFormPage() {
                             </div>
 
                             {/* Row 1: Type + Disposal + inventory link */}
+                            {/* Row 1 top: Type + Disposal/Resource/Description */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-xs text-text-dim mb-1">Type</label>
@@ -416,20 +435,22 @@ export function SalesFormPage() {
                                         {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs text-text-dim mb-1">Disposal Type</label>
-                                    <select value={item.disposal_type} onChange={(e) => updateItem(idx, 'disposal_type', e.target.value)}
-                                        className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                    >
-                                        {DISPOSAL_TYPES.map((d) => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                </div>
+                                {(FIELD_CFG[item.type]?.disposal ?? false) && (
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Disposal Type</label>
+                                        <select value={item.disposal_type} onChange={(e) => updateItem(idx, 'disposal_type', e.target.value)}
+                                            className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
+                                        >
+                                            {DISPOSAL_TYPES.map((d) => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                                 {canLinkInventory(item.type) ? (
                                     <div>
                                         <label className="block text-xs text-text-dim mb-1">Inventory Resource</label>
                                         <SearchableSelect
                                             options={resources
-                                                .filter(r => item.type === 'Capacity' ? r.type === 'Capacity' : r.type === 'Terrestrial')
+                                                .filter(r => FIELD_CFG[item.type]?.resource === 'terrestrial' ? r.type === 'Terrestrial' : r.type === 'Capacity')
                                                 .map((r) => {
                                                     const route = r.landing_a_name && r.landing_z_name
                                                         ? `${r.landing_a_name} → ${r.landing_z_name}`
@@ -448,7 +469,6 @@ export function SalesFormPage() {
                                             value={item.inventory_resource_id}
                                             onChange={(v) => {
                                                 const res = resources.find(r => r.id === v)
-                                                // Single state update: set resource, spec, and reset circuits
                                                 setItems(prev => prev.map((it, i) => i === idx ? {
                                                     ...it,
                                                     inventory_resource_id: v,
@@ -462,8 +482,8 @@ export function SalesFormPage() {
                                         />
                                     </div>
                                 ) : (
-                                    <div>
-                                        <label className="block text-xs text-text-dim mb-1">Description</label>
+                                    <div className={!FIELD_CFG[item.type]?.disposal ? 'col-span-2' : ''}>
+                                        <label className="block text-xs text-text-dim mb-1">Description {FIELD_CFG[item.type]?.description === 'required' && <span className="text-destructive">*</span>}</label>
                                         <input type="text" value={item.description} onChange={(e) => updateItem(idx, 'description', e.target.value)}
                                             placeholder="e.g. 楼内线 中环17楼"
                                             className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text placeholder:text-text-dim focus:ring-1 focus:ring-primary focus:outline-none"
@@ -472,8 +492,8 @@ export function SalesFormPage() {
                                 )}
                             </div>
 
-                            {/* Circuit Picker */}
-                            {canLinkInventory(item.type) && item.inventory_resource_id && (() => {
+                            {/* Circuit Picker — Capacity only */}
+                            {FIELD_CFG[item.type]?.circuits && item.inventory_resource_id && (() => {
                                 const circuits = circuitsByResource[item.inventory_resource_id] ?? []
                                 if (circuits.length === 0) return null
                                 return (
@@ -520,37 +540,41 @@ export function SalesFormPage() {
                                 )
                             })()}
 
-                            {/* Row 2: Capacity + Spec + Dates */}
+                            {/* Row 2: Capacity/Spec + Dates — conditional by type */}
                             <div className="grid grid-cols-4 gap-4">
-                                <div>
-                                    <label className="block text-xs text-text-dim mb-1">Capacity</label>
-                                    <input type="number" value={item.capacity} onChange={(e) => updateItem(idx, 'capacity', e.target.value)}
-                                        className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-text-dim mb-1">Spec</label>
-                                    <input type="text" value={item.spec} onChange={(e) => updateItem(idx, 'spec', e.target.value)} placeholder="100G"
-                                        className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text placeholder:text-text-dim focus:ring-1 focus:ring-primary focus:outline-none"
-                                    />
-                                </div>
+                                {FIELD_CFG[item.type]?.capacity && (<>
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Capacity</label>
+                                        <input type="number" value={item.capacity} onChange={(e) => updateItem(idx, 'capacity', e.target.value)}
+                                            className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Spec</label>
+                                        <input type="text" value={item.spec} onChange={(e) => updateItem(idx, 'spec', e.target.value)} placeholder="100G"
+                                            className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text placeholder:text-text-dim focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </>)}
                                 <div>
                                     <label className="block text-xs text-text-dim mb-1">Start Date</label>
                                     <input type="date" value={item.start_date} onChange={(e) => updateItem(idx, 'start_date', e.target.value)}
                                         className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs text-text-dim mb-1">Term (months)</label>
-                                    <input type="number" value={item.term_months} onChange={(e) => updateItem(idx, 'term_months', e.target.value)}
-                                        className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                    />
-                                </div>
+                                {FIELD_CFG[item.type]?.term && (
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Term (months)</label>
+                                        <input type="number" value={item.term_months} onChange={(e) => updateItem(idx, 'term_months', e.target.value)}
+                                            className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Row 3: Financials (dynamic by disposal type) */}
+                            {/* Row 3: Financials — conditional by type */}
                             <div className="grid grid-cols-4 gap-4">
-                                {isIRUStyle(item.disposal_type) ? (
+                                {FIELD_CFG[item.type]?.disposal && isIRUStyle(item.disposal_type) ? (
                                     <>
                                         <div>
                                             <label className="block text-xs text-text-dim mb-1">Sell OTC ($)</label>
@@ -579,18 +603,22 @@ export function SalesFormPage() {
                                     </>
                                 ) : (
                                     <>
-                                        <div>
-                                            <label className="block text-xs text-text-dim mb-1">Sell MRC ($)</label>
-                                            <input type="number" value={item.sell_mrc} onChange={(e) => updateItem(idx, 'sell_mrc', e.target.value)}
-                                                className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-text-dim mb-1">NRC ($)</label>
-                                            <input type="number" value={item.sell_nrc} onChange={(e) => updateItem(idx, 'sell_nrc', e.target.value)}
-                                                className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                            />
-                                        </div>
+                                        {FIELD_CFG[item.type]?.mrc && (
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">Sell MRC ($)</label>
+                                                <input type="number" value={item.sell_mrc} onChange={(e) => updateItem(idx, 'sell_mrc', e.target.value)}
+                                                    className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
+                                                />
+                                            </div>
+                                        )}
+                                        {FIELD_CFG[item.type]?.nrc && (
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">NRC ($)</label>
+                                                <input type="number" value={item.sell_nrc} onChange={(e) => updateItem(idx, 'sell_nrc', e.target.value)}
+                                                    className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
