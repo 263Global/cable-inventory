@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, MapPin, DollarSign, BarChart3, Loader2,
     Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers, Check,
+    Lock, Unlock,
 } from 'lucide-react'
 import { fetchInventoryById } from './api'
 import {
@@ -104,6 +105,8 @@ export function InventoryDetailPage() {
     const [editingBatchId, setEditingBatchId] = useState<string | null>(null)
     const [showAddBatch, setShowAddBatch] = useState(false)
     const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
+    const [newBatchOmUnlocked, setNewBatchOmUnlocked] = useState(false)
+    const [omUnlockedBatches, setOmUnlockedBatches] = useState<Set<string>>(new Set())
 
     const loadCircuits = useCallback(async () => {
         if (!id) return
@@ -123,6 +126,23 @@ export function InventoryDetailPage() {
         fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
         fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
     }, [id, loadCircuits, loadBatches])
+
+    // ── Auto-transition: Planned → Active when start_date ≤ today ──
+    const autoTransitionDone = useRef(false)
+    useEffect(() => {
+        if (!batches.length || autoTransitionDone.current) return
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const toUpdate = batches.filter((b) =>
+            b.status === 'Planned' && b.start_date && new Date(b.start_date) <= today
+        )
+        if (toUpdate.length === 0) return
+        autoTransitionDone.current = true
+            ; (async () => {
+                const { updateBatch } = await import('@/lib/reference-api')
+                await Promise.all(toUpdate.map((b) => updateBatch(b.id, { status: 'Active' })))
+                loadBatches()
+            })()
+    }, [batches, loadBatches])
 
     // ─── Circuit handlers ───
     const handleAddCircuit = async () => {
@@ -173,6 +193,7 @@ export function InventoryDetailPage() {
         const status = newBatch.start_date ? suggestStatus(newBatch.start_date, resource.end_date) : 'Planned'
         const otcVal = parseFloat(newBatch.otc) || 0
         const rateVal = parseFloat(newBatch.om_rate) || 4.0
+        const calcOm = otcVal * rateVal / 100
         await createBatch({
             inventory_resource_id: id,
             batch_number: nextNum,
@@ -182,11 +203,12 @@ export function InventoryDetailPage() {
             term_months: termMonths && termMonths > 0 ? termMonths : undefined,
             otc: newBatch.model === 'IRU' ? otcVal : undefined,
             om_rate: newBatch.model === 'IRU' ? rateVal : undefined,
-            annual_om_cost: newBatch.model === 'IRU' ? (newBatch.annual_om_cost ? parseFloat(newBatch.annual_om_cost) : (otcVal * rateVal / 100)) : undefined,
+            annual_om_cost: newBatch.model === 'IRU' ? (newBatchOmUnlocked && newBatch.annual_om_cost ? parseFloat(newBatch.annual_om_cost) : calcOm) : undefined,
             mrc: newBatch.model === 'Lease' ? (parseFloat(newBatch.mrc) || 0) : undefined,
             status,
         })
         setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
+        setNewBatchOmUnlocked(false)
         setShowAddBatch(false)
         loadBatches()
     }
@@ -202,8 +224,8 @@ export function InventoryDetailPage() {
         const { updateBatch } = await import('@/lib/reference-api')
         try {
             const updates: Record<string, unknown> = { [field]: value === '' ? null : value }
-            // Auto-calc O&M
-            if (field === 'otc' || field === 'om_rate') {
+            // Auto-calc O&M only if that batch's O&M is locked
+            if ((field === 'otc' || field === 'om_rate') && !omUnlockedBatches.has(batchId)) {
                 const batch = batches.find((b) => b.id === batchId)
                 if (batch) {
                     const otc = field === 'otc' ? Number(value) || 0 : Number(batch.otc) || 0
@@ -240,10 +262,23 @@ export function InventoryDetailPage() {
     const isLease = resource.acquisition_type === 'Lease'
     const totalCap = Number(resource.total_capacity ?? 0)
     const usedCap = Number(resource.used_capacity ?? 0)
-    const usagePct = totalCap > 0 ? Math.min((usedCap / totalCap) * 100, 100) : 0
-    const remaining = totalCap - usedCap
-    const batchTotalCap = batches.reduce((sum, b) => sum + Number(b.capacity ?? 0), 0)
+
+    // Four-segment capacity calculation
+    const activeLit = batches.filter((b) => b.status === 'Active').reduce((s, b) => s + Number(b.capacity ?? 0), 0)
+    const plannedLit = batches.filter((b) => b.status === 'Planned').reduce((s, b) => s + Number(b.capacity ?? 0), 0)
+    const batchTotalCap = activeLit + plannedLit
     const batchPct = totalCap > 0 ? Math.min((batchTotalCap / totalCap) * 100, 100) : 0
+
+    // Within active lit: how much is used by circuits vs available
+    const capUsedByCircuits = usedCap  // circuits allocated capacity
+    const capAvailable = Math.max(0, activeLit - capUsedByCircuits)
+    const capUnlit = Math.max(0, totalCap - activeLit - plannedLit)
+
+    // Percentage for the four segments
+    const pctUsed = totalCap > 0 ? (capUsedByCircuits / totalCap) * 100 : 0
+    const pctAvailable = totalCap > 0 ? (capAvailable / totalCap) * 100 : 0
+    const pctPlanned = totalCap > 0 ? (plannedLit / totalCap) * 100 : 0
+    // pctUnlit is the remainder
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -324,7 +359,7 @@ export function InventoryDetailPage() {
                                 <Plus className="h-3.5 w-3.5" /> Add Batch
                             </button>
                         </div>
-                        {/* Capacity bar */}
+                        {/* Batch capacity bar */}
                         <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden mb-4">
                             <div className={`h-full rounded-full transition-all ${batchPct > 100 ? 'bg-destructive' : 'bg-primary'}`}
                                 style={{ width: `${Math.min(batchPct, 100)}%` }} />
@@ -367,12 +402,27 @@ export function InventoryDetailPage() {
                                                 <input type="number" value={newBatch.om_rate} onChange={(e) => setNewBatch((p) => ({ ...p, om_rate: e.target.value }))} placeholder="4.0"
                                                     className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                                             </div>
+                                            {/* O&M Lock/Unlock */}
                                             <div>
-                                                <label className="block text-xs text-text-dim mb-1">Annual O&M ($)</label>
-                                                <input type="number" value={newBatch.annual_om_cost} onChange={(e) => setNewBatch((p) => ({ ...p, annual_om_cost: e.target.value }))}
-                                                    placeholder={String(Math.round((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100))}
-                                                    className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                                                <p className="text-xs text-text-dim mt-1">Calculated: {formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}</p>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="text-xs text-text-dim">Annual O&M ($)</label>
+                                                    <button onClick={() => setNewBatchOmUnlocked(!newBatchOmUnlocked)} type="button"
+                                                        className="p-0.5 rounded hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer" title={newBatchOmUnlocked ? 'Lock to auto-calculate' : 'Unlock to manually override'}>
+                                                        {newBatchOmUnlocked ? <Unlock className="h-3.5 w-3.5 text-warning" /> : <Lock className="h-3.5 w-3.5" />}
+                                                    </button>
+                                                </div>
+                                                {newBatchOmUnlocked ? (
+                                                    <>
+                                                        <input type="number" value={newBatch.annual_om_cost} onChange={(e) => setNewBatch((p) => ({ ...p, annual_om_cost: e.target.value }))}
+                                                            placeholder={String(Math.round((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100))}
+                                                            className="w-full px-2.5 py-2 bg-surface border border-warning/50 rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-warning" />
+                                                        <p className="text-xs text-text-dim mt-1">Calculated: {formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}</p>
+                                                    </>
+                                                ) : (
+                                                    <p className="px-2.5 py-2 bg-surface/50 border border-border rounded-lg text-text text-sm opacity-70">
+                                                        {formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}
+                                                    </p>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
@@ -389,7 +439,7 @@ export function InventoryDetailPage() {
                                     </p>
                                 )}
                                 <div className="flex justify-end gap-2">
-                                    <button onClick={() => { setShowAddBatch(false); setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' }) }}
+                                    <button onClick={() => { setShowAddBatch(false); setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' }); setNewBatchOmUnlocked(false) }}
                                         className="px-3 py-1.5 text-sm text-text-muted hover:text-text hover:bg-surface-hover rounded-lg transition-colors cursor-pointer">Cancel</button>
                                     <button onClick={handleSaveNewBatch} disabled={!newBatch.capacity}
                                         className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">Save Batch</button>
@@ -404,6 +454,8 @@ export function InventoryDetailPage() {
                             <div className="space-y-2">
                                 {batches.map((b) => {
                                     const isEditing = editingBatchId === b.id
+                                    const isOmUnlocked = omUnlockedBatches.has(b.id)
+                                    const calcOm = (Number(b.otc) || 0) * (Number(b.om_rate) || 0) / 100
                                     return (
                                         <div key={b.id} className={`p-3 bg-background rounded-lg border ${isEditing ? 'border-primary/30' : 'border-border-subtle'} transition-colors`}>
                                             {isEditing ? (
@@ -427,7 +479,7 @@ export function InventoryDetailPage() {
                                                             </select>
                                                         </div>
                                                         <div className="flex items-center gap-1">
-                                                            <button onClick={() => setEditingBatchId(null)}
+                                                            <button onClick={() => { setEditingBatchId(null); setOmUnlockedBatches((s) => { const n = new Set(s); n.delete(b.id); return n }) }}
                                                                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors cursor-pointer">
                                                                 <Check className="h-3 w-3" /> Done
                                                             </button>
@@ -451,9 +503,27 @@ export function InventoryDetailPage() {
                                                         <div className="grid grid-cols-3 gap-3">
                                                             <BatchField label="OTC ($)" type="number" value={b.otc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'otc', Number(v))} />
                                                             <BatchField label="O&M Rate (%)" type="number" value={b.om_rate ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'om_rate', Number(v))} />
+                                                            {/* O&M Lock/Unlock */}
                                                             <div>
-                                                                <BatchField label="Annual O&M ($)" type="number" value={b.annual_om_cost ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'annual_om_cost', Number(v))} />
-                                                                <p className="text-xs text-text-dim mt-1">Rate: {formatCurrency((Number(b.otc) || 0) * (Number(b.om_rate) || 0) / 100)}</p>
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <label className="text-xs text-text-dim">Annual O&M ($)</label>
+                                                                    <button onClick={() => setOmUnlockedBatches((s) => { const n = new Set(s); if (n.has(b.id)) n.delete(b.id); else n.add(b.id); return n })}
+                                                                        type="button"
+                                                                        className="p-0.5 rounded hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer"
+                                                                        title={isOmUnlocked ? 'Lock to auto-calculate' : 'Unlock to manually override'}>
+                                                                        {isOmUnlocked ? <Unlock className="h-3.5 w-3.5 text-warning" /> : <Lock className="h-3.5 w-3.5" />}
+                                                                    </button>
+                                                                </div>
+                                                                {isOmUnlocked ? (
+                                                                    <>
+                                                                        <BatchField label="" type="number" value={b.annual_om_cost ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'annual_om_cost', Number(v))} />
+                                                                        <p className="text-xs text-text-dim mt-1">Calculated: {formatCurrency(calcOm)}</p>
+                                                                    </>
+                                                                ) : (
+                                                                    <p className="px-2.5 py-1.5 bg-surface/50 border border-border rounded-lg text-text text-sm opacity-70">
+                                                                        {b.annual_om_cost ? formatCurrency(Number(b.annual_om_cost)) : '—'}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -508,23 +578,69 @@ export function InventoryDetailPage() {
                             <BarChart3 className="h-4 w-4 text-primary" />
                             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Capacity & Circuits</h2>
                         </div>
-                        <div className="mb-3">
-                            <div className="flex justify-between text-sm mb-2">
-                                <span className="font-medium">{usedCap}G / {totalCap}G Used</span>
-                                <span className="text-text-muted">{Math.round(usagePct)}%</span>
+
+                        {isBatchMode ? (
+                            /* ─── Four-segment capacity bar for Base+Batch ─── */
+                            <div className="mb-4">
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="font-medium">Capacity Breakdown</span>
+                                    <span className="text-text-muted">{totalCap}G base</span>
+                                </div>
+                                <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden flex">
+                                    {pctUsed > 0 && (
+                                        <div className="h-full bg-status-partial transition-all" style={{ width: `${pctUsed}%` }} title={`Used: ${capUsedByCircuits}G`} />
+                                    )}
+                                    {pctAvailable > 0 && (
+                                        <div className="h-full bg-status-available transition-all" style={{ width: `${pctAvailable}%` }} title={`Available: ${capAvailable}G`} />
+                                    )}
+                                    {pctPlanned > 0 && (
+                                        <div className="h-full bg-info/40 transition-all" style={{ width: `${pctPlanned}%` }} title={`Planned: ${plannedLit}G`} />
+                                    )}
+                                    {/* Unlit = remaining background */}
+                                </div>
+                                <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs mt-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-partial" />
+                                        <span className="text-text-muted">Used:</span>
+                                        <span className="font-medium">{capUsedByCircuits}G</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-available" />
+                                        <span className="text-text-muted">Available:</span>
+                                        <span className="font-medium">{capAvailable}G</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-info/40" />
+                                        <span className="text-text-muted">Planned:</span>
+                                        <span className="font-medium">{plannedLit}G</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-surface-hover border border-border" />
+                                        <span className="text-text-muted">Unlit:</span>
+                                        <span className="font-medium">{capUnlit}G</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${usagePct >= 100 ? 'bg-status-full' : usagePct >= 50 ? 'bg-status-partial' : 'bg-status-available'}`}
-                                    style={{ width: `${usagePct}%` }} />
+                        ) : (
+                            /* ─── Simple two-tone bar for non-batch mode ─── */
+                            <div className="mb-3">
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="font-medium">{usedCap}G / {totalCap}G Used</span>
+                                    <span className="text-text-muted">{totalCap > 0 ? Math.round((usedCap / totalCap) * 100) : 0}%</span>
+                                </div>
+                                <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all ${usedCap >= totalCap ? 'bg-status-full' : usedCap >= totalCap / 2 ? 'bg-status-partial' : 'bg-status-available'}`}
+                                        style={{ width: `${totalCap > 0 ? Math.min((usedCap / totalCap) * 100, 100) : 0}%` }} />
+                                </div>
+                                <div className="flex gap-6 text-sm mt-2">
+                                    <div><span className="inline-block w-2 h-2 rounded-full bg-status-available mr-2" /><span className="text-text-muted">Remaining: </span><span className="font-medium">{totalCap - usedCap}G</span></div>
+                                    <div><span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" /><span className="text-text-muted">Used: </span><span className="font-medium">{usedCap}G</span></div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex gap-6 text-sm mt-2">
-                            <div><span className="inline-block w-2 h-2 rounded-full bg-status-available mr-2" /><span className="text-text-muted">Remaining: </span><span className="font-medium">{remaining}G</span></div>
-                            <div><span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" /><span className="text-text-muted">Used: </span><span className="font-medium">{usedCap}G</span></div>
-                        </div>
+                        )}
 
                         {/* Circuits */}
-                        <div className="mt-6 pt-4 border-t border-border-subtle">
+                        <div className={isBatchMode ? '' : 'mt-6 pt-4 border-t border-border-subtle'}>
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-semibold">Circuits</h3>
                                 <button onClick={() => setShowAddCircuit(!showAddCircuit)}
@@ -697,7 +813,7 @@ function BatchField({ label, value, onSave, type = 'text', disabled = false }: {
 
     return (
         <div>
-            <label className="block text-xs text-text-dim mb-1">{label}</label>
+            {label && <label className="block text-xs text-text-dim mb-1">{label}</label>}
             <input
                 type={type}
                 value={local}
