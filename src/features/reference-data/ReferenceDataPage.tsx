@@ -213,8 +213,8 @@ const cableSystemsConfig = {
         {
             key: 'status', label: 'Status', render: (item: AnyRecord) => (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-status-available/15 text-status-available'
-                        : item.status === 'Planned' ? 'bg-info/15 text-info'
-                            : 'bg-status-expired/15 text-status-expired'
+                    : item.status === 'Planned' ? 'bg-info/15 text-info'
+                        : 'bg-status-expired/15 text-status-expired'
                     }`}>{String(item.status)}</span>
             )
         },
@@ -258,17 +258,37 @@ const landingStationsConfig = {
     fetchFn: fetchLandingStationsWithCables as () => Promise<AnyRecord[]>,
 }
 
+const regionColors: Record<string, string> = {
+    'Asia': 'bg-red-500/15 text-red-400',
+    'Europe': 'bg-blue-500/15 text-blue-400',
+    'Africa': 'bg-amber-500/15 text-amber-400',
+    'North America': 'bg-green-500/15 text-green-400',
+    'South America': 'bg-emerald-500/15 text-emerald-400',
+    'Oceania': 'bg-purple-500/15 text-purple-400',
+    'Caribbean': 'bg-cyan-500/15 text-cyan-400',
+}
+
 const countriesConfig = {
     table: 'countries',
     columns: [
         { key: 'name', label: 'Country Name' },
         { key: 'code', label: 'Code' },
-        { key: 'region', label: 'Region' },
+        {
+            key: 'region', label: 'Region', render: (item: AnyRecord) => {
+                const region = String(item.region ?? '')
+                if (!region) return <span className="text-text-dim">—</span>
+                return (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${regionColors[region] ?? 'bg-surface-hover text-text-muted'}`}>
+                        {region}
+                    </span>
+                )
+            }
+        },
     ] as Column<AnyRecord>[],
     fields: [
         { key: 'name', label: 'Country Name', required: true, placeholder: 'e.g. Singapore' },
         { key: 'code', label: 'ISO Code (2-letter)', placeholder: 'e.g. SG' },
-        { key: 'region', label: 'Region', placeholder: 'e.g. Asia Pacific' },
+        { key: 'region', label: 'Region', type: 'select' as const, options: ['Asia', 'Europe', 'Africa', 'North America', 'South America', 'Oceania', 'Caribbean'] },
     ],
     emptyMessage: 'No countries found.',
 }
@@ -346,7 +366,7 @@ export function ReferenceDataPage() {
                 columns={activeConfig.columns}
                 fields={activeConfig.fields}
                 emptyMessage={activeConfig.emptyMessage}
-                fetchFn={'fetchFn' in activeConfig ? activeConfig.fetchFn : undefined}
+                fetchFn={'fetchFn' in activeConfig ? (activeConfig.fetchFn as () => Promise<AnyRecord[]>) : undefined}
             />
         </div>
     )

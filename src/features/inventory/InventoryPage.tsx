@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Package, Plus, Search, Filter, Loader2 } from 'lucide-react'
-import { fetchInventoryResources } from './api'
+import { Package, Plus, Search, Filter, Loader2, Trash2 } from 'lucide-react'
+import { fetchInventoryResources, deleteInventoryResource } from './api'
 import type { InventoryResource, ResourceType } from '@/types'
 
 const typeTabs: { label: string; filter: string }[] = [
@@ -116,8 +116,8 @@ export function InventoryPage() {
                         key={tab.filter}
                         onClick={() => setActiveTab(tab.filter)}
                         className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 ${activeTab === tab.filter
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-text-muted hover:text-text'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-text-muted hover:text-text'
                             }`}
                     >
                         {tab.label}
@@ -173,6 +173,7 @@ export function InventoryPage() {
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Route</th>
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider min-w-[200px]">Capacity Usage</th>
+                                    <th className="w-12 px-4 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">
@@ -208,6 +209,20 @@ export function InventoryPage() {
                                                 used={Number(item.used_capacity ?? 0)}
                                                 total={Number(item.total_capacity ?? 0)}
                                             />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    if (confirm(`Delete ${item.resource_id}?`)) {
+                                                        deleteInventoryResource(item.id).then(loadData).catch(console.error)
+                                                    }
+                                                }}
+                                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

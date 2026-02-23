@@ -16,8 +16,8 @@ async function generateResourceId(): Promise<string> {
 }
 
 // Fetch all inventory resources with joined names
-export async function fetchInventoryResources(): Promise<InventoryResource[]> {
-    const { data, error } = await supabase
+export async function fetchInventoryResources(typeFilter?: string): Promise<InventoryResource[]> {
+    let query = supabase
         .from('inventory_resources')
         .select(`
       *,
@@ -30,6 +30,12 @@ export async function fetchInventoryResources(): Promise<InventoryResource[]> {
       handover_z:handover_locations!handover_location_z_id(name, city)
     `)
         .order('created_at', { ascending: false })
+
+    if (typeFilter) {
+        query = query.eq('type', typeFilter)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
 

@@ -8,7 +8,6 @@ import {
     fetchCountriesForCable,
     fetchStationsForCableAndCountry,
     fetchHandoverLocations,
-    fetchInterfaceTypes,
 } from '@/lib/reference-api'
 import type { ResourceType, AcquisitionType } from '@/types'
 
@@ -40,7 +39,6 @@ export function InventoryFormPage() {
 
     // Reference data
     const [cableSystems, setCableSystems] = useState<{ id: string; name: string; status: string }[]>([])
-    const [interfaceTypes, setInterfaceTypes] = useState<{ id: string; name: string }[]>([])
     const [countriesA, setCountriesA] = useState<string[]>([])
     const [countriesZ, setCountriesZ] = useState<string[]>([])
     const [stationsA, setStationsA] = useState<{ id: string; name: string }[]>([])
@@ -84,7 +82,6 @@ export function InventoryFormPage() {
     // Load reference data on mount
     useEffect(() => {
         fetchCableSystems().then(setCableSystems).catch(console.error)
-        fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
         fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
     }, [])
 
@@ -226,8 +223,8 @@ export function InventoryFormPage() {
                         <button
                             onClick={() => setStep(i)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${i === step ? 'bg-primary text-primary-foreground'
-                                    : i < step ? 'bg-primary/20 text-primary'
-                                        : 'bg-surface text-text-muted'
+                                : i < step ? 'bg-primary/20 text-primary'
+                                    : 'bg-surface text-text-muted'
                                 }`}
                         >
                             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs">
@@ -416,6 +413,18 @@ export function InventoryFormPage() {
                 {/* ========== Step 3: Contract & Costs ========== */}
                 {step === 2 && (
                     <div className="space-y-5">
+                        {/* Cost Mode selector */}
+                        <div>
+                            <label className="block text-sm font-medium text-text-muted mb-2">Cost Mode</label>
+                            <div className="flex gap-2">
+                                {(['Single', 'Base+Batch'] as const).map((mode) => (
+                                    <button key={mode} onClick={() => updateForm('cost_mode', mode)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${form.cost_mode === mode ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'
+                                            }`}>{mode}</button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-3 gap-4">
                             <FormField label="Term (Months)" value={form.term_months} onChange={(v) => updateForm('term_months', v)} type="number" placeholder="e.g. 180" />
                             <FormField label="Start Date" value={form.start_date} onChange={(v) => updateForm('start_date', v)} type="date" />
@@ -477,7 +486,7 @@ export function InventoryFormPage() {
 
 // Helper: get country UUID by name
 async function getCountryId(name: string): Promise<string | null> {
-    const { default: { supabase } } = await import('@/lib/supabase')
+    const { supabase } = await import('@/lib/supabase')
     const { data } = await supabase.from('countries').select('id').eq('name', name).single()
     return data?.id ?? null
 }
