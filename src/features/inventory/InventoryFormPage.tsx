@@ -573,7 +573,7 @@ export function InventoryFormPage() {
                                 <div className="grid grid-cols-3 gap-4">
                                     <FormField label="OTC ($)" value={form.otc} onChange={(v) => updateForm('otc', v)} type="number" placeholder="450000" />
                                     <FormField label="O&M Rate (%)" value={form.om_rate} onChange={(v) => updateForm('om_rate', v)} type="number" placeholder="4.0" />
-                                    <FormField label="Annual O&M (auto)" value={form.annual_om_cost} onChange={(v) => updateForm('annual_om_cost', v)} type="number" placeholder="Calculated" />
+                                    <FormField label="Annual O&M ($)" value={form.annual_om_cost} onChange={(v) => updateForm('annual_om_cost', v)} type="number" placeholder="Auto or override" />
                                 </div>
                             </div>
                         )}
@@ -596,7 +596,7 @@ export function InventoryFormPage() {
                                 <div className="grid grid-cols-3 gap-4">
                                     <FormField label="Base OTC ($)" value={form.otc} onChange={(v) => updateForm('otc', v)} type="number" placeholder="450000" />
                                     <FormField label="Base O&M Rate (%)" value={form.om_rate} onChange={(v) => updateForm('om_rate', v)} type="number" placeholder="4.0" />
-                                    <FormField label="Base Annual O&M (auto)" value={form.annual_om_cost} onChange={(v) => updateForm('annual_om_cost', v)} type="number" placeholder="Calculated" />
+                                    <FormField label="Base Annual O&M ($)" value={form.annual_om_cost} onChange={(v) => updateForm('annual_om_cost', v)} type="number" placeholder="Auto or override" />
                                 </div>
                             </div>
                         )}
@@ -669,7 +669,7 @@ export function InventoryFormPage() {
                                                 {b.model === 'IRU' && (
                                                     <div className="grid grid-cols-2 gap-3 mt-3">
                                                         <FormField label="O&M Rate (%)" value={b.om_rate} onChange={(v) => updateBatchRow(b.id, 'om_rate', v)} type="number" placeholder="4.0" />
-                                                        <FormField label="Annual O&M (auto)" value={b.annual_om_cost} onChange={() => { }} type="number" placeholder="Calculated" />
+                                                        <FormField label="Annual O&M ($)" value={b.annual_om_cost} onChange={(v) => updateBatchRow(b.id, 'annual_om_cost', v)} type="number" placeholder="Auto or override" />
                                                     </div>
                                                 )}
                                             </div>

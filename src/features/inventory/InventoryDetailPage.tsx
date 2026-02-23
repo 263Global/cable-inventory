@@ -103,7 +103,7 @@ export function InventoryDetailPage() {
     // Batch UI state
     const [editingBatchId, setEditingBatchId] = useState<string | null>(null)
     const [showAddBatch, setShowAddBatch] = useState(false)
-    const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' })
+    const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
 
     const loadCircuits = useCallback(async () => {
         if (!id) return
@@ -182,11 +182,11 @@ export function InventoryDetailPage() {
             term_months: termMonths && termMonths > 0 ? termMonths : undefined,
             otc: newBatch.model === 'IRU' ? otcVal : undefined,
             om_rate: newBatch.model === 'IRU' ? rateVal : undefined,
-            annual_om_cost: newBatch.model === 'IRU' ? (otcVal * rateVal / 100) : undefined,
+            annual_om_cost: newBatch.model === 'IRU' ? (newBatch.annual_om_cost ? parseFloat(newBatch.annual_om_cost) : (otcVal * rateVal / 100)) : undefined,
             mrc: newBatch.model === 'Lease' ? (parseFloat(newBatch.mrc) || 0) : undefined,
             status,
         })
-        setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' })
+        setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
         setShowAddBatch(false)
         loadBatches()
     }
@@ -367,10 +367,12 @@ export function InventoryDetailPage() {
                                                 <input type="number" value={newBatch.om_rate} onChange={(e) => setNewBatch((p) => ({ ...p, om_rate: e.target.value }))} placeholder="4.0"
                                                     className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                                             </div>
-                                            <div className="flex items-end">
-                                                <p className="text-xs text-text-dim pb-2">
-                                                    Annual O&M: <span className="text-text font-medium">{formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}</span>
-                                                </p>
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">Annual O&M ($)</label>
+                                                <input type="number" value={newBatch.annual_om_cost} onChange={(e) => setNewBatch((p) => ({ ...p, annual_om_cost: e.target.value }))}
+                                                    placeholder={String(Math.round((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100))}
+                                                    className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                                <p className="text-xs text-text-dim mt-1">Calculated: {formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}</p>
                                             </div>
                                         </>
                                     ) : (
@@ -387,7 +389,7 @@ export function InventoryDetailPage() {
                                     </p>
                                 )}
                                 <div className="flex justify-end gap-2">
-                                    <button onClick={() => { setShowAddBatch(false); setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' }) }}
+                                    <button onClick={() => { setShowAddBatch(false); setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' }) }}
                                         className="px-3 py-1.5 text-sm text-text-muted hover:text-text hover:bg-surface-hover rounded-lg transition-colors cursor-pointer">Cancel</button>
                                     <button onClick={handleSaveNewBatch} disabled={!newBatch.capacity}
                                         className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">Save Batch</button>
@@ -450,10 +452,8 @@ export function InventoryDetailPage() {
                                                             <BatchField label="OTC ($)" type="number" value={b.otc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'otc', Number(v))} />
                                                             <BatchField label="O&M Rate (%)" type="number" value={b.om_rate ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'om_rate', Number(v))} />
                                                             <div>
-                                                                <label className="block text-xs text-text-dim mb-1">Annual O&M (auto)</label>
-                                                                <p className="px-2.5 py-1.5 bg-surface/50 border border-border rounded-lg text-text text-sm opacity-60">
-                                                                    {b.annual_om_cost ? formatCurrency(Number(b.annual_om_cost)) : '—'}
-                                                                </p>
+                                                                <BatchField label="Annual O&M ($)" type="number" value={b.annual_om_cost ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'annual_om_cost', Number(v))} />
+                                                                <p className="text-xs text-text-dim mt-1">Rate: {formatCurrency((Number(b.otc) || 0) * (Number(b.om_rate) || 0) / 100)}</p>
                                                             </div>
                                                         </div>
                                                     ) : (
