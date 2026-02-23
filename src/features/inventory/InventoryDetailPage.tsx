@@ -911,7 +911,7 @@ export function InventoryDetailPage() {
                                     </div>
                                     <div className="h-2 bg-background rounded-full overflow-hidden">
                                         <div className="h-full flex">
-                                            <div className="bg-emerald-500 h-full" style={{ width: `${activePct}%` }} />
+                                            <div className="bg-status-partial h-full" style={{ width: `${activePct}%` }} />
                                             <div className="bg-gray-600 h-full" style={{ width: `${draftPct}%` }} />
                                         </div>
                                     </div>
