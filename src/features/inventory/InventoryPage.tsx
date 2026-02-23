@@ -8,7 +8,8 @@ const typeTabs: { label: string; filter: string }[] = [
     { label: 'All', filter: 'All' },
     { label: 'Capacity', filter: 'Capacity' },
     { label: 'Terrestrial', filter: 'Terrestrial' },
-    { label: 'Fiber / Spectrum', filter: 'Fiber' },
+    { label: 'Fiber', filter: 'Fiber' },
+    { label: 'Spectrum', filter: 'Spectrum' },
 ]
 
 const statusColors: Record<string, string> = {
@@ -59,14 +60,9 @@ export function InventoryPage() {
     const loadData = useCallback(async () => {
         try {
             setLoading(true)
-            const filter = activeTab === 'Fiber' ? undefined : activeTab
-            const result = await fetchInventoryResources(filter === 'All' ? undefined : filter)
-            // For "Fiber / Spectrum" tab, filter both types
-            if (activeTab === 'Fiber') {
-                setData(result.filter((r) => r.type === 'Fiber' || r.type === 'Spectrum'))
-            } else {
-                setData(result)
-            }
+            const filter = activeTab === 'All' ? undefined : activeTab
+            const result = await fetchInventoryResources(filter)
+            setData(result)
         } catch (err) {
             console.error('Failed to load inventory:', err)
         } finally {
