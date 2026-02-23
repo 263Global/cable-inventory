@@ -154,7 +154,7 @@ export function SalesDetailPage() {
                             return (
                                 <div key={item.id} className="bg-background rounded-lg border border-border-subtle p-4">
                                     <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                                                 {item.type}
                                             </span>
@@ -196,24 +196,27 @@ export function SalesDetailPage() {
                                             </div>
                                         ) : null}
 
-                                        {/* Capacity */}
-                                        {item.capacity && (
-                                            <div>
-                                                <span className="text-xs text-text-dim">Capacity</span>
-                                                <p className="text-sm font-medium mt-0.5">{item.capacity}G {item.spec || ''}</p>
-                                            </div>
-                                        )}
+                                        {/* Capacity + Spec */}
+                                        <div>
+                                            <span className="text-xs text-text-dim">Capacity</span>
+                                            <p className="text-sm font-medium mt-0.5">
+                                                {item.capacity ? `${item.capacity}G` : '—'}
+                                                {item.spec && <span className="text-text-dim ml-1">({item.spec})</span>}
+                                            </p>
+                                        </div>
 
-                                        {/* Dates */}
-                                        {item.start_date && (
-                                            <div>
-                                                <span className="text-xs text-text-dim">Period</span>
-                                                <p className="text-sm mt-0.5">
-                                                    {item.start_date} → {item.end_date || '—'}
-                                                    {item.term_months && <span className="text-text-dim ml-1">({item.term_months}mo)</span>}
-                                                </p>
-                                            </div>
-                                        )}
+                                        {/* Contract Period */}
+                                        <div>
+                                            <span className="text-xs text-text-dim">Period</span>
+                                            <p className="text-sm mt-0.5">
+                                                {item.start_date ? (
+                                                    <>
+                                                        {item.start_date} → {item.end_date || '—'}
+                                                        {item.term_months && <span className="text-text-dim ml-1">({item.term_months}mo)</span>}
+                                                    </>
+                                                ) : '—'}
+                                            </p>
+                                        </div>
 
                                         {/* Financials */}
                                         <div>
@@ -230,9 +233,24 @@ export function SalesDetailPage() {
                                                     </>
                                                 )}
                                                 {item.sell_nrc != null && item.sell_nrc > 0 && <p>NRC: {formatCurrency(item.sell_nrc)}</p>}
+                                                {!item.sell_otc && !item.sell_mrc && !item.sell_nrc && <p className="text-text-dim">—</p>}
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Allocated Circuits */}
+                                    {item.allocated_circuits && item.allocated_circuits.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-border-subtle">
+                                            <span className="text-xs text-text-dim">Allocated Circuits</span>
+                                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                {item.allocated_circuits.map((c) => (
+                                                    <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                                                        #{c.circuit_number} {c.capacity}G {c.interface_type_name || ''}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )
                         })}

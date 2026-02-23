@@ -79,24 +79,37 @@ export async function fetchAllocatedCircuits(salesOrderItemId: string): Promise<
 // Capacity Occupation Sync
 // ============================================
 
-/** Recalculate used_capacity on an inventory_resource from allocated circuits */
+/** Recalculate used_capacity on an inventory_resource from allocated circuits + legacy items */
 export async function recalcInventoryCapacity(inventoryResourceId: string): Promise<void> {
-    // Get all circuits for this resource that are allocated via sales_item_circuits
-    // where the parent order status is Pre-sold or Active
+    // Strategy 1: Circuit-level — sum capacity from circuits in sales_item_circuits
     const { data: circuits } = await supabase
         .from('inventory_circuits')
         .select('id, capacity, sales_item_circuits!inner(sales_order_item_id, sales_order_items!inner(sales_orders!inner(status)))')
         .eq('inventory_resource_id', inventoryResourceId)
 
-    // Sum capacity from circuits linked to Pre-sold or Active orders
     let usedCapacity = 0
+    const itemsWithCircuits = new Set<string>()
     for (const c of (circuits ?? []) as Record<string, unknown>[]) {
-        const links = c.sales_item_circuits as { sales_order_items: { sales_orders: { status: string } } }[] | undefined
+        const links = c.sales_item_circuits as { sales_order_item_id: string; sales_order_items: { sales_orders: { status: string } } }[] | undefined
         if (links && links.length > 0) {
             const orderStatus = links[0]?.sales_order_items?.sales_orders?.status
             if (orderStatus === 'Pre-sold' || orderStatus === 'Active') {
                 usedCapacity += Number(c.capacity) || 0
             }
+            itemsWithCircuits.add(links[0].sales_order_item_id)
+        }
+    }
+
+    // Strategy 2: Legacy fallback — items linked to this resource without circuit allocations
+    const { data: legacyItems } = await supabase
+        .from('sales_order_items')
+        .select('id, capacity, sales_orders!inner(status)')
+        .eq('inventory_resource_id', inventoryResourceId)
+        .in('sales_orders.status', ['Pre-sold', 'Active'])
+
+    for (const item of (legacyItems ?? []) as Record<string, unknown>[]) {
+        if (!itemsWithCircuits.has(item.id as string)) {
+            usedCapacity += Number(item.capacity) || 0
         }
     }
 

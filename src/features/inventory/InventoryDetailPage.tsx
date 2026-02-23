@@ -682,7 +682,7 @@ export function InventoryDetailPage() {
                                 </div>
                                 <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden flex">
                                     {pctUsed > 0 && (
-                                        <div className="h-full bg-status-partial transition-all" style={{ width: `${pctUsed}%` }} title={`Used: ${capUsedByCircuits}G`} />
+                                        <div className="h-full bg-status-partial transition-all" style={{ width: `${pctUsed}%` }} title={`Allocated: ${capUsedByCircuits}G`} />
                                     )}
                                     {pctAvailable > 0 && (
                                         <div className="h-full bg-status-available transition-all" style={{ width: `${pctAvailable}%` }} title={`Available: ${capAvailable}G`} />
@@ -695,7 +695,7 @@ export function InventoryDetailPage() {
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs mt-3">
                                     <div className="flex items-center gap-1.5">
                                         <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-partial" />
-                                        <span className="text-text-muted">Used:</span>
+                                        <span className="text-text-muted">Allocated:</span>
                                         <span className="font-medium">{capUsedByCircuits}G</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
@@ -719,7 +719,7 @@ export function InventoryDetailPage() {
                             /* ─── Simple two-tone bar for non-batch mode ─── */
                             <div className="mb-3">
                                 <div className="flex justify-between text-sm mb-2">
-                                    <span className="font-medium">{usedCap}G / {totalCap}G Used</span>
+                                    <span className="font-medium">{usedCap}G / {totalCap}G Allocated</span>
                                     <span className="text-text-muted">{totalCap > 0 ? Math.round((usedCap / totalCap) * 100) : 0}%</span>
                                 </div>
                                 <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
@@ -728,7 +728,7 @@ export function InventoryDetailPage() {
                                 </div>
                                 <div className="flex gap-6 text-sm mt-2">
                                     <div><span className="inline-block w-2 h-2 rounded-full bg-status-available mr-2" /><span className="text-text-muted">Remaining: </span><span className="font-medium">{totalCap - usedCap}G</span></div>
-                                    <div><span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" /><span className="text-text-muted">Used: </span><span className="font-medium">{usedCap}G</span></div>
+                                    <div><span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" /><span className="text-text-muted">Allocated: </span><span className="font-medium">{usedCap}G</span></div>
                                 </div>
                             </div>
                         )}

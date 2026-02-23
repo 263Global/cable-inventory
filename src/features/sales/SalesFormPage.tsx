@@ -34,7 +34,7 @@ interface InvResource {
 
 const STATUSES: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
 const ITEM_TYPES: SalesItemType[] = ['Capacity', 'Backhaul', 'Local Access', 'Cross-Connect', 'NRC', 'Other']
-const DISPOSAL_TYPES: DisposalType[] = ['IRU Out', 'Lease Out', 'Swap Out']
+const DISPOSAL_TYPES: DisposalType[] = ['IRU Out', 'Lease Out', 'Swap Out', 'Self Use']
 
 interface ItemDraft {
     id?: string

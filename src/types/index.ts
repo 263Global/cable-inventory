@@ -143,7 +143,7 @@ export interface InventoryCircuit {
 // Sales Types
 // ============================================
 
-export type DisposalType = 'IRU Out' | 'Lease Out' | 'Swap Out'
+export type DisposalType = 'IRU Out' | 'Lease Out' | 'Swap Out' | 'Self Use'
 export type SalesStatus = 'Draft' | 'Pre-sold' | 'Active' | 'Expired' | 'Terminated' | 'Cancelled'
 export type SalesItemType = 'Capacity' | 'Backhaul' | 'Local Access' | 'Cross-Connect' | 'NRC' | 'Other'
 
