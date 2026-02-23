@@ -1,12 +1,35 @@
 # Changelog
 
-All notable changes to the Cable Inventory Manager will be documented in this file.
+All notable changes to CableTrack will be documented in this file.
 
-## [Unreleased]
+## [2.0.0] - 2026-02-23
 
-### Changed
-- **MVP Pivot: Dashboard Hidden** — Dashboard replaced with "Under Construction" placeholder; app now opens on Inventory by default
-- **MVP Pivot: Sales Profitability Disabled** — Profitability Analysis sidebar hidden in Sales form; `calculateSalesFinancials()` is now a no-op; Sales form, Cost Cards, Revenue fields, Renewal, and Termination remain fully functional
+### 🔄 Complete Rewrite — React + TypeScript + Vite
+
+**Architecture**
+- Migrated from vanilla JS (21k+ lines) to React 18 + TypeScript + Vite
+- Dark-themed UI with Tailwind CSS custom design system
+- Supabase Auth with Row-Level Security
+
+**Inventory**
+- Circuit-level tracking with interface types and status indicators
+- Base+Batch capacity management with auto-calc
+- Terrestrial type: hides Cable System / Landing Station
+- Delete protection: blocks deletion when active orders linked
+- Status labels shortened: "Partially Used" → "Partial", "Fully Used" → "Full"
+
+**Sales**
+- Type-aware item forms: Capacity, Backhaul, Cross-Connect, NRC, Other
+- Circuit picker for Capacity items
+- Backhaul: filters Terrestrial-only resources
+- Cross-Connect/NRC/Other: Description required, conditional MRC/NRC/Term
+- Auto status transitions: Pre-sold → Active, Active → Expired
+- Removed Local Access item type
+
+**General**
+- Page title: "CableTrack"
+- Removed 96 legacy files
+- Searchable dropdowns for all entity selectors
 
 ## [1.16.0] - 2026-02-12
 

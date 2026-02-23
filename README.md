@@ -1,151 +1,81 @@
-# Cable Inventory Manager
+# CableTrack
 
-A professional Telecom Resource and P&L Management System for managing submarine cable inventory and sales orders.
+Submarine cable capacity and sales management system.
 
 ## Features
 
-### Core Features
-- **📊 Dashboard** - Key metrics, MRR trend charts, margin distribution, capacity tracking, and sales leaderboards
-- **📦 Inventory Management** - Track cable resources including IRU, Lease, Swapped, and batch-staged assets
-- **💼 Sales Order Tracking** - Manage customer orders with detailed cost structures and profitability analysis
-- **☑️ Bulk Operations** - Selection mode toggle for multi-select and batch export (clean default view)
-- **📱 Responsive Design** - Optimized for desktop, tablet, and mobile devices (iOS Safari compatible)
-- **🔍 Smart Search** - Fuzzy search with multi-tier filtering (status, salesperson, expiring soon)
-- **📤 CSV Export** - Export Sales and Inventory data for offline analysis
-
-### Sales Order Form
-- **2-Column Layout** - Sticky Profitability sidebar | Right container (Sales Info + Cost Structure + Notes)
-- **Sales Model & Type First** - Key classification fields at top for smart form behavior
-- **Real-time Profitability** - Sticky sidebar shows live margin calculations
-- **Order Renewal** - Quick renewal with price adjustment option
-  - Update MRC/NRC during renewal (for discounts or increases)
-  - Preserves Order ID while updating contract dates
-- **Multiple Cost Cards** - Cable, Backhaul (A/Z-End), Cross Connect, Other Costs
-- **Dual-Margin Analysis** - First-month and recurring margin for IRU Resale orders
-- **Smart Field Logic** - Linked Resource hidden for Resale, required for Inventory/Hybrid/Swapped Out
-- **Batch Allocation** - Auto-allocate (with manual override) sales capacity across active inventory batches
-- **Swapped Out Pricing** - Market price revenue vs inventory cost for profit/loss visibility
-
-### CRM/SRM (Customer & Supplier Management)
-- **👥 Customer Management** - Add and manage customers with short/full names and contact info
-- **🏢 Supplier Management** - Track suppliers for cost cards and acquisitions
-- **🔍 Searchable Dropdowns** - Customer and Supplier fields with real-time search filtering
-  - Input-style trigger becomes search box on click
-  - Type to filter options instantly
-  - Blue border and hover effects for clear visual feedback
-- **🔗 Relational Data** - Sales orders linked to customers, cost cards linked to suppliers
-
-### Data Persistence
-- **☁️ Supabase Backend** - Cloud database with PostgreSQL for multi-device sync
-- **🔐 Authentication** - Secure user login with Row Level Security
-- **💾 Fallback Storage** - Works offline with browser localStorage
-
-### Inventory Costing (Batch Mode)
-- **Base Cost Pool** - Track whole-fiber fixed cost with O&M Rate auto-calculating Annual O&M
-- **Staged Lighting Batches** - Per-batch OTC/MRC, O&M Rate, term, and start date
-- **Batch Allocations** - Sales orders allocate capacity across active batches for accurate cost/profit
+- **📦 Inventory** — Track cable resources (Capacity, Terrestrial, Fiber, Spectrum) with circuit-level allocation, batch staging, and automatic status sync
+- **💼 Sales Orders** — Multi-item orders with type-aware fields (Capacity, Backhaul, Cross-Connect, NRC, Other), circuit allocation, and auto status transitions
+- **👥 CRM/SRM** — Customer and supplier management with searchable dropdowns
+- **🔒 Auth** — Supabase Auth with Row-Level Security
+- **📱 Responsive** — Desktop, tablet, and mobile layouts
 
 ## Tech Stack
 
-- **Frontend**: Vanilla HTML, CSS, JavaScript (no frameworks)
-- **Backend**: Supabase (PostgreSQL + Auth)
-- **Design**: Stripe-inspired UI with glassmorphism effects
-- **Icons**: Ionicons
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS (custom dark theme)
+- **Backend**: Supabase (PostgreSQL + Auth + RLS)
+- **Routing**: React Router v6
+- **Deployment**: GitHub Pages via GitHub Actions
 
 ## Getting Started
 
 ### Prerequisites
-- Supabase account (free tier works)
-- Modern web browser
+- Node.js 18+
+- Supabase project
 
 ### Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/263Global/cable-inventory.git
-   cd cable-inventory
-   ```
+```bash
+git clone https://github.com/263Global/cable-inventory.git
+cd cable-inventory
+npm install
+```
 
-2. Configure Supabase:
-   - Create a new Supabase project
-   - Run the schema from `docs/supabase_schema.sql` in SQL Editor
-   - Copy your project URL and anon key to `assets/js/supabase.js`
+Create `.env.local`:
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-3. Serve the application:
-   ```bash
-   npx serve .
-   ```
+Run migrations in Supabase SQL Editor (see `supabase/migrations/`).
 
-4. Open `http://localhost:3000` and start managing your cable inventory!
-5. Optional: open `docs/status-test.html` to run the status helper checks in your browser.
+### Development
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:5173/cable-inventory/`
+
+### Production Build
+
+```bash
+npm run build
+```
 
 ## Project Structure
 
 ```
 cable-inventory/
-├── index.html              # Main entry point
-├── assets/
-│   ├── css/
-│   │   ├── base/           # Foundation styles
-│   │   │   ├── variables.css   # Theme colors & CSS variables
-│   │   │   ├── reset.css       # CSS reset & base styles
-│   │   │   └── typography.css  # Font styles
-│   │   ├── layout/         # Layout components
-│   │   │   ├── grid.css        # Grid system
-│   │   │   ├── sidebar.css     # Sidebar navigation
-│   │   │   └── header.css      # Header bar
-│   │   ├── pages/          # Page-specific styles
-│   │   │   ├── login.css       # Login page
-│   │   │   ├── reset-password.css
-│   │   │   └── dashboard.css   # Dashboard components
-│   │   ├── components.css  # UI components (buttons, cards, modals)
-│   │   ├── utilities.css   # Utility classes
-│   │   ├── responsive.css  # All media queries
-│   │   └── main.css        # Entry point (@imports all modules)
-│   └── js/
-│       ├── app.js          # Core routing & modal (~500 lines)
-│       ├── store.js        # Data layer (Supabase + localStorage)
-│       ├── auth.js         # Authentication logic
-│       ├── supabase.js     # Supabase client configuration
-│       ├── inventoryStatus.js # Inventory status helpers (logic + UI)
-│       ├── salesStatus.js  # Sales status badge helpers
-│       ├── statusUi.js     # Shared UI helpers for status/alerts
-│       └── modules/        # ES6 Feature Modules
-│           ├── dashboard.js    # Dashboard view (~290 lines)
-│           ├── inventory.js    # Inventory management (~860 lines)
-│           ├── sales.js        # Sales list view (~550 lines)
-│           ├── salesForm.js    # Sales form facade (re-exports)
-│           ├── salesForm/      # Sales form submodules (modal, listeners, financials, submit)
-│           ├── financials.js   # Financial calculations
-│           ├── validation.js   # Form validation utilities
-│           ├── csv.js          # CSV export functions
-│           ├── customers.js    # Customer CRM module
-│           ├── suppliers.js    # Supplier CRM module
-│           ├── bulkOps.js      # Bulk selection & export
-│           └── searchableDropdown.js  # Searchable dropdown component
-└── docs/
-    ├── supabase_schema.sql # Database schema
-    ├── test_data.sql       # Sample data for testing
-    └── status-test.html    # Status helper test page
+├── src/
+│   ├── components/ui/     # Reusable UI components
+│   ├── contexts/          # Auth context
+│   ├── features/
+│   │   ├── auth/          # Login page
+│   │   ├── inventory/     # List, detail, form pages + API
+│   │   ├── sales/         # List, detail, form pages + API
+│   │   ├── customers/     # Customer CRM
+│   │   └── suppliers/     # Supplier SRM
+│   ├── lib/               # Supabase client, utilities
+│   └── types/             # TypeScript type definitions
+├── supabase/
+│   ├── migrations/        # Database migrations
+│   └── seed_data_clean.sql # Reference data (cable systems, landing stations)
+├── docs/                  # Documentation + seed data
+└── index.html             # Vite entry point
 ```
-
-
-## Usage
-
-- **Dashboard**: View key metrics, capacity utilization, and sales performance
-- **Inventory Tab**: Add, edit, and manage cable resources
-- **Sales Tab**: Create and track sales orders with cost breakdowns
-- **Customers Tab**: Manage customer records for sales orders
-- **Suppliers Tab**: Manage supplier records for cost cards and acquisitions
-
-## Deployment
-
-Deploy to any static hosting service:
-- **Cloudflare Pages** (recommended)
-- **GitHub Pages**
-- **Vercel**
-- **Netlify**
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
