@@ -16,7 +16,7 @@ Cable Inventory Manager: a React SPA for managing submarine cable inventory reso
 ## Project Status
 - **Full rewrite in progress** from vanilla JS to React
 - Inventory module: primary focus (Capacity type fully implemented, Fiber/Spectrum placeholder)
-- Sales: UI rewritten, profitability calculations disabled (MVP pivot)
+- Sales: circuit-level allocation, profitability calculations disabled (MVP pivot)
 - Dashboard: Under Construction placeholder
 - CRM (Customers/Suppliers): standard CRUD
 
@@ -39,19 +39,26 @@ npm run build      # Build for production
 - `supabase/` — database migrations
 
 ## Data / Supabase
-- `inventory` — resource records (Fiber/Spectrum/Capacity)
-- `inventory_batches` — staged lighting batches
-- `sales_orders` — sales order records
-- `sales_order_batches` — capacity allocations
+- `inventory_resources` — resource records (Fiber/Spectrum/Capacity)
+- `inventory_batches` — staged lighting batches per resource
+- `inventory_circuits` — individual circuit instances within a resource
+- `sales_orders` — sales order headers
+- `sales_order_items` — line items (Capacity, Backhaul, etc.)
+- `sales_item_circuits` — junction: sales items ↔ allocated circuits
 - `customers` — customer CRM
 - `suppliers` — supplier SRM
+- `interface_types` — circuit interface types (100GE, 400GE, etc.)
+- `handover_locations` — handover/colocation points
+- `cable_systems`, `landing_stations`, `countries` — reference data
 
 ## Development Notes
 - Use shadcn/ui components for all form elements and dialogs
 - Use Tailwind utility classes, avoid custom CSS
 - All data fetching via custom hooks wrapping Supabase client
 - Reference data (Cable Systems, Landing Stations, Countries) are pre-populated and managed via Settings page
-- Inventory status is auto-computed from linked Sales Orders, not manually set
+- Inventory status is auto-computed from circuit allocations (Available → Partially Used → Fully Used)
+- Circuit allocation: sales items link to specific inventory circuits via `sales_item_circuits` junction
+- Color scheme: 🟢 Available, 🟠 Allocated (amber #F59E0B), 🔴 Full, 🔵 Planned, ⚪ Unlit
 
 ## Contribution Guidelines
 - Prefer small, focused changes

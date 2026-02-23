@@ -93,13 +93,18 @@ cable-inventory/
 - Three resource types: **Fiber** / **Spectrum** / **Capacity**
 - Four resource tabs on list page + Column Picker (21 columns, localStorage-persisted)
 - Capacity specs: 10G, 40G, 100G, 400G, 800G, 1.6T
-- Status auto-computed from linked Sales Orders (Available → Partially Used → Fully Used)
+- Status auto-computed from circuit allocations (Available → Partially Used → Fully Used)
 - Base + Batch mode for staged lighting
+- **Circuits**: individual circuit instances with interface type, batch, handover locations
+- **Capacity Breakdown**: multi-segment bar (Allocated/Available/Planned/Unlit)
+- **Linked Sales**: shows allocated sales orders per resource
 - Reference data: Cable Systems (~600 pre-loaded), Landing Stations, Countries
 
 ### Sales (MVP — Profitability Disabled)
-- Sales Orders with Lease/IRU models
-- Linked to Inventory resources
+- Sales Orders with multi-item line items
+- Disposal types: IRU Out, Lease Out, Swap Out, Self Use
+- **Circuit-level allocation**: sales items link to specific inventory circuits
+- Capacity auto-calculated from selected circuits
 - Renewal & Termination flows
 - Profitability calculations disabled for MVP
 
@@ -108,7 +113,7 @@ cable-inventory/
 - Searchable dropdowns with add-new support
 
 ### Settings
-- Reference Data management (Cable Systems, Landing Stations, Countries)
+- Reference Data management (Cable Systems, Landing Stations, Countries, Interface Types, Handover Locations)
 - Searchable list with add/edit/delete
 
 ---
@@ -118,12 +123,19 @@ cable-inventory/
 ### Tables
 | Table | Purpose |
 |-------|---------|
-| `inventory` | Resource records (Fiber/Spectrum/Capacity) |
-| `inventory_batches` | Staged lighting batches |
-| `sales_orders` | Sales order records |
-| `sales_order_batches` | Capacity allocations per batch |
+| `inventory_resources` | Resource records (Fiber/Spectrum/Capacity) |
+| `inventory_batches` | Staged lighting batches per resource |
+| `inventory_circuits` | Individual circuit instances |
+| `sales_orders` | Sales order headers |
+| `sales_order_items` | Line items (Capacity, Backhaul, etc.) |
+| `sales_item_circuits` | Junction: sales items ↔ allocated circuits |
 | `customers` | Customer CRM |
 | `suppliers` | Supplier SRM |
+| `interface_types` | Circuit interface types (100GE, 400GE, etc.) |
+| `handover_locations` | Handover/colocation points |
+| `cable_systems` | Cable systems (~600 pre-populated) |
+| `landing_stations` | Landing stations |
+| `countries` | Country reference data |
 
 ### Auth
 - Email/password authentication
@@ -175,6 +187,7 @@ npm run preview
 - Don't write custom CSS when Tailwind covers it
 - Don't use `useEffect` for derived state
 - Don't hardcode colors — use Tailwind theme tokens
+- Color scheme: 🟢 Available (`status-available`), 🟠 Allocated (`status-partial` amber), 🔴 Full (`status-full`), 🔵 Planned (`info`), ⚪ Unlit (gray)
 
 ---
 
