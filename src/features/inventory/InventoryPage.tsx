@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { fetchInventoryResources, deleteInventoryResource } from './api'
+import { fetchInventoryResources, deleteInventoryResource, checkResourceDeletable } from './api'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatCurrency } from '@/lib/utils'
 import type { InventoryResource, ResourceType } from '@/types'
@@ -183,6 +183,7 @@ export function InventoryPage() {
         status: [], acquisition: [], protection: [], costMode: [],
     })
     const [deleteTarget, setDeleteTarget] = useState<InventoryResource | null>(null)
+    const [deleteMessage, setDeleteMessage] = useState('')
     const [deleting, setDeleting] = useState(false)
     const pickerRef = useRef<HTMLDivElement>(null)
     const filterRef = useRef<HTMLDivElement>(null)
@@ -469,8 +470,18 @@ export function InventoryPage() {
                                         ))}
                                         <td className="px-4 py-3">
                                             <button
-                                                onClick={(e) => {
+                                                onClick={async (e) => {
                                                     e.stopPropagation()
+                                                    const check = await checkResourceDeletable(item.id)
+                                                    if (check.status === 'blocked') {
+                                                        toast.error(`Cannot delete — linked to active orders: ${check.activeOrders.join(', ')}`)
+                                                        return
+                                                    }
+                                                    if (check.status === 'warn') {
+                                                        setDeleteMessage(`This resource is linked to orders: ${check.otherOrders.join(', ')}. Deleting will remove these associations.`)
+                                                    } else {
+                                                        setDeleteMessage('This will permanently delete the resource and all its batches and circuits.')
+                                                    }
                                                     setDeleteTarget(item)
                                                 }}
                                                 className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
@@ -495,7 +506,7 @@ export function InventoryPage() {
             <ConfirmDialog
                 open={!!deleteTarget}
                 title={`Delete ${deleteTarget?.resource_id ?? 'resource'}?`}
-                message="This will permanently delete the resource and all its batches and circuits. This action cannot be undone."
+                message={deleteMessage}
                 confirmLabel="Delete Resource"
                 variant="danger"
                 loading={deleting}

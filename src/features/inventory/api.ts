@@ -113,6 +113,33 @@ export async function updateInventoryResource(id: string, updates: Record<string
 }
 
 // Delete
+/** Check if a resource can be deleted. Returns status + linked order info. */
+export async function checkResourceDeletable(resourceId: string): Promise<{
+    status: 'ok' | 'warn' | 'blocked'
+    activeOrders: string[]
+    otherOrders: string[]
+}> {
+    const { data } = await supabase
+        .from('sales_order_items')
+        .select('sales_orders!inner(order_id, status)')
+        .eq('inventory_resource_id', resourceId)
+
+    const activeOrders: string[] = []
+    const otherOrders: string[] = []
+    for (const item of (data ?? [])) {
+        const order = item.sales_orders as unknown as { order_id: string; status: string }
+        if (['Pre-sold', 'Active'].includes(order.status)) {
+            if (!activeOrders.includes(order.order_id)) activeOrders.push(order.order_id)
+        } else {
+            if (!otherOrders.includes(order.order_id)) otherOrders.push(order.order_id)
+        }
+    }
+
+    if (activeOrders.length > 0) return { status: 'blocked', activeOrders, otherOrders }
+    if (otherOrders.length > 0) return { status: 'warn', activeOrders, otherOrders }
+    return { status: 'ok', activeOrders, otherOrders }
+}
+
 export async function deleteInventoryResource(id: string) {
     const { error } = await supabase
         .from('inventory_resources')
