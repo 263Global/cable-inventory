@@ -1,49 +1,59 @@
 # AGENTS.md
 
-This document provides the default orientation and operating guidance for agents working in this repository.
+Default orientation and operating guidance for agents working in this repository.
 
 ## Project Purpose
-Cable Inventory Manager: a browser-based app for managing inventory resources, sales orders, customers, and suppliers with Supabase as the backend.
+Cable Inventory Manager: a React SPA for managing submarine cable inventory resources, sales orders, customers, and suppliers. Uses Supabase as the backend.
 
-## Architecture Overview
-- Frontend: vanilla HTML/CSS/JS (no build step).
-- Data layer: `assets/js/store.js` talks to Supabase and keeps in-memory arrays.
-- View modules: `assets/js/modules/*.js` render and handle UI interactions.
-- Shared logic: status helpers in `assets/js/inventoryStatus.js` and `assets/js/salesStatus.js`, financials in `assets/js/modules/financials.js`.
+## Architecture
+- **Framework**: React 19 + Vite 6 (client-side SPA, deployed as static files)
+- **UI**: Tailwind CSS 4 + shadcn/ui components
+- **Routing**: React Router v7
+- **Data layer**: Supabase client (PostgreSQL + Auth + RLS), no API server
+- **Language**: TypeScript (strict)
+
+## Project Status
+- **Full rewrite in progress** from vanilla JS to React
+- Inventory module: primary focus (Capacity type fully implemented, Fiber/Spectrum placeholder)
+- Sales: UI rewritten, profitability calculations disabled (MVP pivot)
+- Dashboard: Under Construction placeholder
+- CRM (Customers/Suppliers): standard CRUD
 
 ## How To Run
-- Open `index.html` in a browser (served from a static host or local file).
-- Auth pages: `login.html`, `reset-password.html`.
-- Supabase config is in `assets/js/supabase.js`.
-
-## Tests
-- Automated: `node tests/run.js`
-- Manual status checks: open `docs/status-test.html` in a browser.
+```bash
+npm install
+npm run dev        # Start local dev server
+npm run build      # Build for production
+```
 
 ## Directory Guide
-- `assets/js/` application scripts.
-- `assets/js/modules/` feature modules (dashboard, inventory, sales, customers, suppliers, etc.).
-- `assets/css/` styles.
-- `supabase/migrations/` DB migrations.
-- `docs/` reference docs, schemas, and test data.
-
-## Development Notes
-- IDs (resource/order) may be supplied by external systems; duplicates are blocked on the client. See `assets/js/store.js`.
-- UI uses template literals heavily; escape user/DB data when injecting into `innerHTML`.
-- Store arrays are treated as the source of truth; avoid in-place mutation when order matters.
-
-## Contribution Guidelines
-- Prefer small, focused changes.
-- Avoid adding heavy dependencies unless necessary.
-- Keep code ASCII unless the file already uses non-ASCII.
+- `src/` — application source code
+  - `src/features/` — feature modules (auth, inventory, sales, crm, settings)
+  - `src/components/ui/` — shadcn/ui components
+  - `src/components/layout/` — sidebar, header, layout shell
+  - `src/hooks/` — custom React hooks for data fetching
+  - `src/lib/` — Supabase client, utilities
+  - `src/types/` — TypeScript type definitions
+- `docs/` — reference docs, DB schema, test data
+- `supabase/` — database migrations
 
 ## Data / Supabase
-- Inventory: `inventory` table
-- Sales: `sales_orders` table
-- Customers: `customers` table
-- Suppliers: `suppliers` table
+- `inventory` — resource records (Fiber/Spectrum/Capacity)
+- `inventory_batches` — staged lighting batches
+- `sales_orders` — sales order records
+- `sales_order_batches` — capacity allocations
+- `customers` — customer CRM
+- `suppliers` — supplier SRM
 
-## Quick References
-- Inventory status logic: `assets/js/inventoryStatus.js`
-- Sales status logic: `assets/js/salesStatus.js`
-- Financial calculations: `assets/js/modules/financials.js`
+## Development Notes
+- Use shadcn/ui components for all form elements and dialogs
+- Use Tailwind utility classes, avoid custom CSS
+- All data fetching via custom hooks wrapping Supabase client
+- Reference data (Cable Systems, Landing Stations, Countries) are pre-populated and managed via Settings page
+- Inventory status is auto-computed from linked Sales Orders, not manually set
+
+## Contribution Guidelines
+- Prefer small, focused changes
+- Use TypeScript strict mode, no `any` types
+- Follow existing patterns in `src/features/` for new modules
+- Keep components composable and reusable
