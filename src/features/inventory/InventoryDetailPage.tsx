@@ -770,9 +770,16 @@ export function InventoryDetailPage() {
                                                 <select value={newCircuit.batch_id} onChange={(e) => setNewCircuit((p) => ({ ...p, batch_id: e.target.value }))}
                                                     className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                                                     <option value="">No batch</option>
-                                                    {batches.map((b) => (
-                                                        <option key={b.id} value={b.id}>B{b.batch_number} — {b.capacity}G {b.model} ({b.status})</option>
-                                                    ))}
+                                                    {batches.map((b) => {
+                                                        const batchCircuitsCap = circuits.filter(c => c.batch_id === b.id).reduce((sum, c) => sum + c.capacity, 0)
+                                                        const remaining = b.capacity - batchCircuitsCap
+                                                        const exhausted = remaining <= 0
+                                                        return (
+                                                            <option key={b.id} value={b.id} disabled={exhausted}>
+                                                                B{b.batch_number} — {remaining}G / {b.capacity}G remaining · {b.model}{exhausted ? ' (full)' : ''}
+                                                            </option>
+                                                        )
+                                                    })}
                                                 </select>
                                             </div>
                                         </div>
@@ -820,6 +827,7 @@ export function InventoryDetailPage() {
                                         const circuitHandoverZ = circuit.handover_location_z_id
                                         const hLocA = circuitHandoverA ? handoverLocations.find((h) => h.id === circuitHandoverA) : null
                                         const hLocZ = circuitHandoverZ ? handoverLocations.find((h) => h.id === circuitHandoverZ) : null
+                                        const batchInfo = circuit.batch_id ? batches.find(b => b.id === circuit.batch_id) : null
 
                                         return (
                                             <div key={circuit.id} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border-subtle">
@@ -830,6 +838,9 @@ export function InventoryDetailPage() {
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium">{circuit.capacity}G</span>
                                                         <span className={`text-xs font-medium ${circuitStatusColors[circuit.status]}`}>● {circuit.status}</span>
+                                                        {batchInfo && (
+                                                            <span className="px-1.5 py-0.5 rounded bg-surface-hover text-[10px] font-medium text-text-dim">B{batchInfo.batch_number}</span>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center gap-1 mt-0.5">
                                                         <span className="text-xs text-text-dim">{origName}</span>
