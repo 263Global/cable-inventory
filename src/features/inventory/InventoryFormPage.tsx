@@ -304,7 +304,58 @@ export function InventoryFormPage() {
     const baseCapacity = parseFloat(form.capacity_value) || 0
     const batchCapacityExceeded = batchTotalCapacity > baseCapacity && baseCapacity > 0
 
+    // ── Per-step validation ──
+    const validateStep = (s: number): boolean => {
+        const errors: string[] = []
+
+        if (s === 0) {
+            // Step 1: Resource Info
+            if (!form.cable_system_id) errors.push('Cable System is required')
+            if (!form.capacity_value || Number(form.capacity_value) <= 0) errors.push('Capacity must be a positive number')
+            if (isBatchMode && batches.length === 0) errors.push('Add at least one batch in Base+Batch mode')
+            if (isBatchMode && batchCapacityExceeded) errors.push('Batch total capacity exceeds base capacity')
+            // Validate each batch row
+            if (isBatchMode) {
+                batches.forEach((b, i) => {
+                    if (!b.capacity || Number(b.capacity) <= 0) errors.push(`Batch ${i + 1}: capacity is required`)
+                    if (!b.start_date) errors.push(`Batch ${i + 1}: start date is required`)
+                    if (b.model === 'IRU' && b.otc && Number(b.otc) < 0) errors.push(`Batch ${i + 1}: OTC cannot be negative`)
+                    if (b.model === 'Lease' && b.mrc && Number(b.mrc) < 0) errors.push(`Batch ${i + 1}: MRC cannot be negative`)
+                })
+            }
+        }
+
+        if (s === 1) {
+            // Step 2: Locations — at least one endpoint
+            if (!form.country_a && !form.country_z) errors.push('At least one endpoint country is required')
+        }
+
+        if (s === 2) {
+            // Step 3: Contract & Costs
+            if (form.otc && Number(form.otc) < 0) errors.push('OTC cannot be negative')
+            if (form.mrc && Number(form.mrc) < 0) errors.push('MRC cannot be negative')
+            if (form.nrc && Number(form.nrc) < 0) errors.push('NRC cannot be negative')
+            if (form.start_date && form.end_date && form.start_date > form.end_date) {
+                errors.push('End date cannot be before start date')
+            }
+        }
+
+        if (errors.length > 0) {
+            errors.forEach((e) => toast.error(e))
+            return false
+        }
+        return true
+    }
+
+    const handleNext = () => {
+        if (validateStep(step)) setStep((s) => s + 1)
+    }
+
     const handleSave = async () => {
+        // Validate all steps before saving
+        for (let s = 0; s <= 2; s++) {
+            if (!validateStep(s)) { setStep(s); return }
+        }
         setSaving(true); setError('')
         try {
             // Get country UUIDs
@@ -767,7 +818,7 @@ export function InventoryFormPage() {
                             <ArrowLeft className="h-4 w-4" /> Back
                         </button>
                         {step < steps.length - 1 ? (
-                            <button onClick={() => setStep((s) => s + 1)}
+                            <button onClick={handleNext}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
                                 Next <ArrowRight className="h-4 w-4" />
                             </button>
