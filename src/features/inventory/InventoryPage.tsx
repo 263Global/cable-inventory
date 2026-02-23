@@ -118,6 +118,10 @@ const allColumns: ColumnDef[] = [
         render: (item) => <span className="text-sm">{item.mrc ? formatCurrency(Number(item.mrc)) : '—'}</span>,
     },
     {
+        key: 'nrc', label: 'NRC', group: 'Financial', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.nrc ? formatCurrency(Number(item.nrc)) : '—'}</span>,
+    },
+    {
         key: 'landing_a', label: 'Station A', group: 'Location', defaultVisible: false,
         render: (item) => <span className="text-sm text-text-muted">{item.landing_station_a_name ?? '—'}</span>,
     },
