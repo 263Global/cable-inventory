@@ -11,6 +11,7 @@ Cable Inventory Manager: a React SPA for managing submarine cable inventory reso
 - **Routing**: React Router v7
 - **Data layer**: Supabase client (PostgreSQL + Auth + RLS), no API server
 - **Language**: TypeScript (strict)
+- **Toast**: Sonner (`import { toast } from 'sonner'`)
 
 ## Project Status
 - **Full rewrite in progress** from vanilla JS to React

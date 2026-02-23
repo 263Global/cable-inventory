@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { createInventoryResource, updateInventoryResource, fetchInventoryById } from './api'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import {
@@ -345,7 +346,7 @@ export function InventoryFormPage() {
 
             if (isEdit && editId) {
                 await updateInventoryResource(editId, payload)
-                // In edit mode, update existing batches (simplified: skip batch management here, use detail page)
+                toast.success('Resource updated')
                 navigate(`/inventory/${editId}`)
             } else {
                 const created = await createInventoryResource(payload)
@@ -372,9 +373,12 @@ export function InventoryFormPage() {
                 }
 
                 navigate(`/inventory/${created.id}`)
+                toast.success('Resource created')
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save')
+            const msg = err instanceof Error ? err.message : 'Failed to save'
+            setError(msg)
+            toast.error(msg)
         } finally {
             setSaving(false)
         }

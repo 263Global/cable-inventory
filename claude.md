@@ -19,7 +19,8 @@
 > **Full rewrite in progress.** Migrating from Vanilla JS SPA to React modern stack.
 > - Dashboard: Under Construction (placeholder)
 > - Sales Profitability: Disabled (MVP pivot)
-> - Fiber/Spectrum resource types: Coming Soon (placeholder)
+> - Fiber/Spectrum resource types: Separate Tabs (implemented)
+> - Toast notifications: Sonner (dark, bottom-right, auto-dismiss)
 
 ## Tech Stack
 
@@ -31,6 +32,7 @@
 | **Backend** | Supabase (PostgreSQL + Auth + RLS) |
 | **Deployment** | GitHub Pages (static) |
 | **Icons** | Lucide React |
+| **Toast** | Sonner (dark theme, bottom-right) |
 
 ---
 
@@ -88,7 +90,8 @@ cable-inventory/
 ## Key Modules
 
 ### Inventory (Primary Focus)
-- Three resource types: **Fiber** (Coming Soon) / **Spectrum** (Coming Soon) / **Capacity** (Active)
+- Three resource types: **Fiber** / **Spectrum** / **Capacity**
+- Four resource tabs on list page + Column Picker (21 columns, localStorage-persisted)
 - Capacity specs: 10G, 40G, 100G, 400G, 800G, 1.6T
 - Status auto-computed from linked Sales Orders (Available → Partially Used → Fully Used)
 - Base + Batch mode for staged lighting

@@ -5,6 +5,7 @@ import {
     Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers, Check,
     Lock, Unlock,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { fetchInventoryById } from './api'
 import {
     fetchCircuits, createCircuit, updateCircuit, deleteCircuit,
@@ -141,6 +142,7 @@ export function InventoryDetailPage() {
                 const { updateBatch } = await import('@/lib/reference-api')
                 await Promise.all(toUpdate.map((b) => updateBatch(b.id, { status: 'Active' })))
                 loadBatches()
+                toast.info(`${toUpdate.length} batch${toUpdate.length > 1 ? 'es' : ''} auto-transitioned to Active`)
             })()
     }, [batches, loadBatches])
 
@@ -170,19 +172,22 @@ export function InventoryDetailPage() {
             setNewCircuit({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
             setShowAddCircuit(false)
             loadCircuits()
-        } catch (err) { console.error(err) }
+            toast.success('Circuit added')
+        } catch (err) { console.error(err); toast.error('Failed to add circuit') }
         finally { setSavingCircuit(false) }
     }
 
     const handleChangeInterfaceType = async (circuitId: string, newTypeId: string) => {
         await updateCircuit(circuitId, { current_interface_type_id: newTypeId })
         loadCircuits()
+        toast.success('Interface type updated')
     }
 
     const handleDeleteCircuit = async (circuitId: string) => {
         if (!confirm('Delete this circuit?')) return
         await deleteCircuit(circuitId)
         loadCircuits()
+        toast.success('Circuit deleted')
     }
 
     // ─── Batch handlers ───
@@ -211,6 +216,7 @@ export function InventoryDetailPage() {
         setNewBatchOmUnlocked(false)
         setShowAddBatch(false)
         loadBatches()
+        toast.success('Batch saved')
     }
 
     const handleDeleteBatch = async (batchId: string) => {
@@ -218,6 +224,7 @@ export function InventoryDetailPage() {
         await deleteBatch(batchId)
         if (editingBatchId === batchId) setEditingBatchId(null)
         loadBatches()
+        toast.success('Batch deleted')
     }
 
     const handleUpdateBatchField = async (batchId: string, field: string, value: string | number) => {
@@ -241,7 +248,7 @@ export function InventoryDetailPage() {
             }
             await updateBatch(batchId, updates)
             loadBatches()
-        } catch (err) { console.error(err) }
+        } catch (err) { console.error(err); toast.error('Failed to update batch') }
     }
 
     if (loading) {

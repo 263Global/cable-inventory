@@ -11,6 +11,7 @@ import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { ReferenceDataPage } from '@/features/reference-data/ReferenceDataPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { Loader2 } from 'lucide-react'
+import { Toaster } from 'sonner'
 
 function ProtectedRoutes() {
   const { user, loading } = useAuth()
@@ -51,6 +52,7 @@ function App() {
     <BrowserRouter basename="/cable-inventory">
       <AuthProvider>
         <ProtectedRoutes />
+        <Toaster theme="dark" position="bottom-right" richColors closeButton />
       </AuthProvider>
     </BrowserRouter>
   )

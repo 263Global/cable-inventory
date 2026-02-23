@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { fetchInventoryResources, deleteInventoryResource } from './api'
 import { formatCurrency } from '@/lib/utils'
 import type { InventoryResource, ResourceType } from '@/types'
@@ -376,7 +377,9 @@ export function InventoryPage() {
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     if (confirm(`Delete ${item.resource_id}?`)) {
-                                                        deleteInventoryResource(item.id).then(loadData).catch(console.error)
+                                                        deleteInventoryResource(item.id)
+                                                            .then(() => { loadData(); toast.success(`${item.resource_id} deleted`) })
+                                                            .catch((err) => { console.error(err); toast.error('Failed to delete') })
                                                     }
                                                 }}
                                                 className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
