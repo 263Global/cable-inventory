@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import {
     Package,
     FileText,
@@ -21,6 +22,7 @@ const navItems = [
 
 export function Sidebar() {
     const location = useLocation()
+    const { user, signOut } = useAuth()
 
     return (
         <aside className="fixed left-0 top-0 bottom-0 w-64 bg-surface border-r border-border-subtle flex flex-col z-50">
@@ -52,8 +54,16 @@ export function Sidebar() {
             </nav>
 
             {/* User section */}
-            <div className="p-3 border-t border-border-subtle">
-                <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover w-full transition-colors cursor-pointer">
+            <div className="p-3 border-t border-border-subtle space-y-2">
+                {user && (
+                    <div className="px-3 py-1">
+                        <p className="text-xs text-text-dim truncate">{user.email}</p>
+                    </div>
+                )}
+                <button
+                    onClick={signOut}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover w-full transition-colors cursor-pointer"
+                >
                     <LogOut className="h-5 w-5 shrink-0" />
                     Logout
                 </button>
