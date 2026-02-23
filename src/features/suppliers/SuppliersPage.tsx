@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Building2, Search, Plus, Pencil, Trash2, X, Loader2, Globe, Mail, Phone } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Supplier {
     id: string
@@ -21,6 +23,8 @@ export function SuppliersPage() {
     const [formData, setFormData] = useState({ name: '', contact_name: '', contact_email: '', phone: '', website: '', notes: '' })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -65,20 +69,22 @@ export function SuppliersPage() {
             if (editingItem) {
                 const { error } = await supabase.from('suppliers').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingItem.id)
                 if (error) throw error
+                toast.success('Supplier updated')
             } else {
                 const { error } = await supabase.from('suppliers').insert(payload)
                 if (error) throw error
+                toast.success('Supplier created')
             }
             setShowModal(false); load()
-        } catch (err) { setError(err instanceof Error ? err.message : 'Failed to save') }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to save'
+            setError(msg)
+            toast.error(msg)
+        }
         finally { setSaving(false) }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Delete this supplier?')) return
-        await supabase.from('suppliers').delete().eq('id', id)
-        load()
-    }
+    // Delete handled by ConfirmDialog below
 
     return (
         <div>
@@ -126,7 +132,7 @@ export function SuppliersPage() {
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                     <button onClick={() => openEdit(s)} className="p-1.5 rounded-md hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer" title="Edit"><Pencil className="h-4 w-4" /></button>
-                                    <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                                    <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete"><Trash2 className="h-4 w-4" /></button>
                                 </div>
                             </div>
                         ))}
@@ -165,6 +171,32 @@ export function SuppliersPage() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation */}
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title={`Delete ${deleteTarget?.name ?? 'supplier'}?`}
+                message="This will permanently delete this supplier. This action cannot be undone."
+                confirmLabel="Delete Supplier"
+                variant="danger"
+                loading={deleting}
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={async () => {
+                    if (!deleteTarget) return
+                    setDeleting(true)
+                    try {
+                        await supabase.from('suppliers').delete().eq('id', deleteTarget.id)
+                        toast.success(`${deleteTarget.name} deleted`)
+                        load()
+                    } catch (err) {
+                        console.error(err)
+                        toast.error('Failed to delete')
+                    } finally {
+                        setDeleting(false)
+                        setDeleteTarget(null)
+                    }
+                }}
+            />
         </div>
     )
 }
