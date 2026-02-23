@@ -56,6 +56,28 @@ function calcBatchTerm(baseStart: string, baseTermMonths: string, batchStart: st
     return (baseEnd.getFullYear() - bs.getFullYear()) * 12 + (baseEnd.getMonth() - bs.getMonth()) + 1
 }
 
+// Auto-suggest batch status based on dates
+function suggestBatchStatus(batchStart: string, baseStart: string, baseTermMonths: string): 'Planned' | 'Active' | 'Ended' {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Calculate base end date
+    if (baseStart && baseTermMonths) {
+        const baseEnd = new Date(baseStart)
+        const bm = parseInt(baseTermMonths, 10)
+        if (!isNaN(bm) && bm > 0) {
+            baseEnd.setMonth(baseEnd.getMonth() + bm)
+            baseEnd.setDate(baseEnd.getDate() - 1)
+            if (baseEnd < today) return 'Ended'
+        }
+    }
+
+    if (!batchStart) return 'Planned'
+    const bs = new Date(batchStart)
+    if (isNaN(bs.getTime())) return 'Planned'
+    return bs > today ? 'Planned' : 'Active'
+}
+
 // Batch row type for local state
 interface BatchRow {
     id: string
@@ -174,6 +196,8 @@ export function InventoryFormPage() {
                 if (key === 'start_date') {
                     const term = calcBatchTerm(form.start_date, form.term_months, value)
                     next.term_months = term > 0 ? String(term) : ''
+                    // Auto-suggest status based on dates
+                    next.status = suggestBatchStatus(value, form.start_date, form.term_months)
                 }
                 // Auto-calc batch O&M
                 if (key === 'otc' || key === 'om_rate') {
@@ -304,8 +328,8 @@ export function InventoryFormPage() {
                 {steps.map((s, i) => (
                     <div key={s} className="flex items-center gap-2">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${i < step ? 'bg-primary text-primary-foreground'
-                                : i === step ? 'bg-primary text-primary-foreground'
-                                    : 'bg-surface-hover text-text-dim'}`}>
+                            : i === step ? 'bg-primary text-primary-foreground'
+                                : 'bg-surface-hover text-text-dim'}`}>
                             {i < step ? <Check className="h-4 w-4" /> : i + 1}
                         </div>
                         <span className={`text-sm font-medium ${i <= step ? 'text-text' : 'text-text-dim'}`}>{s}</span>

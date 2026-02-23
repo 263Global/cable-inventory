@@ -27,7 +27,7 @@ ALTER TABLE inventory_resources
   ADD COLUMN IF NOT EXISTS supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL;
 
 -- 3. Inventory batches table (for Base+Batch mode)
-CREATE TABLE inventory_batches (
+CREATE TABLE IF NOT EXISTS inventory_batches (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   inventory_resource_id UUID NOT NULL REFERENCES inventory_resources(id) ON DELETE CASCADE,
   batch_number INTEGER NOT NULL,
@@ -61,10 +61,10 @@ ALTER TABLE inventory_circuits
   ADD COLUMN IF NOT EXISTS handover_location_z_id UUID REFERENCES handover_locations(id) ON DELETE SET NULL;
 
 -- Indexes
-CREATE INDEX idx_batches_resource ON inventory_batches(inventory_resource_id);
-CREATE INDEX idx_circuits_handover_a ON inventory_circuits(handover_location_a_id);
-CREATE INDEX idx_circuits_handover_z ON inventory_circuits(handover_location_z_id);
-CREATE INDEX idx_inventory_supplier ON inventory_resources(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_batches_resource ON inventory_batches(inventory_resource_id);
+CREATE INDEX IF NOT EXISTS idx_circuits_handover_a ON inventory_circuits(handover_location_a_id);
+CREATE INDEX IF NOT EXISTS idx_circuits_handover_z ON inventory_circuits(handover_location_z_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_supplier ON inventory_resources(supplier_id);
 
 -- Seed popular suppliers
 INSERT INTO suppliers (name) VALUES
