@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout/Layout'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { InventoryFormPage } from '@/features/inventory/InventoryFormPage'
+import { InventoryDetailPage } from '@/features/inventory/InventoryDetailPage'
 import { SalesPage } from '@/features/sales/SalesPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
 import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
@@ -30,6 +31,7 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/inventory/new" element={<InventoryFormPage />} />
+        <Route path="/inventory/:id" element={<InventoryDetailPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/customers" element={<CustomersPage />} />
