@@ -298,7 +298,7 @@ export function InventoryDetailPage() {
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}
                     </div>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 border border-primary text-primary hover:bg-primary/10 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                <button onClick={() => navigate(`/inventory/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-primary text-primary hover:bg-primary/10 rounded-lg text-sm font-medium transition-colors cursor-pointer">
                     <Pencil className="h-4 w-4" /> Edit
                 </button>
             </div>

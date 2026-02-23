@@ -31,6 +31,7 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/inventory/new" element={<InventoryFormPage />} />
+        <Route path="/inventory/:id/edit" element={<InventoryFormPage />} />
         <Route path="/inventory/:id" element={<InventoryDetailPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/sales" element={<SalesPage />} />
