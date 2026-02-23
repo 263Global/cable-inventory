@@ -69,6 +69,22 @@ export function InventoryFormPage() {
         }
     }, [form.start_date, form.term_months])
 
+    // Convert spec string to capacity in G
+    const specToCapacity = (spec: string): string => {
+        const upper = spec.toUpperCase().trim()
+        if (upper.endsWith('T')) {
+            const num = parseFloat(upper.replace('T', ''))
+            return isNaN(num) ? '' : String(num * 1000)
+        }
+        if (upper.endsWith('G')) {
+            const num = parseFloat(upper.replace('G', ''))
+            return isNaN(num) ? '' : String(num)
+        }
+        // Plain number = treat as G
+        const num = parseFloat(upper)
+        return isNaN(num) ? '' : String(num)
+    }
+
     const updateForm = (key: string, value: string) => {
         setForm((f) => ({ ...f, [key]: value }))
     }
@@ -140,10 +156,10 @@ export function InventoryFormPage() {
                         <button
                             onClick={() => setStep(i)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${i === step
-                                    ? 'bg-primary text-primary-foreground'
-                                    : i < step
-                                        ? 'bg-primary/20 text-primary'
-                                        : 'bg-surface text-text-muted'
+                                ? 'bg-primary text-primary-foreground'
+                                : i < step
+                                    ? 'bg-primary/20 text-primary'
+                                    : 'bg-surface text-text-muted'
                                 }`}
                         >
                             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs">
@@ -170,8 +186,8 @@ export function InventoryFormPage() {
                                         key={t}
                                         onClick={() => updateForm('type', t)}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${form.type === t
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-surface-hover text-text-muted hover:text-text'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-surface-hover text-text-muted hover:text-text'
                                             }`}
                                     >
                                         {t}
@@ -196,7 +212,7 @@ export function InventoryFormPage() {
                                     {specPresets.map((s) => (
                                         <button
                                             key={s}
-                                            onClick={() => { updateForm('spec', s); updateForm('capacity_value', s.replace('G', '').replace('T', '000')) }}
+                                            onClick={() => { updateForm('spec', s); updateForm('capacity_value', specToCapacity(s)) }}
                                             className={`px-2 py-1 rounded text-xs transition-colors cursor-pointer ${form.spec === s ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'
                                                 }`}
                                         >
@@ -207,8 +223,13 @@ export function InventoryFormPage() {
                                 <input
                                     type="text"
                                     value={form.spec}
-                                    onChange={(e) => updateForm('spec', e.target.value)}
-                                    placeholder="Or enter custom spec..."
+                                    onChange={(e) => {
+                                        const val = e.target.value
+                                        updateForm('spec', val)
+                                        const cap = specToCapacity(val)
+                                        if (cap) updateForm('capacity_value', cap)
+                                    }}
+                                    placeholder="Or enter custom spec (e.g. 300G, 1.6T)..."
                                     className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
                                 />
                             </div>
