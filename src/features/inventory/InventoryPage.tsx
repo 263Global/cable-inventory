@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Package, Plus, Search, Filter, Loader2, Trash2 } from 'lucide-react'
+import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2 } from 'lucide-react'
 import { fetchInventoryResources, deleteInventoryResource } from './api'
+import { formatCurrency } from '@/lib/utils'
 import type { InventoryResource, ResourceType } from '@/types'
 
 const typeTabs: { label: string; filter: string }[] = [
@@ -27,6 +28,124 @@ const typeColors: Record<ResourceType, string> = {
     'Spectrum': 'bg-purple-500/15 text-purple-400',
 }
 
+// ─── Column definitions ───
+interface ColumnDef {
+    key: string
+    label: string
+    group: string
+    defaultVisible: boolean
+    minWidth?: string
+    render: (item: InventoryResource) => React.ReactNode
+}
+
+const allColumns: ColumnDef[] = [
+    {
+        key: 'resource_id', label: 'Resource ID', group: 'Basic', defaultVisible: true,
+        render: (item) => (
+            <div>
+                <span className="text-sm font-medium">{item.resource_id}</span>
+                {item.internal_ref && <span className="text-xs text-text-dim ml-2">({item.internal_ref})</span>}
+            </div>
+        ),
+    },
+    {
+        key: 'type', label: 'Type', group: 'Basic', defaultVisible: true,
+        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[item.type]}`}>{item.type}</span>,
+    },
+    {
+        key: 'cable_system', label: 'Cable System', group: 'Basic', defaultVisible: true,
+        render: (item) => <span className="text-sm">{item.cable_system_name ?? '—'}</span>,
+    },
+    {
+        key: 'spec', label: 'Spec', group: 'Basic', defaultVisible: true,
+        render: (item) => <span className="text-sm font-medium">{item.spec ?? '—'}</span>,
+    },
+    {
+        key: 'route', label: 'Route', group: 'Location', defaultVisible: true,
+        render: (item) => <span className="text-sm text-text-muted">{`${item.country_a || '—'} → ${item.country_z || '—'}`}</span>,
+    },
+    {
+        key: 'status', label: 'Status', group: 'Basic', defaultVisible: true,
+        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status]}`}>{item.status}</span>,
+    },
+    {
+        key: 'capacity', label: 'Capacity Usage', group: 'Basic', defaultVisible: true, minWidth: '200px',
+        render: (item) => <CapacityBar used={Number(item.used_capacity ?? 0)} total={Number(item.total_capacity ?? 0)} />,
+    },
+    // ─── Additional columns ───
+    {
+        key: 'supplier', label: 'Supplier', group: 'Basic', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.supplier_name ?? '—'}</span>,
+    },
+    {
+        key: 'acquisition_type', label: 'Acquisition', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.acquisition_type}</span>,
+    },
+    {
+        key: 'cost_mode', label: 'Cost Mode', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.cost_mode}</span>,
+    },
+    {
+        key: 'protection', label: 'Protection', group: 'Basic', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.protection}</span>,
+    },
+    {
+        key: 'contract_ref', label: 'Contract Ref', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm text-text-muted">{item.contract_ref ?? '—'}</span>,
+    },
+    {
+        key: 'start_date', label: 'Start Date', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.start_date ?? '—'}</span>,
+    },
+    {
+        key: 'end_date', label: 'End Date', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.end_date ?? '—'}</span>,
+    },
+    {
+        key: 'term_months', label: 'Term', group: 'Contract', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.term_months ? `${item.term_months}mo` : '—'}</span>,
+    },
+    {
+        key: 'otc', label: 'OTC', group: 'Financial', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.otc ? formatCurrency(Number(item.otc)) : '—'}</span>,
+    },
+    {
+        key: 'annual_om', label: 'Annual O&M', group: 'Financial', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.annual_om_cost ? formatCurrency(Number(item.annual_om_cost)) : '—'}</span>,
+    },
+    {
+        key: 'mrc', label: 'MRC', group: 'Financial', defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.mrc ? formatCurrency(Number(item.mrc)) : '—'}</span>,
+    },
+    {
+        key: 'landing_a', label: 'Station A', group: 'Location', defaultVisible: false,
+        render: (item) => <span className="text-sm text-text-muted">{item.landing_station_a_name ?? '—'}</span>,
+    },
+    {
+        key: 'landing_z', label: 'Station Z', group: 'Location', defaultVisible: false,
+        render: (item) => <span className="text-sm text-text-muted">{item.landing_station_z_name ?? '—'}</span>,
+    },
+    {
+        key: 'handover_a', label: 'Handover A', group: 'Location', defaultVisible: false,
+        render: (item) => <span className="text-sm text-text-muted">{item.handover_a_name ?? '—'}</span>,
+    },
+    {
+        key: 'handover_z', label: 'Handover Z', group: 'Location', defaultVisible: false,
+        render: (item) => <span className="text-sm text-text-muted">{item.handover_z_name ?? '—'}</span>,
+    },
+]
+
+const STORAGE_KEY = 'inventory-visible-columns'
+const defaultCols = allColumns.filter((c) => c.defaultVisible).map((c) => c.key)
+
+function loadVisibleCols(): string[] {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (stored) return JSON.parse(stored)
+    } catch { /* ignore */ }
+    return defaultCols
+}
+
 function CapacityBar({ used, total }: { used: number; total: number }) {
     if (!total) return <span className="text-text-dim text-xs">—</span>
     const pct = Math.min((used / total) * 100, 100)
@@ -44,18 +163,41 @@ function CapacityBar({ used, total }: { used: number; total: number }) {
     )
 }
 
-function formatRoute(item: InventoryResource): string {
-    const a = item.country_a || '—'
-    const z = item.country_z || '—'
-    return `${a} → ${z}`
-}
-
 export function InventoryPage() {
     const navigate = useNavigate()
     const [activeTab, setActiveTab] = useState('All')
     const [data, setData] = useState<InventoryResource[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [visibleCols, setVisibleCols] = useState<string[]>(loadVisibleCols)
+    const [showColPicker, setShowColPicker] = useState(false)
+    const pickerRef = useRef<HTMLDivElement>(null)
+
+    // Close picker on outside click
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+                setShowColPicker(false)
+            }
+        }
+        if (showColPicker) document.addEventListener('mousedown', handleClick)
+        return () => document.removeEventListener('mousedown', handleClick)
+    }, [showColPicker])
+
+    const toggleCol = (key: string) => {
+        setVisibleCols((prev) => {
+            const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+            return next
+        })
+    }
+
+    const resetCols = () => {
+        setVisibleCols(defaultCols)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCols))
+    }
+
+    const activeColumns = allColumns.filter((c) => visibleCols.includes(c.key))
 
     const loadData = useCallback(async () => {
         try {
@@ -83,9 +225,14 @@ export function InventoryPage() {
             (item.cable_system_name ?? '').toLowerCase().includes(s) ||
             (item.spec ?? '').toLowerCase().includes(s) ||
             (item.country_a ?? '').toLowerCase().includes(s) ||
-            (item.country_z ?? '').toLowerCase().includes(s)
+            (item.country_z ?? '').toLowerCase().includes(s) ||
+            (item.supplier_name ?? '').toLowerCase().includes(s) ||
+            (item.contract_ref ?? '').toLowerCase().includes(s)
         )
     })
+
+    // Group columns for picker
+    const groups = Array.from(new Set(allColumns.map((c) => c.group)))
 
     return (
         <div>
@@ -121,7 +268,7 @@ export function InventoryPage() {
                 ))}
             </div>
 
-            {/* Search + Filters */}
+            {/* Search + Filters + Column Picker */}
             <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
@@ -137,6 +284,41 @@ export function InventoryPage() {
                     <Filter className="h-4 w-4" />
                     Filters
                 </button>
+                {/* Column Picker */}
+                <div className="relative" ref={pickerRef}>
+                    <button
+                        onClick={() => setShowColPicker(!showColPicker)}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors cursor-pointer ${showColPicker ? 'border-primary text-primary bg-primary/5' : 'border-border text-text-muted hover:text-text hover:bg-surface-hover'}`}
+                        title="Choose columns"
+                    >
+                        <Settings2 className="h-4 w-4" />
+                        Columns
+                    </button>
+                    {showColPicker && (
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-border-subtle rounded-xl shadow-xl z-50 p-3 max-h-96 overflow-y-auto">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Visible Columns</span>
+                                <button onClick={resetCols} className="text-xs text-primary hover:underline cursor-pointer">Reset</button>
+                            </div>
+                            {groups.map((group) => (
+                                <div key={group} className="mb-3">
+                                    <p className="text-xs text-text-dim font-medium mb-1.5">{group}</p>
+                                    {allColumns.filter((c) => c.group === group).map((col) => (
+                                        <label key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-surface-hover cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={visibleCols.includes(col.key)}
+                                                onChange={() => toggleCol(col.key)}
+                                                className="rounded border-border text-primary focus:ring-primary accent-[var(--color-primary)] cursor-pointer"
+                                            />
+                                            <span className="text-sm">{col.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Table */}
@@ -162,13 +344,14 @@ export function InventoryPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-border-subtle">
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Resource ID</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Type</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Cable System</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Spec</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Route</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider min-w-[200px]">Capacity Usage</th>
+                                    {activeColumns.map((col) => (
+                                        <th key={col.key}
+                                            className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider"
+                                            style={col.minWidth ? { minWidth: col.minWidth } : undefined}
+                                        >
+                                            {col.label}
+                                        </th>
+                                    ))}
                                     <th className="w-12 px-4 py-3"></th>
                                 </tr>
                             </thead>
@@ -179,33 +362,11 @@ export function InventoryPage() {
                                         onClick={() => navigate(`/inventory/${item.id}`)}
                                         className="hover:bg-surface-hover transition-colors cursor-pointer"
                                     >
-                                        <td className="px-4 py-3">
-                                            <div>
-                                                <span className="text-sm font-medium">{item.resource_id}</span>
-                                                {item.internal_ref && (
-                                                    <span className="text-xs text-text-dim ml-2">({item.internal_ref})</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[item.type]}`}>
-                                                {item.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm">{item.cable_system_name ?? '—'}</td>
-                                        <td className="px-4 py-3 text-sm font-medium">{item.spec ?? '—'}</td>
-                                        <td className="px-4 py-3 text-sm text-text-muted">{formatRoute(item)}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status]}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <CapacityBar
-                                                used={Number(item.used_capacity ?? 0)}
-                                                total={Number(item.total_capacity ?? 0)}
-                                            />
-                                        </td>
+                                        {activeColumns.map((col) => (
+                                            <td key={col.key} className="px-4 py-3">
+                                                {col.render(item)}
+                                            </td>
+                                        ))}
                                         <td className="px-4 py-3">
                                             <button
                                                 onClick={(e) => {

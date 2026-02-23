@@ -1,14 +1,42 @@
 import { supabase } from '@/lib/supabase'
 
+const PAGE_SIZE = 1000
+
+/**
+ * Paginated fetch: loops through Supabase results in batches of PAGE_SIZE
+ * to bypass the PostgREST default 1000-row limit.
+ */
+export async function fetchAllPaginated<T>(
+    table: string,
+    select: string,
+    orderCol: string,
+    ascending = true
+): Promise<T[]> {
+    const all: T[] = []
+    let from = 0
+
+    while (true) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(select)
+            .order(orderCol, { ascending })
+            .range(from, from + PAGE_SIZE - 1)
+
+        if (error) throw error
+
+        const rows = (data ?? []) as T[]
+        all.push(...rows)
+
+        if (rows.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+    }
+
+    return all
+}
+
 // Generic CRUD operations for reference data tables
 export async function fetchAll<T>(table: string): Promise<T[]> {
-    const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .order('name', { ascending: true })
-
-    if (error) throw error
-    return (data as T[]) ?? []
+    return fetchAllPaginated<T>(table, '*', 'name')
 }
 
 export async function fetchById<T>(table: string, id: string): Promise<T | null> {
@@ -56,22 +84,10 @@ export async function deleteRecord(table: string, id: string): Promise<void> {
 
 // Cable Systems specific
 export async function fetchCableSystemsWithCount() {
-    const { data, error } = await supabase
-        .from('cable_systems')
-        .select('*, landing_stations(count)')
-        .order('name', { ascending: true })
-
-    if (error) throw error
-    return data ?? []
+    return fetchAllPaginated('cable_systems', '*, landing_stations(count)', 'name')
 }
 
 // Landing Stations with cable system name
 export async function fetchLandingStationsWithCable() {
-    const { data, error } = await supabase
-        .from('landing_stations')
-        .select('*, cable_systems(name)')
-        .order('name', { ascending: true })
-
-    if (error) throw error
-    return data ?? []
+    return fetchAllPaginated('landing_stations', '*, cable_systems(name)', 'name')
 }
