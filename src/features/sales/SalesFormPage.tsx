@@ -81,10 +81,13 @@ export function SalesFormPage() {
         (async () => {
             const [{ data: custs }, { data: res }] = await Promise.all([
                 supabase.from('customers').select('id, name').order('name'),
-                supabase.from('inventory_resources').select('id, resource_id, cable_system_name, type, spec, total_capacity').order('resource_id'),
+                supabase.from('inventory_resources').select('id, resource_id, cable_system_id, cable_system:cable_systems(name), type, spec, total_capacity').order('resource_id'),
             ])
             setCustomers(custs ?? [])
-            setResources(res ?? [])
+            setResources((res ?? []).map((r: Record<string, unknown>) => ({
+                ...r,
+                cable_system_name: (r.cable_system as { name: string } | null)?.name ?? null,
+            })) as InvResource[])
         })()
     }, [])
 

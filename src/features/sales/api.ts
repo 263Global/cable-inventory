@@ -92,17 +92,17 @@ export async function deleteSalesOrder(id: string): Promise<void> {
 export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderItem[]> {
     const { data, error } = await supabase
         .from('sales_order_items')
-        .select('*, inventory_resources(resource_id, cable_system_name)')
+        .select('*, inventory_resources(resource_id, cable_system_id, cable_system:cable_systems(name))')
         .eq('sales_order_id', salesOrderId)
         .order('created_at', { ascending: true })
 
     if (error) throw error
     return (data ?? []).map((row: Record<string, unknown>) => {
-        const inv = row.inventory_resources as { resource_id: string; cable_system_name: string | null } | null
+        const inv = row.inventory_resources as { resource_id: string; cable_system_id: string | null; cable_system: { name: string } | null } | null
         return {
             ...row,
             resource_id: inv?.resource_id ?? null,
-            cable_system_name: inv?.cable_system_name ?? null,
+            cable_system_name: inv?.cable_system?.name ?? null,
         }
     }) as SalesOrderItem[]
 }
