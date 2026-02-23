@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchInventoryResources, deleteInventoryResource } from './api'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatCurrency } from '@/lib/utils'
 import type { InventoryResource, ResourceType } from '@/types'
 
@@ -180,6 +181,8 @@ export function InventoryPage() {
     const [filters, setFilters] = useState<{ status: string[]; acquisition: string[]; protection: string[]; costMode: string[] }>({
         status: [], acquisition: [], protection: [], costMode: [],
     })
+    const [deleteTarget, setDeleteTarget] = useState<InventoryResource | null>(null)
+    const [deleting, setDeleting] = useState(false)
     const pickerRef = useRef<HTMLDivElement>(null)
     const filterRef = useRef<HTMLDivElement>(null)
 
@@ -467,11 +470,7 @@ export function InventoryPage() {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    if (confirm(`Delete ${item.resource_id}?`)) {
-                                                        deleteInventoryResource(item.id)
-                                                            .then(() => { loadData(); toast.success(`${item.resource_id} deleted`) })
-                                                            .catch((err) => { console.error(err); toast.error('Failed to delete') })
-                                                    }
+                                                    setDeleteTarget(item)
                                                 }}
                                                 className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
                                                 title="Delete"
@@ -490,6 +489,32 @@ export function InventoryPage() {
                     {search && ` (filtered from ${data.length})`}
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title={`Delete ${deleteTarget?.resource_id ?? 'resource'}?`}
+                message="This will permanently delete the resource and all its batches and circuits. This action cannot be undone."
+                confirmLabel="Delete Resource"
+                variant="danger"
+                loading={deleting}
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={async () => {
+                    if (!deleteTarget) return
+                    setDeleting(true)
+                    try {
+                        await deleteInventoryResource(deleteTarget.id)
+                        toast.success(`${deleteTarget.resource_id} deleted`)
+                        loadData()
+                    } catch (err) {
+                        console.error(err)
+                        toast.error('Failed to delete')
+                    } finally {
+                        setDeleting(false)
+                        setDeleteTarget(null)
+                    }
+                }}
+            />
         </div>
     )
 }

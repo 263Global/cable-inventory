@@ -6,6 +6,7 @@ import {
     Lock, Unlock,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { fetchInventoryById } from './api'
 import {
     fetchCircuits, createCircuit, updateCircuit, deleteCircuit,
@@ -105,6 +106,8 @@ export function InventoryDetailPage() {
     // Batch UI state
     const [editingBatchId, setEditingBatchId] = useState<string | null>(null)
     const [showAddBatch, setShowAddBatch] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState<{ type: 'batch' | 'circuit'; id: string; label: string } | null>(null)
+    const [deletingItem, setDeletingItem] = useState(false)
     const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
     const [newBatchOmUnlocked, setNewBatchOmUnlocked] = useState(false)
     const [omUnlockedBatches, setOmUnlockedBatches] = useState<Set<string>>(new Set())
@@ -184,10 +187,7 @@ export function InventoryDetailPage() {
     }
 
     const handleDeleteCircuit = async (circuitId: string) => {
-        if (!confirm('Delete this circuit?')) return
-        await deleteCircuit(circuitId)
-        loadCircuits()
-        toast.success('Circuit deleted')
+        setPendingDelete({ type: 'circuit', id: circuitId, label: 'circuit' })
     }
 
     // ─── Batch handlers ───
@@ -220,11 +220,31 @@ export function InventoryDetailPage() {
     }
 
     const handleDeleteBatch = async (batchId: string) => {
-        if (!confirm('Delete this batch?')) return
-        await deleteBatch(batchId)
-        if (editingBatchId === batchId) setEditingBatchId(null)
-        loadBatches()
-        toast.success('Batch deleted')
+        const batch = batches.find((b) => b.id === batchId)
+        setPendingDelete({ type: 'batch', id: batchId, label: `Batch #${batch?.batch_number ?? ''}` })
+    }
+
+    const confirmPendingDelete = async () => {
+        if (!pendingDelete) return
+        setDeletingItem(true)
+        try {
+            if (pendingDelete.type === 'circuit') {
+                await deleteCircuit(pendingDelete.id)
+                loadCircuits()
+                toast.success('Circuit deleted')
+            } else {
+                await deleteBatch(pendingDelete.id)
+                if (editingBatchId === pendingDelete.id) setEditingBatchId(null)
+                loadBatches()
+                toast.success('Batch deleted')
+            }
+        } catch (err) {
+            console.error(err)
+            toast.error(`Failed to delete ${pendingDelete.type}`)
+        } finally {
+            setDeletingItem(false)
+            setPendingDelete(null)
+        }
     }
 
     const handleUpdateBatchField = async (batchId: string, field: string, value: string | number) => {
@@ -807,6 +827,18 @@ export function InventoryDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!pendingDelete}
+                title={`Delete ${pendingDelete?.label ?? 'item'}?`}
+                message={`This will permanently delete this ${pendingDelete?.type ?? 'item'}. This action cannot be undone.`}
+                confirmLabel="Delete"
+                variant="danger"
+                loading={deletingItem}
+                onCancel={() => setPendingDelete(null)}
+                onConfirm={confirmPendingDelete}
+            />
         </div>
     )
 }
