@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, MapPin, DollarSign, BarChart3, Loader2,
-    Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers,
+    Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers, Check,
 } from 'lucide-react'
 import { fetchInventoryById } from './api'
 import {
@@ -64,6 +64,29 @@ interface BatchRecord {
     status: string
 }
 
+// Auto-calc term from base contract dates
+function calcBatchTerm(baseStart: string | null, baseTermMonths: number | null, batchStart: string): number {
+    if (!baseStart || !baseTermMonths || !batchStart) return 0
+    const baseEnd = new Date(baseStart)
+    baseEnd.setMonth(baseEnd.getMonth() + baseTermMonths)
+    baseEnd.setDate(baseEnd.getDate() - 1)
+    const bs = new Date(batchStart)
+    if (isNaN(bs.getTime()) || baseEnd < bs) return 0
+    return (baseEnd.getFullYear() - bs.getFullYear()) * 12 + (baseEnd.getMonth() - bs.getMonth()) + 1
+}
+
+// Auto-suggest status from dates
+function suggestStatus(batchStart: string, baseEndDate: string | null): 'Planned' | 'Active' | 'Ended' {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    if (baseEndDate) {
+        const be = new Date(baseEndDate)
+        if (be < today) return 'Ended'
+    }
+    const bs = new Date(batchStart)
+    if (isNaN(bs.getTime())) return 'Planned'
+    return bs > today ? 'Planned' : 'Active'
+}
+
 export function InventoryDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
@@ -76,6 +99,11 @@ export function InventoryDetailPage() {
     const [showAddCircuit, setShowAddCircuit] = useState(false)
     const [newCircuit, setNewCircuit] = useState({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
     const [savingCircuit, setSavingCircuit] = useState(false)
+
+    // Batch UI state
+    const [editingBatchId, setEditingBatchId] = useState<string | null>(null)
+    const [showAddBatch, setShowAddBatch] = useState(false)
+    const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' })
 
     const loadCircuits = useCallback(async () => {
         if (!id) return
@@ -96,6 +124,7 @@ export function InventoryDetailPage() {
         fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
     }, [id, loadCircuits, loadBatches])
 
+    // ─── Circuit handlers ───
     const handleAddCircuit = async () => {
         if (!id || !newCircuit.capacity || !newCircuit.interface_type_id) return
         setSavingCircuit(true)
@@ -108,7 +137,6 @@ export function InventoryDetailPage() {
                 original_interface_type_id: newCircuit.interface_type_id,
                 current_interface_type_id: newCircuit.interface_type_id,
             })
-            // If circuit has handover locations, update them
             if (newCircuit.handover_a_id || newCircuit.handover_z_id) {
                 const created = (await fetchCircuits(id)) as InventoryCircuit[]
                 const newest = created[created.length - 1]
@@ -137,16 +165,36 @@ export function InventoryDetailPage() {
         loadCircuits()
     }
 
-    const handleAddQuickBatch = async () => {
-        if (!id) return
+    // ─── Batch handlers ───
+    const handleSaveNewBatch = async () => {
+        if (!id || !newBatch.capacity || !resource) return
         const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.batch_number)) + 1 : 1
-        await createBatch({ inventory_resource_id: id, batch_number: nextNum, capacity: 0, model: 'IRU' })
+        const termMonths = newBatch.start_date ? calcBatchTerm(resource.start_date, resource.term_months, newBatch.start_date) : undefined
+        const status = newBatch.start_date ? suggestStatus(newBatch.start_date, resource.end_date) : 'Planned'
+        const otcVal = parseFloat(newBatch.otc) || 0
+        const rateVal = parseFloat(newBatch.om_rate) || 4.0
+        await createBatch({
+            inventory_resource_id: id,
+            batch_number: nextNum,
+            capacity: parseFloat(newBatch.capacity) || 0,
+            model: newBatch.model as 'IRU' | 'Lease',
+            start_date: newBatch.start_date || undefined,
+            term_months: termMonths && termMonths > 0 ? termMonths : undefined,
+            otc: newBatch.model === 'IRU' ? otcVal : undefined,
+            om_rate: newBatch.model === 'IRU' ? rateVal : undefined,
+            annual_om_cost: newBatch.model === 'IRU' ? (otcVal * rateVal / 100) : undefined,
+            mrc: newBatch.model === 'Lease' ? (parseFloat(newBatch.mrc) || 0) : undefined,
+            status,
+        })
+        setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' })
+        setShowAddBatch(false)
         loadBatches()
     }
 
     const handleDeleteBatch = async (batchId: string) => {
         if (!confirm('Delete this batch?')) return
         await deleteBatch(batchId)
+        if (editingBatchId === batchId) setEditingBatchId(null)
         loadBatches()
     }
 
@@ -154,7 +202,7 @@ export function InventoryDetailPage() {
         const { updateBatch } = await import('@/lib/reference-api')
         try {
             const updates: Record<string, unknown> = { [field]: value === '' ? null : value }
-            // Auto-calc O&M when OTC or rate changes
+            // Auto-calc O&M
             if (field === 'otc' || field === 'om_rate') {
                 const batch = batches.find((b) => b.id === batchId)
                 if (batch) {
@@ -163,28 +211,11 @@ export function InventoryDetailPage() {
                     updates.annual_om_cost = otc * rate / 100
                 }
             }
-            // Auto-suggest status when start_date changes
-            if (field === 'start_date' && value) {
-                const today = new Date(); today.setHours(0, 0, 0, 0)
-                const batchDate = new Date(String(value))
-                if (resource) {
-                    const baseEnd = resource.end_date ? new Date(resource.end_date) : null
-                    if (baseEnd && baseEnd < today) {
-                        updates.status = 'Ended'
-                    } else {
-                        updates.status = batchDate > today ? 'Planned' : 'Active'
-                    }
-                }
-                // Auto-calc term_months
-                if (resource?.start_date && resource?.term_months) {
-                    const baseEnd = new Date(resource.start_date)
-                    baseEnd.setMonth(baseEnd.getMonth() + resource.term_months)
-                    baseEnd.setDate(baseEnd.getDate() - 1)
-                    const bs = new Date(String(value))
-                    if (!isNaN(bs.getTime()) && baseEnd >= bs) {
-                        updates.term_months = (baseEnd.getFullYear() - bs.getFullYear()) * 12 + (baseEnd.getMonth() - bs.getMonth()) + 1
-                    }
-                }
+            // Auto-calc term + status when start_date changes
+            if (field === 'start_date' && value && resource) {
+                const term = calcBatchTerm(resource.start_date, resource.term_months, String(value))
+                if (term > 0) updates.term_months = term
+                updates.status = suggestStatus(String(value), resource.end_date)
             }
             await updateBatch(batchId, updates)
             loadBatches()
@@ -288,65 +319,183 @@ export function InventoryDetailPage() {
                                 <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Batches</h2>
                                 <span className="text-xs text-text-dim ml-2">{batchTotalCap}G lit of {totalCap}G base ({Math.round(batchPct)}%)</span>
                             </div>
-                            <button onClick={handleAddQuickBatch}
+                            <button onClick={() => setShowAddBatch(!showAddBatch)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-medium transition-colors cursor-pointer">
                                 <Plus className="h-3.5 w-3.5" /> Add Batch
                             </button>
                         </div>
-                        {/* Batch capacity bar */}
+                        {/* Capacity bar */}
                         <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden mb-4">
                             <div className={`h-full rounded-full transition-all ${batchPct > 100 ? 'bg-destructive' : 'bg-primary'}`}
                                 style={{ width: `${Math.min(batchPct, 100)}%` }} />
                         </div>
-                        {batches.length === 0 ? (
+
+                        {/* ─── Add Batch Form ─── */}
+                        {showAddBatch && (
+                            <div className="mb-4 p-4 bg-background rounded-lg border border-primary/30 space-y-3">
+                                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">New Batch</h4>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Capacity (G) *</label>
+                                        <input type="number" value={newBatch.capacity} onChange={(e) => setNewBatch((p) => ({ ...p, capacity: e.target.value }))} placeholder="100"
+                                            className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Model</label>
+                                        <select value={newBatch.model} onChange={(e) => setNewBatch((p) => ({ ...p, model: e.target.value }))}
+                                            className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+                                            <option value="IRU">IRU</option>
+                                            <option value="Lease">Lease</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-text-dim mb-1">Start Date</label>
+                                        <input type="date" value={newBatch.start_date} onChange={(e) => setNewBatch((p) => ({ ...p, start_date: e.target.value }))}
+                                            className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {newBatch.model === 'IRU' ? (
+                                        <>
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">OTC ($)</label>
+                                                <input type="number" value={newBatch.otc} onChange={(e) => setNewBatch((p) => ({ ...p, otc: e.target.value }))} placeholder="0"
+                                                    className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">O&M Rate (%)</label>
+                                                <input type="number" value={newBatch.om_rate} onChange={(e) => setNewBatch((p) => ({ ...p, om_rate: e.target.value }))} placeholder="4.0"
+                                                    className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                            </div>
+                                            <div className="flex items-end">
+                                                <p className="text-xs text-text-dim pb-2">
+                                                    Annual O&M: <span className="text-text font-medium">{formatCurrency((parseFloat(newBatch.otc) || 0) * (parseFloat(newBatch.om_rate) || 0) / 100)}</span>
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-xs text-text-dim mb-1">MRC ($)</label>
+                                            <input type="number" value={newBatch.mrc} onChange={(e) => setNewBatch((p) => ({ ...p, mrc: e.target.value }))} placeholder="0"
+                                                className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        </div>
+                                    )}
+                                </div>
+                                {newBatch.start_date && resource.start_date && resource.term_months && (
+                                    <p className="text-xs text-text-dim">
+                                        Term: <span className="text-text font-medium">{calcBatchTerm(resource.start_date, resource.term_months, newBatch.start_date)} months</span> (auto-calculated to Base end date)
+                                    </p>
+                                )}
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => { setShowAddBatch(false); setNewBatch({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '' }) }}
+                                        className="px-3 py-1.5 text-sm text-text-muted hover:text-text hover:bg-surface-hover rounded-lg transition-colors cursor-pointer">Cancel</button>
+                                    <button onClick={handleSaveNewBatch} disabled={!newBatch.capacity}
+                                        className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">Save Batch</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ─── Batch List ─── */}
+                        {batches.length === 0 && !showAddBatch ? (
                             <p className="text-sm text-text-dim text-center py-4">No batches defined yet.</p>
                         ) : (
-                            <div className="space-y-3">
-                                {batches.map((b) => (
-                                    <div key={b.id} className="p-4 bg-background rounded-lg border border-border-subtle">
-                                        {/* Batch header */}
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-text-muted bg-surface px-2 py-1 rounded-full">B{b.batch_number}</span>
-                                                <select value={b.model}
-                                                    onChange={(e) => handleUpdateBatchField(b.id, 'model', e.target.value)}
-                                                    className="px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
-                                                    <option value="IRU">IRU</option>
-                                                    <option value="Lease">Lease</option>
-                                                </select>
-                                                <select value={b.status}
-                                                    onChange={(e) => handleUpdateBatchField(b.id, 'status', e.target.value)}
-                                                    className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${batchStatusColors[b.status]}`}>
-                                                    <option value="Planned">Planned</option>
-                                                    <option value="Active">Active</option>
-                                                    <option value="Ended">Ended</option>
-                                                </select>
-                                            </div>
-                                            <button onClick={() => handleDeleteBatch(b.id)}
-                                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer">
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                        {/* Batch fields */}
-                                        <div className="grid grid-cols-4 gap-3">
-                                            <BatchField label="Capacity (G)" type="number" value={b.capacity ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'capacity', Number(v))} />
-                                            <BatchField label="Start Date" type="date" value={b.start_date ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'start_date', v)} />
-                                            <BatchField label="Term (months)" type="number" value={b.term_months ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'term_months', Number(v))} />
-                                            {b.model === 'IRU' ? (
-                                                <BatchField label="OTC ($)" type="number" value={b.otc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'otc', Number(v))} />
+                            <div className="space-y-2">
+                                {batches.map((b) => {
+                                    const isEditing = editingBatchId === b.id
+                                    return (
+                                        <div key={b.id} className={`p-3 bg-background rounded-lg border ${isEditing ? 'border-primary/30' : 'border-border-subtle'} transition-colors`}>
+                                            {isEditing ? (
+                                                /* ─── EDIT MODE ─── */
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-text-muted bg-surface px-2 py-1 rounded-full">B{b.batch_number}</span>
+                                                            <select value={b.model}
+                                                                onChange={(e) => handleUpdateBatchField(b.id, 'model', e.target.value)}
+                                                                className="px-2 py-1 bg-surface border border-border rounded text-xs cursor-pointer">
+                                                                <option value="IRU">IRU</option>
+                                                                <option value="Lease">Lease</option>
+                                                            </select>
+                                                            <select value={b.status}
+                                                                onChange={(e) => handleUpdateBatchField(b.id, 'status', e.target.value)}
+                                                                className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${batchStatusColors[b.status]}`}>
+                                                                <option value="Planned">Planned</option>
+                                                                <option value="Active">Active</option>
+                                                                <option value="Ended">Ended</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <button onClick={() => setEditingBatchId(null)}
+                                                                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors cursor-pointer">
+                                                                <Check className="h-3 w-3" /> Done
+                                                            </button>
+                                                            <button onClick={() => handleDeleteBatch(b.id)}
+                                                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <BatchField label="Capacity (G)" type="number" value={b.capacity ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'capacity', Number(v))} />
+                                                        <BatchField label="Start Date" type="date" value={b.start_date ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'start_date', v)} />
+                                                        <div>
+                                                            <label className="block text-xs text-text-dim mb-1">Term (auto)</label>
+                                                            <p className="px-2.5 py-1.5 bg-surface/50 border border-border rounded-lg text-text text-sm opacity-60">
+                                                                {b.term_months ? `${b.term_months} months` : '—'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {b.model === 'IRU' ? (
+                                                        <div className="grid grid-cols-3 gap-3">
+                                                            <BatchField label="OTC ($)" type="number" value={b.otc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'otc', Number(v))} />
+                                                            <BatchField label="O&M Rate (%)" type="number" value={b.om_rate ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'om_rate', Number(v))} />
+                                                            <div>
+                                                                <label className="block text-xs text-text-dim mb-1">Annual O&M (auto)</label>
+                                                                <p className="px-2.5 py-1.5 bg-surface/50 border border-border rounded-lg text-text text-sm opacity-60">
+                                                                    {b.annual_om_cost ? formatCurrency(Number(b.annual_om_cost)) : '—'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-3 gap-3">
+                                                            <BatchField label="MRC ($)" type="number" value={b.mrc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'mrc', Number(v))} />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <BatchField label="MRC ($)" type="number" value={b.mrc ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'mrc', Number(v))} />
+                                                /* ─── READ-ONLY MODE ─── */
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface text-xs font-bold text-text-muted shrink-0">
+                                                        B{b.batch_number}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-medium">{b.capacity}G</span>
+                                                            <span className="text-xs text-text-dim">{b.model}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${batchStatusColors[b.status]}`}>{b.status}</span>
+                                                        </div>
+                                                        <div className="text-xs text-text-dim mt-0.5">
+                                                            {b.start_date || '—'} · {b.term_months ? `${b.term_months}mo` : '—'}
+                                                            {b.model === 'IRU' && b.otc ? ` · OTC ${formatCurrency(Number(b.otc))}` : ''}
+                                                            {b.model === 'IRU' && b.annual_om_cost ? ` · O&M ${formatCurrency(Number(b.annual_om_cost))}/yr` : ''}
+                                                            {b.model === 'Lease' && b.mrc ? ` · MRC ${formatCurrency(Number(b.mrc))}` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button onClick={() => setEditingBatchId(b.id)}
+                                                            className="p-1.5 rounded-md hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer" title="Edit">
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteBatch(b.id)}
+                                                            className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete">
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                        {b.model === 'IRU' && (
-                                            <div className="grid grid-cols-3 gap-3 mt-3">
-                                                <BatchField label="O&M Rate (%)" type="number" value={b.om_rate ?? ''} onSave={(v) => handleUpdateBatchField(b.id, 'om_rate', Number(v))} />
-                                                <BatchField label="Annual O&M (auto)" type="number" value={b.annual_om_cost ?? ''} onSave={() => { }} disabled />
-                                                <div />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
@@ -406,7 +555,7 @@ export function InventoryDetailPage() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-xs text-text-dim mb-1">Handover A (optional, override)</label>
+                                            <label className="block text-xs text-text-dim mb-1">Handover A (optional)</label>
                                             <SearchableSelect
                                                 options={handoverLocations.map((h) => ({ value: h.id, label: h.name, sublabel: `${h.city || ''}, ${h.country}` }))}
                                                 value={newCircuit.handover_a_id}
@@ -415,7 +564,7 @@ export function InventoryDetailPage() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-text-dim mb-1">Handover Z (optional, override)</label>
+                                            <label className="block text-xs text-text-dim mb-1">Handover Z (optional)</label>
                                             <SearchableSelect
                                                 options={handoverLocations.map((h) => ({ value: h.id, label: h.name, sublabel: `${h.city || ''}, ${h.country}` }))}
                                                 value={newCircuit.handover_z_id}
@@ -539,13 +688,11 @@ export function InventoryDetailPage() {
     )
 }
 
-// Inline-editable batch field — saves on blur
+// Inline-editable field for edit mode — saves on blur
 function BatchField({ label, value, onSave, type = 'text', disabled = false }: {
     label: string; value: string | number; onSave: (v: string) => void; type?: string; disabled?: boolean
 }) {
     const [local, setLocal] = useState(String(value ?? ''))
-
-    // Sync when parent value changes (e.g. after reload)
     useEffect(() => { setLocal(String(value ?? '')) }, [value])
 
     return (
