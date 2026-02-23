@@ -25,6 +25,7 @@ const statusColors: Record<string, string> = {
     'Expired': 'bg-status-expired/15 text-status-expired',
     'Terminated': 'bg-status-expired/15 text-status-expired',
 }
+const statusLabel: Record<string, string> = { 'Partially Used': 'Partial', 'Fully Used': 'Full' }
 
 const typeColors: Record<string, string> = {
     'Capacity': 'bg-primary/15 text-primary',
@@ -386,7 +387,7 @@ export function InventoryDetailPage() {
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{resource.resource_id}</h1>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[resource.type]}`}>{resource.type}</span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[resource.status]}`}>{resource.status}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[resource.status]}`}>{statusLabel[resource.status] || resource.status}</span>
                             {isBatchMode && <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">Base+Batch</span>}
                         </div>
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}

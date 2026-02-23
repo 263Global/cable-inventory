@@ -22,6 +22,7 @@ const statusColors: Record<string, string> = {
     'Expired': 'bg-status-expired/15 text-status-expired',
     'Terminated': 'bg-status-expired/15 text-status-expired',
 }
+const statusLabel: Record<string, string> = { 'Partially Used': 'Partial', 'Fully Used': 'Full' }
 
 const typeColors: Record<ResourceType, string> = {
     'Capacity': 'bg-primary/15 text-primary',
@@ -68,7 +69,7 @@ const allColumns: ColumnDef[] = [
     },
     {
         key: 'status', label: 'Status', group: 'Basic', defaultVisible: true,
-        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status]}`}>{item.status}</span>,
+        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColors[item.status]}`}>{statusLabel[item.status] || item.status}</span>,
     },
     {
         key: 'capacity', label: 'Capacity Usage', group: 'Basic', defaultVisible: true, minWidth: '200px',
@@ -346,7 +347,7 @@ export function InventoryPage() {
                                 <div className="flex flex-wrap gap-1.5">
                                     {['Available', 'Partially Used', 'Fully Used', 'Expired', 'Terminated'].map((s) => (
                                         <button key={s} onClick={() => toggleFilter('status', s)}
-                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.status.includes(s) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{s}</button>
+                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.status.includes(s) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{statusLabel[s] || s}</button>
                                     ))}
                                 </div>
                             </div>
