@@ -33,7 +33,7 @@ export function SalesDetailPage() {
                 fetchSalesOrderById(id),
                 fetchOrderItems(id),
             ])
-            if (!orderData) { navigate('/cable-inventory/sales'); return }
+            if (!orderData) { navigate('/sales'); return }
             setOrder(orderData)
             setItems(itemsData)
         } catch (err) {
@@ -53,7 +53,7 @@ export function SalesDetailPage() {
             if (deleteTarget.type === 'order') {
                 await deleteSalesOrder(deleteTarget.id)
                 toast.success('Order deleted')
-                navigate('/cable-inventory/sales')
+                navigate('/sales')
                 return
             } else {
                 await deleteOrderItem(deleteTarget.id)
@@ -82,7 +82,7 @@ export function SalesDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => navigate('/cable-inventory/sales')} className="p-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">
+                    <button onClick={() => navigate('/sales')} className="p-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">
                         <ArrowLeft className="h-5 w-5 text-text-muted" />
                     </button>
                     <FileText className="h-6 w-6 text-primary" />
@@ -93,7 +93,7 @@ export function SalesDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => navigate(`/cable-inventory/sales/${id}/edit`)}
+                        onClick={() => navigate(`/sales/${id}/edit`)}
                         className="flex items-center gap-2 px-4 py-2 bg-surface border border-border-subtle rounded-lg text-sm font-medium text-text hover:bg-surface-hover transition-colors cursor-pointer"
                     >
                         <Pencil className="h-4 w-4" /> Edit
@@ -180,7 +180,7 @@ export function SalesDetailPage() {
                                         {item.resource_id ? (
                                             <div>
                                                 <span className="text-xs text-text-dim">Inventory</span>
-                                                <Link to={`/cable-inventory/inventory/${item.inventory_resource_id}`}
+                                                <Link to={`/inventory/${item.inventory_resource_id}`}
                                                     className="flex items-center gap-1 text-sm text-primary hover:underline mt-0.5"
                                                 >
                                                     {item.resource_id} <ExternalLink className="h-3 w-3" />

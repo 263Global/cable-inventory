@@ -99,7 +99,7 @@ export function SalesFormPage() {
         }
         (async () => {
             const order = await fetchSalesOrderById(id!)
-            if (!order) { navigate('/cable-inventory/sales'); return }
+            if (!order) { navigate('/sales'); return }
             setOrderId(order.order_id)
             setInternalRef(order.internal_ref ?? '')
             setCustomerId(order.customer_id ?? '')
@@ -201,7 +201,7 @@ export function SalesFormPage() {
             }
 
             toast.success(isEdit ? 'Order updated' : 'Order created')
-            navigate(`/cable-inventory/sales/${salesOrderId}`)
+            navigate(`/sales/${salesOrderId}`)
         } catch (err) {
             console.error(err)
             toast.error(err instanceof Error ? err.message : 'Failed to save')

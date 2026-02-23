@@ -69,7 +69,7 @@ export function SalesPage() {
                     </span>
                 </div>
                 <button
-                    onClick={() => navigate('/cable-inventory/sales/new')}
+                    onClick={() => navigate('/sales/new')}
                     className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
                     <Plus className="h-4 w-4" /> New Sales Order
@@ -160,7 +160,7 @@ export function SalesPage() {
                             {filtered.map((order) => (
                                 <tr
                                     key={order.id}
-                                    onClick={() => navigate(`/cable-inventory/sales/${order.id}`)}
+                                    onClick={() => navigate(`/sales/${order.id}`)}
                                     className="border-b border-border-subtle/50 hover:bg-surface-hover/50 cursor-pointer transition-colors"
                                 >
                                     <td className="px-4 py-3 font-mono text-primary font-medium">{order.order_id}</td>

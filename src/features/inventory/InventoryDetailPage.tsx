@@ -196,6 +196,25 @@ export function InventoryDetailPage() {
     // ─── Circuit handlers ───
     const handleAddCircuit = async () => {
         if (!id || !newCircuit.capacity || !newCircuit.interface_type_id) return
+        const cap = Number(newCircuit.capacity)
+        // Validate against batch capacity if batch is selected
+        if (newCircuit.batch_id) {
+            const batch = batches.find(b => b.id === newCircuit.batch_id)
+            if (batch) {
+                const batchCircuits = circuits.filter(c => c.batch_id === newCircuit.batch_id)
+                const usedCapacity = batchCircuits.reduce((sum, c) => sum + c.capacity, 0)
+                if (usedCapacity + cap > batch.capacity) {
+                    toast.error(`Exceeds batch capacity: ${usedCapacity}G used + ${cap}G = ${usedCapacity + cap}G > ${batch.capacity}G`)
+                    return
+                }
+            }
+        }
+        // Validate against total resource capacity
+        const totalCircuits = circuits.reduce((sum, c) => sum + c.capacity, 0)
+        if (resource?.total_capacity && totalCircuits + cap > resource.total_capacity) {
+            toast.error(`Exceeds total capacity: ${totalCircuits}G used + ${cap}G = ${totalCircuits + cap}G > ${resource.total_capacity}G`)
+            return
+        }
         setSavingCircuit(true)
         try {
             const nextNum = circuits.length > 0 ? Math.max(...circuits.map((c) => c.circuit_number)) + 1 : 1
@@ -778,7 +797,11 @@ export function InventoryDetailPage() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex justify-end">
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={() => { setShowAddCircuit(false); setNewCircuit({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' }) }}
+                                            className="px-4 py-2 bg-surface border border-border-subtle rounded-lg text-sm font-medium text-text-muted hover:bg-surface-hover transition-colors cursor-pointer">
+                                            Cancel
+                                        </button>
                                         <button onClick={handleAddCircuit} disabled={savingCircuit}
                                             className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
                                             {savingCircuit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
@@ -887,7 +910,7 @@ export function InventoryDetailPage() {
 
                         <div className="space-y-2">
                             {linkedSales.map((sale) => (
-                                <Link key={sale.id} to={`/cable-inventory/sales/${sale.sales_order_id}`}
+                                <Link key={sale.id} to={`/sales/${sale.sales_order_id}`}
                                     className="flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-primary/30 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
