@@ -17,6 +17,7 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import type { InventoryResource, InventoryCircuit } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { getBatchFieldDisplayValue, shouldSaveBatchField } from '@/features/inventory/batchField'
 
 const statusColors: Record<string, string> = {
     'Available': 'bg-status-available/15 text-status-available',
@@ -1007,16 +1008,24 @@ function BatchField({ label, value, onSave, type = 'text', disabled = false }: {
     label: string; value: string | number; onSave: (v: string) => void; type?: string; disabled?: boolean
 }) {
     const [local, setLocal] = useState(String(value ?? ''))
-    useEffect(() => { setLocal(String(value ?? '')) }, [value])
+    const [isEditing, setIsEditing] = useState(false)
+    const displayValue = getBatchFieldDisplayValue(isEditing, local, value)
 
     return (
         <div>
             {label && <label className="block text-xs text-text-dim mb-1">{label}</label>}
             <input
                 type={type}
-                value={local}
+                value={displayValue}
+                onFocus={() => {
+                    setIsEditing(true)
+                    setLocal(String(value ?? ''))
+                }}
                 onChange={(e) => setLocal(e.target.value)}
-                onBlur={() => { if (local !== String(value ?? '') && !disabled) onSave(local) }}
+                onBlur={() => {
+                    if (shouldSaveBatchField(local, value, disabled)) onSave(local)
+                    setIsEditing(false)
+                }}
                 disabled={disabled}
                 className={`w-full px-2.5 py-1.5 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             />

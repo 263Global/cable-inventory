@@ -2,6 +2,28 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.0.1] - 2026-02-23
+
+### Refactored
+- **AuthContext Split** — Separated `AuthContext.tsx` into three single-responsibility files:
+  - `auth-context.ts` (type + createContext), `useAuth.ts` (hook), `AuthContext.tsx` (provider only)
+  - Updated imports in `App.tsx`, `Sidebar.tsx`, `LoginPage.tsx`
+- **BatchField Logic Extraction** — Extracted display/save logic into pure functions in `batchField.ts`
+- **ReferenceData Search Extraction** — Extracted search/filter logic into `search.ts`
+
+### Fixed
+- **BatchField Editing Bug** — Editing a batch field value no longer gets overwritten by prop sync mid-keystroke; introduced `isEditing` state so the input shows the local draft while focused and the prop value when blurred
+- **ReferenceData Search** — Search now prioritises the configured `searchKey` before falling back to all string fields; added `trim()` to prevent whitespace-only queries from filtering results
+
+### Added
+- **Unit Test Infrastructure** — Node.js native test runner (`node --test`) with TypeScript compilation via `tsconfig.test.json`
+  - `npm test` script compiles to `.tmp-tests/` then runs tests
+  - `tests/unit/batch-field.test.ts` — covers `getBatchFieldDisplayValue` and `shouldSaveBatchField`
+  - `tests/unit/reference-search.test.ts` — covers `matchesReferenceSearch`
+- **Vite Type Declarations** — Added `src/vite-env.d.ts` for Vite client types
+
+---
+
 ## [2.0.0] - 2026-02-23
 
 ### 🔄 Complete Rewrite — React + TypeScript + Vite
