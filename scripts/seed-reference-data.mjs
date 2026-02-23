@@ -14,8 +14,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 
 // --- Config ---
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://rmvdwecxqkmotznekist.supabase.co'
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_9XAT3z5abDwPHdtHeEVZ6g_-aWAWxmp'
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || ''
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || ''
+if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars'); process.exit(1) }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
