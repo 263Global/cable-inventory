@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Database, Search, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
+import { Database, Search, Plus, Pencil, Trash2, X, Loader2, Cable } from 'lucide-react'
 import { fetchAll, insertRecord, updateRecord, deleteRecord } from '@/lib/api'
+import { fetchLandingStationsWithCables } from '@/lib/reference-api'
 
 // ============================================
-// Generic Reference Data Manager Component
+// Generic Reference Data Table Component
 // ============================================
 
 interface Column<T> {
@@ -27,6 +28,7 @@ interface ReferenceDataTableProps<T extends { id: string }> {
     fields: FieldDef[]
     searchKey?: keyof T
     emptyMessage?: string
+    fetchFn?: () => Promise<T[]>
 }
 
 function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
@@ -35,6 +37,7 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     fields,
     searchKey = 'name' as keyof T,
     emptyMessage = 'No records found',
+    fetchFn,
 }: ReferenceDataTableProps<T>) {
     const [data, setData] = useState<T[]>([])
     const [loading, setLoading] = useState(true)
@@ -48,100 +51,70 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     const loadData = useCallback(async () => {
         try {
             setLoading(true)
-            const result = await fetchAll<T>(table)
+            const result = fetchFn ? await fetchFn() : await fetchAll<T>(table)
             setData(result)
         } catch (err) {
             console.error('Failed to load data:', err)
         } finally {
             setLoading(false)
         }
-    }, [table])
+    }, [table, fetchFn])
 
-    useEffect(() => {
-        loadData()
-    }, [loadData])
+    useEffect(() => { loadData() }, [loadData])
 
     const filteredData = data.filter((item) => {
         if (!search) return true
-        const val = String(item[searchKey] ?? '').toLowerCase()
-        return val.includes(search.toLowerCase())
+        const s = search.toLowerCase()
+        // Search across all string fields
+        return Object.values(item).some(
+            (v) => typeof v === 'string' && v.toLowerCase().includes(s)
+        )
     })
 
-    const openCreate = () => {
-        setEditingItem(null)
-        setFormData({})
-        setError('')
-        setShowModal(true)
-    }
+    const openCreate = () => { setEditingItem(null); setFormData({}); setError(''); setShowModal(true) }
 
     const openEdit = (item: T) => {
         setEditingItem(item)
         const fd: Record<string, string | number> = {}
-        fields.forEach((f) => {
-            fd[f.key] = (item[f.key] as string | number) ?? ''
-        })
+        fields.forEach((f) => { fd[f.key] = (item[f.key] as string | number) ?? '' })
         setFormData(fd)
         setError('')
         setShowModal(true)
     }
 
     const handleSave = async () => {
-        setSaving(true)
-        setError('')
+        setSaving(true); setError('')
         try {
-            if (editingItem) {
-                await updateRecord(table, editingItem.id, formData)
-            } else {
-                await insertRecord(table, formData)
-            }
-            setShowModal(false)
-            loadData()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save')
-        } finally {
-            setSaving(false)
-        }
+            if (editingItem) { await updateRecord(table, editingItem.id, formData) }
+            else { await insertRecord(table, formData) }
+            setShowModal(false); loadData()
+        } catch (err) { setError(err instanceof Error ? err.message : 'Failed to save') }
+        finally { setSaving(false) }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this record?')) return
-        try {
-            await deleteRecord(table, id)
-            loadData()
-        } catch (err) {
-            console.error('Failed to delete:', err)
-        }
+        if (!confirm('Delete this record?')) return
+        try { await deleteRecord(table, id); loadData() }
+        catch (err) { console.error('Failed to delete:', err) }
     }
 
     return (
         <div>
-            {/* Search + Add */}
             <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
-                    />
+                    <input type="text" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim" />
                 </div>
-                <button
-                    onClick={openCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add New
+                <button onClick={openCreate}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                    <Plus className="h-4 w-4" /> Add New
                 </button>
             </div>
 
-            {/* Table */}
             <div className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
                 {loading ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                    </div>
+                    <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 text-primary animate-spin" /></div>
                 ) : filteredData.length === 0 ? (
                     <div className="text-center py-16">
                         <Database className="h-10 w-10 text-text-dim mx-auto mb-3" />
@@ -152,16 +125,9 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                         <thead>
                             <tr className="border-b border-border-subtle">
                                 {columns.map((col) => (
-                                    <th
-                                        key={String(col.key)}
-                                        className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider"
-                                    >
-                                        {col.label}
-                                    </th>
+                                    <th key={String(col.key)} className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{col.label}</th>
                                 ))}
-                                <th className="w-20 px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                                    Actions
-                                </th>
+                                <th className="w-20 px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -174,20 +140,8 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                                     ))}
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => openEdit(item)}
-                                                className="p-1.5 rounded-md hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(item.id)}
-                                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                            <button onClick={() => openEdit(item)} className="p-1.5 rounded-md hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer" title="Edit"><Pencil className="h-4 w-4" /></button>
+                                            <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete"><Trash2 className="h-4 w-4" /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -196,8 +150,7 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                     </table>
                 )}
                 <div className="px-4 py-3 border-t border-border-subtle text-xs text-text-dim">
-                    {filteredData.length} record{filteredData.length !== 1 ? 's' : ''}
-                    {search && ` (filtered from ${data.length})`}
+                    {filteredData.length} record{filteredData.length !== 1 ? 's' : ''}{search && ` (filtered from ${data.length})`}
                 </div>
             </div>
 
@@ -206,75 +159,35 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                     <div className="bg-surface rounded-xl border border-border-subtle w-full max-w-md mx-4 shadow-2xl">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-                            <h3 className="text-lg font-semibold">
-                                {editingItem ? 'Edit Record' : 'Add New Record'}
-                            </h3>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text cursor-pointer"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
+                            <h3 className="text-lg font-semibold">{editingItem ? 'Edit Record' : 'Add New Record'}</h3>
+                            <button onClick={() => setShowModal(false)} className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text cursor-pointer"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="px-6 py-4 space-y-4">
                             {fields.map((field) => (
                                 <div key={field.key}>
                                     <label className="block text-sm font-medium text-text-muted mb-1.5">
-                                        {field.label}
-                                        {field.required && <span className="text-destructive ml-1">*</span>}
+                                        {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
                                     </label>
                                     {field.type === 'select' ? (
-                                        <select
-                                            value={String(formData[field.key] ?? '')}
-                                            onChange={(e) =>
-                                                setFormData({ ...formData, [field.key]: e.target.value })
-                                            }
-                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                        >
+                                        <select value={String(formData[field.key] ?? '')} onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                             <option value="">Select...</option>
-                                            {field.options?.map((opt) => (
-                                                <option key={opt} value={opt}>
-                                                    {opt}
-                                                </option>
-                                            ))}
+                                            {field.options?.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
                                         </select>
                                     ) : (
-                                        <input
-                                            type={field.type === 'number' ? 'number' : 'text'}
-                                            value={String(formData[field.key] ?? '')}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    [field.key]:
-                                                        field.type === 'number'
-                                                            ? Number(e.target.value)
-                                                            : e.target.value,
-                                                })
-                                            }
+                                        <input type={field.type === 'number' ? 'number' : 'text'} value={String(formData[field.key] ?? '')}
+                                            onChange={(e) => setFormData({ ...formData, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value })}
                                             placeholder={field.placeholder}
-                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
-                                        />
+                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim" />
                                     )}
                                 </div>
                             ))}
-                            {error && (
-                                <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
-                                    {error}
-                                </div>
-                            )}
+                            {error && <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>}
                         </div>
                         <div className="px-6 py-4 border-t border-border-subtle flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                            >
+                            <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">Cancel</button>
+                            <button onClick={handleSave} disabled={saving}
+                                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
                                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {editingItem ? 'Save Changes' : 'Create'}
                             </button>
@@ -287,8 +200,10 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
 }
 
 // ============================================
-// Tab configurations for each reference data type
+// Tab configurations
 // ============================================
+
+type AnyRecord = { id: string;[key: string]: unknown }
 
 const cableSystemsConfig = {
     table: 'cable_systems',
@@ -296,35 +211,22 @@ const cableSystemsConfig = {
         { key: 'name', label: 'Cable System' },
         { key: 'rfs_year', label: 'RFS Year' },
         {
-            key: 'status',
-            label: 'Status',
-            render: (item: { status?: string }) => (
-                <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.status === 'Active'
-                            ? 'bg-status-available/15 text-status-available'
-                            : item.status === 'Planned'
-                                ? 'bg-info/15 text-info'
-                                : 'bg-status-expired/15 text-status-expired'
-                        }`}
-                >
-                    {item.status}
-                </span>
-            ),
+            key: 'status', label: 'Status', render: (item: AnyRecord) => (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-status-available/15 text-status-available'
+                        : item.status === 'Planned' ? 'bg-info/15 text-info'
+                            : 'bg-status-expired/15 text-status-expired'
+                    }`}>{String(item.status)}</span>
+            )
         },
-        { key: 'notes', label: 'Notes' },
-    ],
+        { key: 'owners', label: 'Owners' },
+    ] as Column<AnyRecord>[],
     fields: [
         { key: 'name', label: 'Cable System Name', required: true, placeholder: 'e.g. PEACE Cable' },
         { key: 'rfs_year', label: 'RFS Year', type: 'number' as const, placeholder: '2024' },
-        {
-            key: 'status',
-            label: 'Status',
-            type: 'select' as const,
-            options: ['Active', 'Planned', 'Retired'],
-        },
+        { key: 'status', label: 'Status', type: 'select' as const, options: ['Active', 'Planned', 'Retired'] },
         { key: 'notes', label: 'Notes', placeholder: 'Optional notes...' },
     ],
-    emptyMessage: 'No cable systems found. Run the migration and seed data first.',
+    emptyMessage: 'No cable systems found.',
 }
 
 const landingStationsConfig = {
@@ -332,14 +234,28 @@ const landingStationsConfig = {
     columns: [
         { key: 'name', label: 'Station Name' },
         { key: 'country', label: 'Country' },
-        { key: 'notes', label: 'Notes' },
-    ],
+        {
+            key: 'cable_names', label: 'Connected Cables', render: (item: AnyRecord) => {
+                const cables = (item.cable_names as string[]) || []
+                if (cables.length === 0) return <span className="text-text-dim">—</span>
+                return (
+                    <div className="flex items-center gap-1 flex-wrap">
+                        <Cable className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="text-xs">
+                            {cables.length <= 3 ? cables.join(', ') : `${cables.slice(0, 3).join(', ')} +${cables.length - 3} more`}
+                        </span>
+                    </div>
+                )
+            }
+        },
+    ] as Column<AnyRecord>[],
     fields: [
-        { key: 'name', label: 'Station Name', required: true, placeholder: 'e.g. Tuas (Singapore)' },
-        { key: 'country', label: 'Country', placeholder: 'e.g. Singapore' },
+        { key: 'name', label: 'Station Name', required: true, placeholder: 'e.g. Tuas, Singapore' },
+        { key: 'country', label: 'Country', required: true, placeholder: 'e.g. Singapore' },
         { key: 'notes', label: 'Notes', placeholder: 'Optional notes...' },
     ],
-    emptyMessage: 'No landing stations. Add stations manually or import via CSV.',
+    emptyMessage: 'No landing stations.',
+    fetchFn: fetchLandingStationsWithCables as () => Promise<AnyRecord[]>,
 }
 
 const countriesConfig = {
@@ -348,13 +264,13 @@ const countriesConfig = {
         { key: 'name', label: 'Country Name' },
         { key: 'code', label: 'Code' },
         { key: 'region', label: 'Region' },
-    ],
+    ] as Column<AnyRecord>[],
     fields: [
         { key: 'name', label: 'Country Name', required: true, placeholder: 'e.g. Singapore' },
-        { key: 'code', label: 'ISO Code (2-letter)', required: true, placeholder: 'e.g. SG' },
+        { key: 'code', label: 'ISO Code (2-letter)', placeholder: 'e.g. SG' },
         { key: 'region', label: 'Region', placeholder: 'e.g. Asia Pacific' },
     ],
-    emptyMessage: 'No countries found. Run the seed migration.',
+    emptyMessage: 'No countries found.',
 }
 
 const handoverLocationsConfig = {
@@ -364,33 +280,37 @@ const handoverLocationsConfig = {
         { key: 'country', label: 'Country' },
         { key: 'city', label: 'City' },
         {
-            key: 'type',
-            label: 'Type',
-            render: (item: { type?: string }) => (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">
-                    {item.type}
-                </span>
-            ),
+            key: 'type', label: 'Type', render: (item: AnyRecord) => (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">{String(item.type)}</span>
+            )
         },
-    ],
+    ] as Column<AnyRecord>[],
     fields: [
         { key: 'name', label: 'Location Name', required: true, placeholder: 'e.g. Equinix SG3' },
-        { key: 'country', label: 'Country', placeholder: 'e.g. Singapore' },
+        { key: 'country', label: 'Country', required: true, placeholder: 'e.g. Singapore' },
         { key: 'city', label: 'City', placeholder: 'e.g. Singapore' },
         { key: 'address', label: 'Address', placeholder: 'Physical address' },
-        {
-            key: 'type',
-            label: 'Type',
-            type: 'select' as const,
-            options: ['PoP', 'Data Center', 'Exchange', 'Other'],
-        },
+        { key: 'type', label: 'Type', type: 'select' as const, options: ['PoP', 'Data Center', 'Exchange', 'Other'] },
         { key: 'notes', label: 'Notes', placeholder: 'Optional notes...' },
     ],
-    emptyMessage: 'No handover locations. Add your PoPs and data centers.',
+    emptyMessage: 'No handover locations.',
+}
+
+const interfaceTypesConfig = {
+    table: 'interface_types',
+    columns: [
+        { key: 'name', label: 'Interface Type' },
+        { key: 'description', label: 'Description' },
+    ] as Column<AnyRecord>[],
+    fields: [
+        { key: 'name', label: 'Type Name', required: true, placeholder: 'e.g. 400GE' },
+        { key: 'description', label: 'Description', placeholder: 'e.g. 400 Gigabit Ethernet' },
+    ],
+    emptyMessage: 'No interface types.',
 }
 
 // ============================================
-// Main Reference Data Page
+// Main Page
 // ============================================
 
 const tabs = [
@@ -398,6 +318,7 @@ const tabs = [
     { id: 'landing_stations', label: 'Landing Stations', config: landingStationsConfig },
     { id: 'countries', label: 'Countries', config: countriesConfig },
     { id: 'handover_locations', label: 'Handover Locations', config: handoverLocationsConfig },
+    { id: 'interface_types', label: 'Interface Types', config: interfaceTypesConfig },
 ]
 
 export function ReferenceDataPage() {
@@ -411,29 +332,21 @@ export function ReferenceDataPage() {
                 <h1 className="text-2xl font-bold">Reference Data</h1>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 mb-6 border-b border-border-subtle">
+            <div className="flex gap-1 mb-6 border-b border-border-subtle overflow-x-auto">
                 {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 ${activeTab === tab.id
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-text-muted hover:text-text'
-                            }`}
-                    >
-                        {tab.label}
-                    </button>
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                        className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text'
+                            }`}>{tab.label}</button>
                 ))}
             </div>
 
-            {/* Active tab content — key forces remount on tab change */}
             <ReferenceDataTable
                 key={activeTab}
                 table={activeConfig.table}
-                columns={activeConfig.columns as Column<{ id: string;[key: string]: unknown }>[]}
+                columns={activeConfig.columns}
                 fields={activeConfig.fields}
                 emptyMessage={activeConfig.emptyMessage}
+                fetchFn={'fetchFn' in activeConfig ? activeConfig.fetchFn : undefined}
             />
         </div>
     )

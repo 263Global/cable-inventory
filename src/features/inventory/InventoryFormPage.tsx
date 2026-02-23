@@ -2,20 +2,50 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { createInventoryResource } from './api'
-import { fetchAll } from '@/lib/api'
-import type { CableSystem, ResourceType, AcquisitionType } from '@/types'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import {
+    fetchCableSystems,
+    fetchCountriesForCable,
+    fetchStationsForCableAndCountry,
+    fetchHandoverLocations,
+    fetchInterfaceTypes,
+} from '@/lib/reference-api'
+import type { ResourceType, AcquisitionType } from '@/types'
 
 const steps = ['Resource Info', 'Locations', 'Contract & Costs']
 const resourceTypes: ResourceType[] = ['Capacity', 'Terrestrial']
 const acquisitionTypes: AcquisitionType[] = ['IRU', 'Lease', 'Swap-In', 'Owned']
 const specPresets = ['10G', '40G', '100G', '200G', '400G', '800G', '1.6T']
 
+// Convert spec string to capacity in G
+function specToCapacity(spec: string): string {
+    const upper = spec.toUpperCase().trim()
+    if (upper.endsWith('T')) {
+        const num = parseFloat(upper.replace('T', ''))
+        return isNaN(num) ? '' : String(num * 1000)
+    }
+    if (upper.endsWith('G')) {
+        const num = parseFloat(upper.replace('G', ''))
+        return isNaN(num) ? '' : String(num)
+    }
+    const num = parseFloat(upper)
+    return isNaN(num) ? '' : String(num)
+}
+
 export function InventoryFormPage() {
     const navigate = useNavigate()
     const [step, setStep] = useState(0)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
-    const [cableSystems, setCableSystems] = useState<CableSystem[]>([])
+
+    // Reference data
+    const [cableSystems, setCableSystems] = useState<{ id: string; name: string; status: string }[]>([])
+    const [interfaceTypes, setInterfaceTypes] = useState<{ id: string; name: string }[]>([])
+    const [countriesA, setCountriesA] = useState<string[]>([])
+    const [countriesZ, setCountriesZ] = useState<string[]>([])
+    const [stationsA, setStationsA] = useState<{ id: string; name: string }[]>([])
+    const [stationsZ, setStationsZ] = useState<{ id: string; name: string }[]>([])
+    const [handoverLocations, setHandoverLocations] = useState<{ id: string; name: string; country: string; city: string; type: string }[]>([])
 
     // Form state
     const [form, setForm] = useState({
@@ -32,6 +62,10 @@ export function InventoryFormPage() {
         // Locations
         country_a: '',
         country_z: '',
+        landing_station_a_id: '',
+        landing_station_z_id: '',
+        handover_location_a_id: '',
+        handover_location_z_id: '',
         route_description: '',
         // Contract
         cost_mode: 'Single',
@@ -47,9 +81,60 @@ export function InventoryFormPage() {
         nrc: '',
     })
 
+    // Load reference data on mount
     useEffect(() => {
-        fetchAll<CableSystem>('cable_systems').then(setCableSystems).catch(console.error)
+        fetchCableSystems().then(setCableSystems).catch(console.error)
+        fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
+        fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
     }, [])
+
+    // Cable → Countries cascade
+    useEffect(() => {
+        if (form.cable_system_id) {
+            fetchCountriesForCable(form.cable_system_id).then((countries) => {
+                setCountriesA(countries)
+                setCountriesZ(countries)
+            }).catch(console.error)
+        } else {
+            setCountriesA([])
+            setCountriesZ([])
+        }
+        // Reset downstream selections
+        setForm((f) => ({
+            ...f,
+            country_a: '', country_z: '',
+            landing_station_a_id: '', landing_station_z_id: '',
+        }))
+        setStationsA([])
+        setStationsZ([])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.cable_system_id])
+
+    // Country A → Stations A cascade
+    useEffect(() => {
+        if (form.cable_system_id && form.country_a) {
+            fetchStationsForCableAndCountry(form.cable_system_id, form.country_a)
+                .then(setStationsA)
+                .catch(console.error)
+        } else {
+            setStationsA([])
+        }
+        setForm((f) => ({ ...f, landing_station_a_id: '' }))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.cable_system_id, form.country_a])
+
+    // Country Z → Stations Z cascade
+    useEffect(() => {
+        if (form.cable_system_id && form.country_z) {
+            fetchStationsForCableAndCountry(form.cable_system_id, form.country_z)
+                .then(setStationsZ)
+                .catch(console.error)
+        } else {
+            setStationsZ([])
+        }
+        setForm((f) => ({ ...f, landing_station_z_id: '' }))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.cable_system_id, form.country_z])
 
     // Auto-calculate O&M cost
     useEffect(() => {
@@ -68,22 +153,6 @@ export function InventoryFormPage() {
             setForm((f) => ({ ...f, end_date: start.toISOString().split('T')[0] }))
         }
     }, [form.start_date, form.term_months])
-
-    // Convert spec string to capacity in G
-    const specToCapacity = (spec: string): string => {
-        const upper = spec.toUpperCase().trim()
-        if (upper.endsWith('T')) {
-            const num = parseFloat(upper.replace('T', ''))
-            return isNaN(num) ? '' : String(num * 1000)
-        }
-        if (upper.endsWith('G')) {
-            const num = parseFloat(upper.replace('G', ''))
-            return isNaN(num) ? '' : String(num)
-        }
-        // Plain number = treat as G
-        const num = parseFloat(upper)
-        return isNaN(num) ? '' : String(num)
-    }
 
     const updateForm = (key: string, value: string) => {
         setForm((f) => ({ ...f, [key]: value }))
@@ -105,8 +174,12 @@ export function InventoryFormPage() {
                 protection: form.protection,
                 contract_ref: form.contract_ref || null,
                 notes: form.notes || null,
-                country_a: form.country_a || null,
-                country_z: form.country_z || null,
+                country_a_id: form.country_a ? await getCountryId(form.country_a) : null,
+                country_z_id: form.country_z ? await getCountryId(form.country_z) : null,
+                landing_station_a_id: form.landing_station_a_id || null,
+                landing_station_z_id: form.landing_station_z_id || null,
+                handover_location_a_id: form.handover_location_a_id || null,
+                handover_location_z_id: form.handover_location_z_id || null,
                 route_description: form.route_description || null,
                 cost_mode: form.cost_mode,
                 term_months: form.term_months ? Number(form.term_months) : null,
@@ -140,10 +213,7 @@ export function InventoryFormPage() {
         <div className="max-w-3xl mx-auto">
             {/* Header */}
             <div className="flex items-center gap-3 mb-8">
-                <button
-                    onClick={() => navigate('/inventory')}
-                    className="p-2 rounded-lg hover:bg-surface-hover text-text-muted hover:text-text transition-colors cursor-pointer"
-                >
+                <button onClick={() => navigate('/inventory')} className="p-2 rounded-lg hover:bg-surface-hover text-text-muted hover:text-text transition-colors cursor-pointer">
                     <ArrowLeft className="h-5 w-5" />
                 </button>
                 <h1 className="text-2xl font-bold">Add Resource</h1>
@@ -155,11 +225,9 @@ export function InventoryFormPage() {
                     <div key={s} className="flex items-center gap-2 flex-1">
                         <button
                             onClick={() => setStep(i)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${i === step
-                                ? 'bg-primary text-primary-foreground'
-                                : i < step
-                                    ? 'bg-primary/20 text-primary'
-                                    : 'bg-surface text-text-muted'
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${i === step ? 'bg-primary text-primary-foreground'
+                                    : i < step ? 'bg-primary/20 text-primary'
+                                        : 'bg-surface text-text-muted'
                                 }`}
                         >
                             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs">
@@ -174,7 +242,7 @@ export function InventoryFormPage() {
 
             {/* Form card */}
             <div className="bg-surface rounded-xl border border-border-subtle p-6">
-                {/* Step 1: Resource Info */}
+                {/* ========== Step 1: Resource Info ========== */}
                 {step === 0 && (
                     <div className="space-y-5">
                         {/* Type pills */}
@@ -182,53 +250,30 @@ export function InventoryFormPage() {
                             <label className="block text-sm font-medium text-text-muted mb-2">Resource Type</label>
                             <div className="flex gap-2">
                                 {resourceTypes.map((t) => (
-                                    <button
-                                        key={t}
-                                        onClick={() => updateForm('type', t)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${form.type === t
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-surface-hover text-text-muted hover:text-text'
-                                            }`}
-                                    >
-                                        {t}
-                                    </button>
+                                    <button key={t} onClick={() => updateForm('type', t)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${form.type === t ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'
+                                            }`}>{t}</button>
                                 ))}
-                                <button disabled className="px-4 py-2 rounded-lg text-sm text-text-dim bg-surface-hover opacity-50 cursor-not-allowed">
-                                    Fiber 🔒
-                                </button>
-                                <button disabled className="px-4 py-2 rounded-lg text-sm text-text-dim bg-surface-hover opacity-50 cursor-not-allowed">
-                                    Spectrum 🔒
-                                </button>
+                                <button disabled className="px-4 py-2 rounded-lg text-sm text-text-dim bg-surface-hover opacity-50 cursor-not-allowed">Fiber 🔒</button>
+                                <button disabled className="px-4 py-2 rounded-lg text-sm text-text-dim bg-surface-hover opacity-50 cursor-not-allowed">Spectrum 🔒</button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <FormField label="Internal Ref" value={form.internal_ref} onChange={(v) => updateForm('internal_ref', v)} placeholder="e.g. HK-C-2024-001" />
-
                             {/* Spec with presets */}
                             <div>
                                 <label className="block text-sm font-medium text-text-muted mb-1.5">Spec</label>
                                 <div className="flex gap-1 mb-1.5 flex-wrap">
                                     {specPresets.map((s) => (
-                                        <button
-                                            key={s}
+                                        <button key={s}
                                             onClick={() => { updateForm('spec', s); updateForm('capacity_value', specToCapacity(s)) }}
                                             className={`px-2 py-1 rounded text-xs transition-colors cursor-pointer ${form.spec === s ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'
-                                                }`}
-                                        >
-                                            {s}
-                                        </button>
+                                                }`}>{s}</button>
                                     ))}
                                 </div>
-                                <input
-                                    type="text"
-                                    value={form.spec}
-                                    onChange={(e) => {
-                                        const val = e.target.value
-                                        updateForm('spec', val)
-                                        const cap = specToCapacity(val)
-                                        if (cap) updateForm('capacity_value', cap)
-                                    }}
+                                <input type="text" value={form.spec}
+                                    onChange={(e) => { updateForm('spec', e.target.value); const cap = specToCapacity(e.target.value); if (cap) updateForm('capacity_value', cap) }}
                                     placeholder="Or enter custom spec (e.g. 300G, 1.6T)..."
                                     className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
                                 />
@@ -237,20 +282,15 @@ export function InventoryFormPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <FormField label="Capacity Value (G)" value={form.capacity_value} onChange={(v) => updateForm('capacity_value', v)} type="number" placeholder="e.g. 100" />
-
                             {isCapacity && (
                                 <div>
                                     <label className="block text-sm font-medium text-text-muted mb-1.5">Cable System</label>
-                                    <select
+                                    <SearchableSelect
+                                        options={cableSystems.map((cs) => ({ value: cs.id, label: cs.name, sublabel: cs.status }))}
                                         value={form.cable_system_id}
-                                        onChange={(e) => updateForm('cable_system_id', e.target.value)}
-                                        className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    >
-                                        <option value="">Select cable system...</option>
-                                        {cableSystems.map((cs) => (
-                                            <option key={cs.id} value={cs.id}>{cs.name}</option>
-                                        ))}
-                                    </select>
+                                        onChange={(v) => updateForm('cable_system_id', v)}
+                                        placeholder="Search cable systems..."
+                                    />
                                 </div>
                             )}
                         </div>
@@ -259,14 +299,9 @@ export function InventoryFormPage() {
                             <FormField label="Supplier" value={form.supplier_name} onChange={(v) => updateForm('supplier_name', v)} placeholder="e.g. Telia Carrier" />
                             <div>
                                 <label className="block text-sm font-medium text-text-muted mb-1.5">Acquisition Type</label>
-                                <select
-                                    value={form.acquisition_type}
-                                    onChange={(e) => updateForm('acquisition_type', e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                >
-                                    {acquisitionTypes.map((a) => (
-                                        <option key={a} value={a}>{a}</option>
-                                    ))}
+                                <select value={form.acquisition_type} onChange={(e) => updateForm('acquisition_type', e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    {acquisitionTypes.map((a) => (<option key={a} value={a}>{a}</option>))}
                                 </select>
                             </div>
                         </div>
@@ -274,11 +309,8 @@ export function InventoryFormPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text-muted mb-1.5">Protection</label>
-                                <select
-                                    value={form.protection}
-                                    onChange={(e) => updateForm('protection', e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                >
+                                <select value={form.protection} onChange={(e) => updateForm('protection', e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                     <option value="Unprotected">Unprotected</option>
                                     <option value="Protected">Protected</option>
                                 </select>
@@ -290,24 +322,98 @@ export function InventoryFormPage() {
                     </div>
                 )}
 
-                {/* Step 2: Locations */}
+                {/* ========== Step 2: Locations (Cascading) ========== */}
                 {step === 1 && (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-semibold text-primary">A-End</h3>
-                                <FormField label="Country" value={form.country_a} onChange={(v) => updateForm('country_a', v)} placeholder="e.g. Singapore" />
+                        {!form.cable_system_id && (
+                            <div className="text-center py-4 px-3 bg-warning/10 text-warning rounded-lg text-sm">
+                                💡 Go back to Step 1 and select a Cable System to enable country/station filtering.
                             </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-6">
+                            {/* A-End */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-semibold text-primary">Z-End</h3>
-                                <FormField label="Country" value={form.country_z} onChange={(v) => updateForm('country_z', v)} placeholder="e.g. France" />
+                                <h3 className="text-sm font-semibold text-primary border-b border-border-subtle pb-2">A-End</h3>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
+                                    <SearchableSelect
+                                        options={countriesA.map((c) => ({ value: c, label: c }))}
+                                        value={form.country_a}
+                                        onChange={(v) => updateForm('country_a', v)}
+                                        placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
+                                        disabled={!form.cable_system_id}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
+                                    <SearchableSelect
+                                        options={stationsA.map((s) => ({ value: s.id, label: s.name }))}
+                                        value={form.landing_station_a_id}
+                                        onChange={(v) => updateForm('landing_station_a_id', v)}
+                                        placeholder={form.country_a ? 'Select station...' : 'Select country first'}
+                                        disabled={!form.country_a}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
+                                    <SearchableSelect
+                                        options={handoverLocations.map((h) => ({
+                                            value: h.id,
+                                            label: h.name,
+                                            sublabel: `${h.city || ''}, ${h.country} · ${h.type}`,
+                                        }))}
+                                        value={form.handover_location_a_id}
+                                        onChange={(v) => updateForm('handover_location_a_id', v)}
+                                        placeholder="Search all locations..."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Z-End */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold text-primary border-b border-border-subtle pb-2">Z-End</h3>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
+                                    <SearchableSelect
+                                        options={countriesZ.map((c) => ({ value: c, label: c }))}
+                                        value={form.country_z}
+                                        onChange={(v) => updateForm('country_z', v)}
+                                        placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
+                                        disabled={!form.cable_system_id}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
+                                    <SearchableSelect
+                                        options={stationsZ.map((s) => ({ value: s.id, label: s.name }))}
+                                        value={form.landing_station_z_id}
+                                        onChange={(v) => updateForm('landing_station_z_id', v)}
+                                        placeholder={form.country_z ? 'Select station...' : 'Select country first'}
+                                        disabled={!form.country_z}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
+                                    <SearchableSelect
+                                        options={handoverLocations.map((h) => ({
+                                            value: h.id,
+                                            label: h.name,
+                                            sublabel: `${h.city || ''}, ${h.country} · ${h.type}`,
+                                        }))}
+                                        value={form.handover_location_z_id}
+                                        onChange={(v) => updateForm('handover_location_z_id', v)}
+                                        placeholder="Search all locations..."
+                                    />
+                                </div>
                             </div>
                         </div>
+
                         <FormField label="Route Description" value={form.route_description} onChange={(v) => updateForm('route_description', v)} placeholder="e.g. Singapore - Egypt - France via PEACE Cable" />
                     </div>
                 )}
 
-                {/* Step 3: Contract & Costs */}
+                {/* ========== Step 3: Contract & Costs ========== */}
                 {step === 2 && (
                     <div className="space-y-5">
                         <div className="grid grid-cols-3 gap-4">
@@ -316,7 +422,6 @@ export function InventoryFormPage() {
                             <FormField label="End Date (auto)" value={form.end_date} onChange={(v) => updateForm('end_date', v)} type="date" />
                         </div>
 
-                        {/* IRU fields */}
                         {isIRU && (
                             <div className="p-4 rounded-lg border border-border-subtle bg-background">
                                 <h3 className="text-sm font-semibold mb-4 text-primary">IRU Financials</h3>
@@ -325,11 +430,10 @@ export function InventoryFormPage() {
                                     <FormField label="O&M Rate (%)" value={form.om_rate} onChange={(v) => updateForm('om_rate', v)} type="number" placeholder="4.0" />
                                     <FormField label="Annual O&M ($)" value={form.annual_om_cost} onChange={(v) => updateForm('annual_om_cost', v)} type="number" placeholder="Auto-calculated" />
                                 </div>
-                                <p className="text-xs text-text-dim mt-2">Annual O&M = OTC × Rate%. You can override the calculated value.</p>
+                                <p className="text-xs text-text-dim mt-2">Annual O&M = OTC × Rate%. You can override.</p>
                             </div>
                         )}
 
-                        {/* Lease fields */}
                         {isLease && (
                             <div className="p-4 rounded-lg border border-border-subtle bg-background">
                                 <h3 className="text-sm font-semibold mb-4 text-primary">Lease Financials</h3>
@@ -342,37 +446,26 @@ export function InventoryFormPage() {
                     </div>
                 )}
 
-                {/* Error */}
                 {error && (
-                    <div className="mt-4 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
-                        {error}
-                    </div>
+                    <div className="mt-4 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>
                 )}
             </div>
 
             {/* Navigation buttons */}
             <div className="flex justify-between mt-6">
-                <button
-                    onClick={() => step > 0 ? setStep(step - 1) : navigate('/inventory')}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
-                >
+                <button onClick={() => step > 0 ? setStep(step - 1) : navigate('/inventory')}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">
                     <ArrowLeft className="h-4 w-4" />
                     {step === 0 ? 'Cancel' : 'Previous'}
                 </button>
                 {step < steps.length - 1 ? (
-                    <button
-                        onClick={() => setStep(step + 1)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    >
-                        Next
-                        <ArrowRight className="h-4 w-4" />
+                    <button onClick={() => setStep(step + 1)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        Next <ArrowRight className="h-4 w-4" />
                     </button>
                 ) : (
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    >
+                    <button onClick={handleSave} disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                         Create Resource
                     </button>
@@ -382,30 +475,21 @@ export function InventoryFormPage() {
     )
 }
 
-// Reusable form field
-function FormField({
-    label,
-    value,
-    onChange,
-    placeholder,
-    type = 'text',
-}: {
-    label: string
-    value: string
-    onChange: (v: string) => void
-    placeholder?: string
-    type?: string
+// Helper: get country UUID by name
+async function getCountryId(name: string): Promise<string | null> {
+    const { default: { supabase } } = await import('@/lib/supabase')
+    const { data } = await supabase.from('countries').select('id').eq('name', name).single()
+    return data?.id ?? null
+}
+
+function FormField({ label, value, onChange, placeholder, type = 'text' }: {
+    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
 }) {
     return (
         <div>
             <label className="block text-sm font-medium text-text-muted mb-1.5">{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
-            />
+            <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim" />
         </div>
     )
 }
