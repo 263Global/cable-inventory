@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Database, Search, Plus, Pencil, Trash2, X, Loader2, Cable } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
+import { Database, Search, Plus, Pencil, Trash2, X, Loader2, Cable, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchAll, insertRecord, updateRecord, deleteRecord } from '@/lib/api'
 import { fetchLandingStationsWithCables } from '@/lib/reference-api'
 
@@ -42,6 +42,7 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     const [data, setData] = useState<T[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [page, setPage] = useState(1)
     const [showModal, setShowModal] = useState(false)
     const [editingItem, setEditingItem] = useState<T | null>(null)
     const [formData, setFormData] = useState<Record<string, string | number>>({})
@@ -65,11 +66,20 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     const filteredData = data.filter((item) => {
         if (!search) return true
         const s = search.toLowerCase()
-        // Search across all string fields
         return Object.values(item).some(
             (v) => typeof v === 'string' && v.toLowerCase().includes(s)
         )
     })
+
+    const PAGE_SIZE = 15
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE))
+    const pagedData = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE
+        return filteredData.slice(start, start + PAGE_SIZE)
+    }, [filteredData, page])
+
+    // Reset page when search changes
+    useEffect(() => { setPage(1) }, [search])
 
     const openCreate = () => { setEditingItem(null); setFormData({}); setError(''); setShowModal(true) }
 
@@ -131,7 +141,7 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
-                            {filteredData.map((item) => (
+                            {pagedData.map((item) => (
                                 <tr key={item.id} className="hover:bg-surface-hover transition-colors">
                                     {columns.map((col) => (
                                         <td key={String(col.key)} className="px-4 py-3 text-sm">
@@ -149,8 +159,23 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
                         </tbody>
                     </table>
                 )}
-                <div className="px-4 py-3 border-t border-border-subtle text-xs text-text-dim">
-                    {filteredData.length} record{filteredData.length !== 1 ? 's' : ''}{search && ` (filtered from ${data.length})`}
+                <div className="px-4 py-3 border-t border-border-subtle flex items-center justify-between">
+                    <span className="text-xs text-text-dim">
+                        {filteredData.length} record{filteredData.length !== 1 ? 's' : ''}{search && ` (filtered from ${data.length})`}
+                    </span>
+                    {totalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                                className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer">
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <span className="text-xs text-text-muted">Page {page} of {totalPages}</span>
+                            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                                className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer">
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
