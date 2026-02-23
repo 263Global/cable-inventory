@@ -132,8 +132,55 @@ export interface InventoryCircuit {
     current_type?: { name: string } | null // joined
     handover_location_a_id: string | null
     handover_location_z_id: string | null
-    status: 'Available' | 'Allocated' | 'Reserved'
+    batch_id: string | null
+    status: 'Available' | 'Allocated' | 'Reserved' | 'Planned'
     notes: string | null
+    created_at: string
+    updated_at: string
+}
+
+// ============================================
+// Sales Types
+// ============================================
+
+export type DisposalType = 'IRU Out' | 'Lease Out' | 'Swap Out'
+export type SalesStatus = 'Draft' | 'Pre-sold' | 'Active' | 'Expired' | 'Terminated' | 'Cancelled'
+export type SalesItemType = 'Capacity' | 'Backhaul' | 'Local Access' | 'Cross-Connect' | 'NRC' | 'Other'
+
+export interface SalesOrder {
+    id: string
+    order_id: string          // SO-XXXXX
+    internal_ref: string | null
+    customer_id: string | null
+    customer_name?: string    // joined
+    status: SalesStatus
+    notes: string | null
+    created_at: string
+    updated_at: string
+}
+
+export interface SalesOrderItem {
+    id: string
+    sales_order_id: string
+    type: SalesItemType
+    inventory_resource_id: string | null
+    resource_id?: string      // joined (RES-XXXXX)
+    cable_system_name?: string // joined
+    description: string | null
+    disposal_type: DisposalType | null
+    capacity: number | null
+    spec: string | null
+    start_date: string | null
+    end_date: string | null
+    term_months: number | null
+    // Revenue (sell price)
+    sell_otc: number | null
+    sell_mrc: number | null
+    sell_nrc: number | null
+    sell_om_rate: number | null
+    sell_annual_om: number | null
+    // Per-item status
+    status: SalesStatus
     created_at: string
     updated_at: string
 }

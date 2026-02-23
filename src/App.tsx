@@ -6,6 +6,8 @@ import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { InventoryFormPage } from '@/features/inventory/InventoryFormPage'
 import { InventoryDetailPage } from '@/features/inventory/InventoryDetailPage'
 import { SalesPage } from '@/features/sales/SalesPage'
+import { SalesFormPage } from '@/features/sales/SalesFormPage'
+import { SalesDetailPage } from '@/features/sales/SalesDetailPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
 import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { ReferenceDataPage } from '@/features/reference-data/ReferenceDataPage'
@@ -35,6 +37,9 @@ function ProtectedRoutes() {
         <Route path="/inventory/:id/edit" element={<InventoryFormPage />} />
         <Route path="/inventory/:id" element={<InventoryDetailPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/sales/new" element={<SalesFormPage />} />
+        <Route path="/sales/:id/edit" element={<SalesFormPage />} />
+        <Route path="/sales/:id" element={<SalesDetailPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
