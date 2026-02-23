@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Loader2, FileText, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import {
     fetchSalesOrderById,
     createSalesOrder,
@@ -16,7 +17,18 @@ import {
 import type { SalesStatus, SalesItemType, DisposalType } from '@/types'
 
 interface Customer { id: string; name: string }
-interface InvResource { id: string; resource_id: string; cable_system_name: string | null; type: string; spec: string | null; total_capacity: number | null }
+interface InvResource {
+    id: string
+    resource_id: string
+    cable_system_name: string | null
+    type: string
+    spec: string | null
+    total_capacity: number | null
+    used_capacity: number | null
+    route_description: string | null
+    landing_a_name: string | null
+    landing_z_name: string | null
+}
 
 const STATUSES: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
 const ITEM_TYPES: SalesItemType[] = ['Capacity', 'Backhaul', 'Local Access', 'Cross-Connect', 'NRC', 'Other']
@@ -81,12 +93,25 @@ export function SalesFormPage() {
         (async () => {
             const [{ data: custs }, { data: res }] = await Promise.all([
                 supabase.from('customers').select('id, name').order('name'),
-                supabase.from('inventory_resources').select('id, resource_id, cable_system_id, cable_system:cable_systems(name), type, spec, total_capacity').order('resource_id'),
+                supabase.from('inventory_resources').select(`
+                    id, resource_id, type, spec, total_capacity, used_capacity, route_description,
+                    cable_system:cable_systems(name),
+                    landing_station_a:landing_stations!inventory_resources_landing_station_a_id_fkey(name),
+                    landing_station_z:landing_stations!inventory_resources_landing_station_z_id_fkey(name)
+                `).order('resource_id'),
             ])
             setCustomers(custs ?? [])
             setResources((res ?? []).map((r: Record<string, unknown>) => ({
-                ...r,
+                id: r.id as string,
+                resource_id: r.resource_id as string,
+                type: r.type as string,
+                spec: r.spec as string | null,
+                total_capacity: r.total_capacity as number | null,
+                used_capacity: r.used_capacity as number | null,
+                route_description: r.route_description as string | null,
                 cable_system_name: (r.cable_system as { name: string } | null)?.name ?? null,
+                landing_a_name: (r.landing_station_a as { name: string } | null)?.name ?? null,
+                landing_z_name: (r.landing_station_z as { name: string } | null)?.name ?? null,
             })) as InvResource[])
         })()
     }, [])
@@ -329,22 +354,32 @@ export function SalesFormPage() {
                                 {canLinkInventory(item.type) ? (
                                     <div>
                                         <label className="block text-xs text-text-dim mb-1">Inventory Resource</label>
-                                        <select value={item.inventory_resource_id} onChange={(e) => {
-                                            updateItem(idx, 'inventory_resource_id', e.target.value)
-                                            const res = resources.find(r => r.id === e.target.value)
-                                            if (res?.spec) updateItem(idx, 'spec', res.spec)
-                                        }}
-                                            className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
-                                        >
-                                            <option value="">Select resource...</option>
-                                            {resources
+                                        <SearchableSelect
+                                            options={resources
                                                 .filter(r => item.type === 'Capacity' ? r.type === 'Capacity' : r.type === 'Terrestrial')
-                                                .map((r) => (
-                                                    <option key={r.id} value={r.id}>
-                                                        {r.resource_id} — {r.cable_system_name || r.type} {r.spec || ''}
-                                                    </option>
-                                                ))}
-                                        </select>
+                                                .map((r) => {
+                                                    const route = r.landing_a_name && r.landing_z_name
+                                                        ? `${r.landing_a_name} → ${r.landing_z_name}`
+                                                        : r.route_description || ''
+                                                    const avail = r.total_capacity
+                                                        ? `${r.total_capacity - (r.used_capacity ?? 0)}G avail / ${r.total_capacity}G`
+                                                        : ''
+                                                    const sublabel = [route, avail].filter(Boolean).join(' | ')
+                                                    return {
+                                                        value: r.id,
+                                                        label: `${r.resource_id} | ${r.cable_system_name || r.type} ${r.spec || ''}`,
+                                                        sublabel: sublabel || undefined,
+                                                    }
+                                                })
+                                            }
+                                            value={item.inventory_resource_id}
+                                            onChange={(v) => {
+                                                updateItem(idx, 'inventory_resource_id', v)
+                                                const res = resources.find(r => r.id === v)
+                                                if (res?.spec) updateItem(idx, 'spec', res.spec)
+                                            }}
+                                            placeholder="Select resource..."
+                                        />
                                     </div>
                                 ) : (
                                     <div>
