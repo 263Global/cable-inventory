@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, MapPin, DollarSign, BarChart3, Loader2,
     Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers, Check,
-    Lock, Unlock,
+    Lock, Unlock, ExternalLink, FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { fetchInventoryById } from './api'
 import {
@@ -36,6 +37,16 @@ const circuitStatusColors: Record<string, string> = {
     'Available': 'text-status-available',
     'Allocated': 'text-status-partial',
     'Reserved': 'text-info',
+    'Planned': 'text-info',
+}
+
+const salesStatusColors: Record<string, string> = {
+    Draft: 'bg-gray-500/15 text-gray-400',
+    'Pre-sold': 'bg-amber-500/15 text-amber-400',
+    Active: 'bg-emerald-500/15 text-emerald-400',
+    Expired: 'bg-red-500/15 text-red-400',
+    Terminated: 'bg-red-500/15 text-red-400',
+    Cancelled: 'bg-gray-500/15 text-gray-400',
 }
 
 const batchStatusColors: Record<string, string> = {
@@ -65,6 +76,17 @@ interface BatchRecord {
     annual_om_cost: number | null
     mrc: number | null
     status: string
+}
+
+interface LinkedSalesItem {
+    id: string
+    sales_order_id: string
+    order_id: string
+    customer_name: string | null
+    capacity: number | null
+    disposal_type: string | null
+    status: string
+    order_status: string
 }
 
 // Auto-calc term from base contract dates
@@ -100,8 +122,9 @@ export function InventoryDetailPage() {
     const [interfaceTypes, setInterfaceTypes] = useState<{ id: string; name: string }[]>([])
     const [handoverLocations, setHandoverLocations] = useState<{ id: string; name: string; country: string; city: string; type: string }[]>([])
     const [showAddCircuit, setShowAddCircuit] = useState(false)
-    const [newCircuit, setNewCircuit] = useState({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
+    const [newCircuit, setNewCircuit] = useState({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' })
     const [savingCircuit, setSavingCircuit] = useState(false)
+    const [linkedSales, setLinkedSales] = useState<LinkedSalesItem[]>([])
 
     // Batch UI state
     const [editingBatchId, setEditingBatchId] = useState<string | null>(null)
@@ -129,6 +152,27 @@ export function InventoryDetailPage() {
         loadBatches()
         fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
         fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
+
+        // Fetch linked sales items
+        supabase
+            .from('sales_order_items')
+            .select('id, sales_order_id, capacity, disposal_type, status, sales_orders(order_id, status, customers(name))')
+            .eq('inventory_resource_id', id)
+            .then(({ data }: { data: Record<string, unknown>[] | null }) => {
+                setLinkedSales((data ?? []).map((row: Record<string, unknown>) => {
+                    const so = row.sales_orders as { order_id: string; status: string; customers: { name: string } | null } | null
+                    return {
+                        id: row.id as string,
+                        sales_order_id: row.sales_order_id as string,
+                        order_id: so?.order_id ?? '',
+                        customer_name: so?.customers?.name ?? null,
+                        capacity: row.capacity as number | null,
+                        disposal_type: row.disposal_type as string | null,
+                        status: row.status as string,
+                        order_status: so?.status ?? '',
+                    }
+                }))
+            })
     }, [id, loadCircuits, loadBatches])
 
     // ── Auto-transition: Planned → Active when start_date ≤ today ──
@@ -161,6 +205,10 @@ export function InventoryDetailPage() {
                 capacity: Number(newCircuit.capacity),
                 original_interface_type_id: newCircuit.interface_type_id,
                 current_interface_type_id: newCircuit.interface_type_id,
+                ...(newCircuit.batch_id ? { batch_id: newCircuit.batch_id } : {}),
+                ...(newCircuit.batch_id ? {
+                    status: batches.find(b => b.id === newCircuit.batch_id)?.status === 'Active' ? 'Available' : 'Planned'
+                } : {}),
             })
             if (newCircuit.handover_a_id || newCircuit.handover_z_id) {
                 const created = (await fetchCircuits(id)) as InventoryCircuit[]
@@ -172,7 +220,7 @@ export function InventoryDetailPage() {
                     })
                 }
             }
-            setNewCircuit({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '' })
+            setNewCircuit({ capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' })
             setShowAddCircuit(false)
             loadCircuits()
             toast.success('Circuit added')
@@ -696,6 +744,20 @@ export function InventoryDetailPage() {
                                             />
                                         </div>
                                     </div>
+                                    {batches.length > 0 && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs text-text-dim mb-1">Batch</label>
+                                                <select value={newCircuit.batch_id} onChange={(e) => setNewCircuit((p) => ({ ...p, batch_id: e.target.value }))}
+                                                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                                    <option value="">No batch</option>
+                                                    {batches.map((b) => (
+                                                        <option key={b.id} value={b.id}>B{b.batch_number} — {b.capacity}G {b.model} ({b.status})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs text-text-dim mb-1">Handover A (optional)</label>
@@ -782,6 +844,68 @@ export function InventoryDetailPage() {
                             ) : (
                                 <p className="text-sm text-text-dim text-center py-4">No circuits defined yet.</p>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Card 4.5: Linked Sales */}
+                {linkedSales.length > 0 && (
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+                                Linked Sales ({linkedSales.length})
+                            </h2>
+                        </div>
+
+                        {/* Capacity allocation bar */}
+                        {resource.total_capacity && (() => {
+                            const activeUsed = linkedSales
+                                .filter(s => s.order_status === 'Active' || s.order_status === 'Pre-sold')
+                                .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
+                            const draftUsed = linkedSales
+                                .filter(s => s.order_status === 'Draft')
+                                .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
+                            const total = resource.total_capacity!
+                            const activePct = Math.min((activeUsed / total) * 100, 100)
+                            const draftPct = Math.min((draftUsed / total) * 100, 100 - activePct)
+                            return (
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-xs text-text-dim mb-1">
+                                        <span>Allocated: {activeUsed}G / {total}G</span>
+                                        {draftUsed > 0 && <span className="text-gray-500">+ {draftUsed}G draft</span>}
+                                    </div>
+                                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                                        <div className="h-full flex">
+                                            <div className="bg-emerald-500 h-full" style={{ width: `${activePct}%` }} />
+                                            <div className="bg-gray-600 h-full" style={{ width: `${draftPct}%` }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })()}
+
+                        <div className="space-y-2">
+                            {linkedSales.map((sale) => (
+                                <Link key={sale.id} to={`/cable-inventory/sales/${sale.sales_order_id}`}
+                                    className="flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-primary/30 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-mono text-primary">{sale.order_id}</span>
+                                        <span className="text-sm text-text-muted">{sale.customer_name || '—'}</span>
+                                        {sale.capacity && <span className="text-sm font-medium">{sale.capacity}G</span>}
+                                        {sale.disposal_type && (
+                                            <span className="text-xs text-text-dim bg-surface-hover px-2 py-0.5 rounded">{sale.disposal_type}</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusColors[sale.order_status] ?? ''}`}>
+                                            {sale.order_status}
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5 text-text-dim" />
+                                    </div>
+                                </Link>
+                            ))}
                         </div>
                     </div>
                 )}
