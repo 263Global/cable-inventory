@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileText, Search, Plus, Trash2, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { fetchSalesOrders, deleteSalesOrder } from './api'
+import { fetchSalesOrders, deleteSalesOrder, syncOrderStatuses } from './api'
 import type { SalesOrder, SalesStatus } from '@/types'
 
 const STATUS_COLORS: Record<SalesStatus, string> = {
@@ -30,6 +30,9 @@ export function SalesPage() {
     const load = useCallback(async () => {
         setLoading(true)
         try {
+            // Auto-transition Pre-sold→Active, Active→Expired based on dates
+            const transitioned = await syncOrderStatuses()
+            if (transitioned > 0) toast.info(`${transitioned} order(s) auto-transitioned`)
             const data = await fetchSalesOrders()
             setOrders(data)
         } catch (err) {

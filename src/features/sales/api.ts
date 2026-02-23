@@ -185,6 +185,52 @@ async function syncCircuitStatuses(salesOrderId: string, newStatus: string): Pro
     }
 }
 
+/** Auto-transition order statuses based on dates:
+ *  - Pre-sold → Active when today >= earliest item start_date
+ *  - Active → Expired when today > latest item end_date
+ *  Runs on Sales list page load. */
+export async function syncOrderStatuses(): Promise<number> {
+    const today = new Date().toISOString().split('T')[0]  // YYYY-MM-DD
+    let transitioned = 0
+
+    // Pre-sold → Active: orders where any item has start_date <= today
+    const { data: presoldOrders } = await supabase
+        .from('sales_orders')
+        .select('id, sales_order_items(start_date)')
+        .eq('status', 'Pre-sold')
+
+    for (const order of (presoldOrders ?? [])) {
+        const items = order.sales_order_items as { start_date: string | null }[] | null
+        const hasStarted = items?.some(i => i.start_date && i.start_date <= today)
+        if (hasStarted) {
+            await supabase.from('sales_orders').update({ status: 'Active', updated_at: new Date().toISOString() }).eq('id', order.id)
+            await syncCircuitStatuses(order.id, 'Active')
+            await recalcForOrder(order.id)
+            transitioned++
+        }
+    }
+
+    // Active → Expired: orders where ALL items have end_date < today
+    const { data: activeOrders } = await supabase
+        .from('sales_orders')
+        .select('id, sales_order_items(end_date)')
+        .eq('status', 'Active')
+
+    for (const order of (activeOrders ?? [])) {
+        const items = order.sales_order_items as { end_date: string | null }[] | null
+        if (!items || items.length === 0) continue
+        const allExpired = items.every(i => i.end_date && i.end_date < today)
+        if (allExpired) {
+            await supabase.from('sales_orders').update({ status: 'Expired', updated_at: new Date().toISOString() }).eq('id', order.id)
+            await syncCircuitStatuses(order.id, 'Expired')
+            await recalcForOrder(order.id)
+            transitioned++
+        }
+    }
+
+    return transitioned
+}
+
 // ============================================
 // Sales Orders
 // ============================================
