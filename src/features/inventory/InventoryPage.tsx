@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2 } from 'lucide-react'
+import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchInventoryResources, deleteInventoryResource } from './api'
 import { formatCurrency } from '@/lib/utils'
@@ -176,7 +176,12 @@ export function InventoryPage() {
     const [search, setSearch] = useState('')
     const [visibleCols, setVisibleCols] = useState<string[]>(loadVisibleCols)
     const [showColPicker, setShowColPicker] = useState(false)
+    const [showFilters, setShowFilters] = useState(false)
+    const [filters, setFilters] = useState<{ status: string[]; acquisition: string[]; protection: string[]; costMode: string[] }>({
+        status: [], acquisition: [], protection: [], costMode: [],
+    })
     const pickerRef = useRef<HTMLDivElement>(null)
+    const filterRef = useRef<HTMLDivElement>(null)
 
     // Close picker on outside click
     useEffect(() => {
@@ -188,6 +193,24 @@ export function InventoryPage() {
         if (showColPicker) document.addEventListener('mousedown', handleClick)
         return () => document.removeEventListener('mousedown', handleClick)
     }, [showColPicker])
+
+    // Close filter on outside click
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false)
+        }
+        if (showFilters) document.addEventListener('mousedown', handleClick)
+        return () => document.removeEventListener('mousedown', handleClick)
+    }, [showFilters])
+
+    const toggleFilter = (group: keyof typeof filters, val: string) => {
+        setFilters((prev) => ({
+            ...prev,
+            [group]: prev[group].includes(val) ? prev[group].filter((v) => v !== val) : [...prev[group], val],
+        }))
+    }
+    const clearFilters = () => setFilters({ status: [], acquisition: [], protection: [], costMode: [] })
+    const activeFilterCount = filters.status.length + filters.acquisition.length + filters.protection.length + filters.costMode.length
 
     const toggleCol = (key: string) => {
         setVisibleCols((prev) => {
@@ -222,18 +245,26 @@ export function InventoryPage() {
     }, [loadData])
 
     const filteredData = data.filter((item) => {
-        if (!search) return true
-        const s = search.toLowerCase()
-        return (
-            item.resource_id.toLowerCase().includes(s) ||
-            (item.internal_ref ?? '').toLowerCase().includes(s) ||
-            (item.cable_system_name ?? '').toLowerCase().includes(s) ||
-            (item.spec ?? '').toLowerCase().includes(s) ||
-            (item.country_a ?? '').toLowerCase().includes(s) ||
-            (item.country_z ?? '').toLowerCase().includes(s) ||
-            (item.supplier_name ?? '').toLowerCase().includes(s) ||
-            (item.contract_ref ?? '').toLowerCase().includes(s)
-        )
+        // Text search
+        if (search) {
+            const s = search.toLowerCase()
+            const match =
+                item.resource_id.toLowerCase().includes(s) ||
+                (item.internal_ref ?? '').toLowerCase().includes(s) ||
+                (item.cable_system_name ?? '').toLowerCase().includes(s) ||
+                (item.spec ?? '').toLowerCase().includes(s) ||
+                (item.country_a ?? '').toLowerCase().includes(s) ||
+                (item.country_z ?? '').toLowerCase().includes(s) ||
+                (item.supplier_name ?? '').toLowerCase().includes(s) ||
+                (item.contract_ref ?? '').toLowerCase().includes(s)
+            if (!match) return false
+        }
+        // Filters
+        if (filters.status.length > 0 && !filters.status.includes(item.status)) return false
+        if (filters.acquisition.length > 0 && !filters.acquisition.includes(item.acquisition_type)) return false
+        if (filters.protection.length > 0 && !filters.protection.includes(item.protection)) return false
+        if (filters.costMode.length > 0 && !filters.costMode.includes(item.cost_mode)) return false
+        return true
     })
 
     // Group columns for picker
@@ -285,10 +316,70 @@ export function InventoryPage() {
                         className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
                     />
                 </div>
-                <button className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">
-                    <Filter className="h-4 w-4" />
-                    Filters
-                </button>
+                <div className="relative" ref={filterRef}>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors cursor-pointer ${showFilters || activeFilterCount > 0 ? 'border-primary text-primary bg-primary/5' : 'border-border text-text-muted hover:text-text hover:bg-surface-hover'}`}
+                    >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                        {activeFilterCount > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full text-xs font-bold">{activeFilterCount}</span>
+                        )}
+                    </button>
+                    {showFilters && (
+                        <div className="absolute left-0 top-full mt-2 w-72 bg-surface border border-border-subtle rounded-xl shadow-xl z-50 p-4 max-h-96 overflow-y-auto">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Filters</span>
+                                {activeFilterCount > 0 && (
+                                    <button onClick={clearFilters} className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1">
+                                        <X className="h-3 w-3" /> Clear all
+                                    </button>
+                                )}
+                            </div>
+                            {/* Status */}
+                            <div className="mb-3">
+                                <p className="text-xs text-text-dim font-medium mb-1.5">Status</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['Available', 'Partially Used', 'Fully Used', 'Expired', 'Terminated'].map((s) => (
+                                        <button key={s} onClick={() => toggleFilter('status', s)}
+                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.status.includes(s) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{s}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Acquisition Type */}
+                            <div className="mb-3">
+                                <p className="text-xs text-text-dim font-medium mb-1.5">Acquisition Type</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['IRU', 'Lease', 'Swap-In', 'Owned'].map((a) => (
+                                        <button key={a} onClick={() => toggleFilter('acquisition', a)}
+                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.acquisition.includes(a) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{a}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Protection */}
+                            <div className="mb-3">
+                                <p className="text-xs text-text-dim font-medium mb-1.5">Protection</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['Protected', 'Unprotected'].map((p) => (
+                                        <button key={p} onClick={() => toggleFilter('protection', p)}
+                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.protection.includes(p) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{p}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Cost Mode */}
+                            <div>
+                                <p className="text-xs text-text-dim font-medium mb-1.5">Cost Mode</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['Single', 'Base+Batch'].map((c) => (
+                                        <button key={c} onClick={() => toggleFilter('costMode', c)}
+                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.costMode.includes(c) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{c}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 {/* Column Picker */}
                 <div className="relative" ref={pickerRef}>
                     <button
