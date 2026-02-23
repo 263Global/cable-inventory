@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react
 import { Database, Search, Plus, Pencil, Trash2, X, Loader2, Cable, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchAll, insertRecord, updateRecord, deleteRecord } from '@/lib/api'
 import { fetchLandingStationsWithCables } from '@/lib/reference-api'
+import { matchesReferenceSearch } from '@/features/reference-data/search'
 
 // ============================================
 // Generic Reference Data Table Component
@@ -64,11 +65,7 @@ function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     useEffect(() => { loadData() }, [loadData])
 
     const filteredData = data.filter((item) => {
-        if (!search) return true
-        const s = search.toLowerCase()
-        return Object.values(item).some(
-            (v) => typeof v === 'string' && v.toLowerCase().includes(s)
-        )
+        return matchesReferenceSearch(item, search, searchKey)
     })
 
     const PAGE_SIZE = 15
