@@ -173,6 +173,14 @@ export function InventoryFormPage() {
                 const rate = parseFloat(key === 'om_rate' ? value : prev.om_rate) || 0
                 next.annual_om_cost = (otc * rate / 100).toFixed(2)
             }
+            // Terrestrial: clear submarine-only fields
+            if (key === 'type' && value === 'Terrestrial') {
+                next.cable_system_id = ''
+                next.country_a = ''
+                next.country_z = ''
+                next.landing_station_a_id = ''
+                next.landing_station_z_id = ''
+            }
             return next
         })
         // Recalculate batch terms when base dates change
@@ -310,7 +318,7 @@ export function InventoryFormPage() {
 
         if (s === 0) {
             // Step 1: Resource Info
-            if (!form.cable_system_id) errors.push('Cable System is required')
+            if (form.type !== 'Terrestrial' && !form.cable_system_id) errors.push('Cable System is required')
             if (!form.capacity_value || Number(form.capacity_value) <= 0) errors.push('Capacity must be a positive number')
             if (isBatchMode && batches.length === 0) errors.push('Add at least one batch in Base+Batch mode')
             if (isBatchMode && batchCapacityExceeded) errors.push('Batch total capacity exceeds base capacity')
@@ -528,26 +536,28 @@ export function InventoryFormPage() {
                                     onChange={(v) => updateForm('capacity_value', v)}
                                     type="number" placeholder="e.g. 1000"
                                 />
-                                {/* Cable System */}
-                                <div>
-                                    <label className="block text-sm font-medium text-text-muted mb-1.5">Cable System</label>
-                                    <SearchableSelect
-                                        options={cableSystems.map((c) => ({
-                                            value: c.id,
-                                            label: c.name,
-                                            sublabel: c.status,
-                                        }))}
-                                        value={form.cable_system_id}
-                                        onChange={(v) => {
-                                            updateForm('cable_system_id', v)
-                                            updateForm('country_a', '')
-                                            updateForm('country_z', '')
-                                            updateForm('landing_station_a_id', '')
-                                            updateForm('landing_station_z_id', '')
-                                        }}
-                                        placeholder="Search cable system..."
-                                    />
-                                </div>
+                                {/* Cable System — hidden for Terrestrial */}
+                                {form.type !== 'Terrestrial' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-muted mb-1.5">Cable System</label>
+                                        <SearchableSelect
+                                            options={cableSystems.map((c) => ({
+                                                value: c.id,
+                                                label: c.name,
+                                                sublabel: c.status,
+                                            }))}
+                                            value={form.cable_system_id}
+                                            onChange={(v) => {
+                                                updateForm('cable_system_id', v)
+                                                updateForm('country_a', '')
+                                                updateForm('country_z', '')
+                                                updateForm('landing_station_a_id', '')
+                                                updateForm('landing_station_z_id', '')
+                                            }}
+                                            placeholder="Search cable system..."
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -600,26 +610,28 @@ export function InventoryFormPage() {
                                 {/* A-End */}
                                 <div className="space-y-4">
                                     <h3 className="text-sm font-semibold text-primary border-b border-border-subtle pb-2">A-End</h3>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
-                                        <SearchableSelect
-                                            options={countriesA.map((c) => ({ value: c, label: c }))}
-                                            value={form.country_a}
-                                            onChange={(v) => updateForm('country_a', v)}
-                                            placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
-                                            disabled={!form.cable_system_id}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
-                                        <SearchableSelect
-                                            options={stationsA.map((s) => ({ value: s.id, label: s.name }))}
-                                            value={form.landing_station_a_id}
-                                            onChange={(v) => updateForm('landing_station_a_id', v)}
-                                            placeholder={form.country_a ? 'Select station...' : 'Select country first'}
-                                            disabled={!form.country_a}
-                                        />
-                                    </div>
+                                    {form.type !== 'Terrestrial' && (<>
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
+                                            <SearchableSelect
+                                                options={countriesA.map((c) => ({ value: c, label: c }))}
+                                                value={form.country_a}
+                                                onChange={(v) => updateForm('country_a', v)}
+                                                placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
+                                                disabled={!form.cable_system_id}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
+                                            <SearchableSelect
+                                                options={stationsA.map((s) => ({ value: s.id, label: s.name }))}
+                                                value={form.landing_station_a_id}
+                                                onChange={(v) => updateForm('landing_station_a_id', v)}
+                                                placeholder={form.country_a ? 'Select station...' : 'Select country first'}
+                                                disabled={!form.country_a}
+                                            />
+                                        </div>
+                                    </>)}
                                     <div>
                                         <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
                                         <SearchableSelect
@@ -638,26 +650,28 @@ export function InventoryFormPage() {
                                 {/* Z-End */}
                                 <div className="space-y-4">
                                     <h3 className="text-sm font-semibold text-primary border-b border-border-subtle pb-2">Z-End</h3>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
-                                        <SearchableSelect
-                                            options={countriesZ.map((c) => ({ value: c, label: c }))}
-                                            value={form.country_z}
-                                            onChange={(v) => updateForm('country_z', v)}
-                                            placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
-                                            disabled={!form.cable_system_id}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
-                                        <SearchableSelect
-                                            options={stationsZ.map((s) => ({ value: s.id, label: s.name }))}
-                                            value={form.landing_station_z_id}
-                                            onChange={(v) => updateForm('landing_station_z_id', v)}
-                                            placeholder={form.country_z ? 'Select station...' : 'Select country first'}
-                                            disabled={!form.country_z}
-                                        />
-                                    </div>
+                                    {form.type !== 'Terrestrial' && (<>
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-muted mb-1.5">Country</label>
+                                            <SearchableSelect
+                                                options={countriesZ.map((c) => ({ value: c, label: c }))}
+                                                value={form.country_z}
+                                                onChange={(v) => updateForm('country_z', v)}
+                                                placeholder={form.cable_system_id ? 'Select country...' : 'Select cable first'}
+                                                disabled={!form.cable_system_id}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-muted mb-1.5">Landing Station</label>
+                                            <SearchableSelect
+                                                options={stationsZ.map((s) => ({ value: s.id, label: s.name }))}
+                                                value={form.landing_station_z_id}
+                                                onChange={(v) => updateForm('landing_station_z_id', v)}
+                                                placeholder={form.country_z ? 'Select station...' : 'Select country first'}
+                                                disabled={!form.country_z}
+                                            />
+                                        </div>
+                                    </>)}
                                     <div>
                                         <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
                                         <SearchableSelect
