@@ -181,6 +181,19 @@ export interface SalesOrderItem {
     sell_annual_om: number | null
     // Per-item status
     status: SalesStatus
+    // Allocated circuits (joined)
+    allocated_circuits?: SalesItemCircuit[]
     created_at: string
     updated_at: string
+}
+
+export interface SalesItemCircuit {
+    id: string
+    sales_order_item_id: string
+    inventory_circuit_id: string
+    // Joined fields
+    circuit_number?: number
+    capacity?: number
+    interface_type_name?: string
+    status?: string
 }

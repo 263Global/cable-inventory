@@ -1,22 +1,104 @@
 import { supabase } from '@/lib/supabase'
-import type { SalesOrder, SalesOrderItem } from '@/types'
+import type { SalesOrder, SalesOrderItem, SalesItemCircuit } from '@/types'
+
+// ============================================
+// Circuit Allocation
+// ============================================
+
+/** Allocate circuits to a sales order item and set their status */
+export async function allocateCircuits(
+    salesOrderItemId: string,
+    circuitIds: string[],
+    orderStatus: string,
+): Promise<void> {
+    if (circuitIds.length === 0) return
+
+    // Insert junction rows
+    const rows = circuitIds.map((cid) => ({
+        sales_order_item_id: salesOrderItemId,
+        inventory_circuit_id: cid,
+    }))
+    const { error } = await supabase.from('sales_item_circuits').insert(rows)
+    if (error) throw error
+
+    // Set circuit status based on order status
+    const circuitStatus = ['Pre-sold', 'Active'].includes(orderStatus) ? 'Allocated' : 'Reserved'
+    await supabase
+        .from('inventory_circuits')
+        .update({ status: circuitStatus, updated_at: new Date().toISOString() })
+        .in('id', circuitIds)
+}
+
+/** Deallocate all circuits from a sales order item */
+export async function deallocateCircuits(salesOrderItemId: string): Promise<string[]> {
+    // Get circuit IDs before deleting
+    const { data: links } = await supabase
+        .from('sales_item_circuits')
+        .select('inventory_circuit_id')
+        .eq('sales_order_item_id', salesOrderItemId)
+
+    const circuitIds = (links ?? []).map(l => l.inventory_circuit_id as string)
+
+    if (circuitIds.length > 0) {
+        // Remove junction rows
+        await supabase.from('sales_item_circuits').delete().eq('sales_order_item_id', salesOrderItemId)
+
+        // Reset circuit status to Available
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Available', updated_at: new Date().toISOString() })
+            .in('id', circuitIds)
+    }
+
+    return circuitIds
+}
+
+/** Fetch allocated circuit IDs for a sales order item */
+export async function fetchAllocatedCircuits(salesOrderItemId: string): Promise<SalesItemCircuit[]> {
+    const { data, error } = await supabase
+        .from('sales_item_circuits')
+        .select('id, sales_order_item_id, inventory_circuit_id, inventory_circuits(circuit_number, capacity, status, current_interface_type_id, current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name))')
+        .eq('sales_order_item_id', salesOrderItemId)
+
+    if (error) throw error
+    return (data ?? []).map((row: Record<string, unknown>) => {
+        const c = row.inventory_circuits as { circuit_number: number; capacity: number; status: string; current_type: { name: string } | null } | null
+        return {
+            id: row.id as string,
+            sales_order_item_id: row.sales_order_item_id as string,
+            inventory_circuit_id: row.inventory_circuit_id as string,
+            circuit_number: c?.circuit_number,
+            capacity: c?.capacity,
+            interface_type_name: c?.current_type?.name ?? undefined,
+            status: c?.status,
+        }
+    })
+}
 
 // ============================================
 // Capacity Occupation Sync
 // ============================================
 
-/** Recalculate used_capacity on an inventory_resource from linked sales items */
+/** Recalculate used_capacity on an inventory_resource from allocated circuits */
 export async function recalcInventoryCapacity(inventoryResourceId: string): Promise<void> {
-    // Sum capacity from items whose parent order is Pre-sold or Active
-    const { data: items } = await supabase
-        .from('sales_order_items')
-        .select('capacity, sales_orders!inner(status)')
+    // Get all circuits for this resource that are allocated via sales_item_circuits
+    // where the parent order status is Pre-sold or Active
+    const { data: circuits } = await supabase
+        .from('inventory_circuits')
+        .select('id, capacity, sales_item_circuits!inner(sales_order_item_id, sales_order_items!inner(sales_orders!inner(status)))')
         .eq('inventory_resource_id', inventoryResourceId)
-        .in('sales_orders.status', ['Pre-sold', 'Active'])
 
-    const usedCapacity = (items ?? []).reduce((sum, row: Record<string, unknown>) => {
-        return sum + (Number(row.capacity) || 0)
-    }, 0)
+    // Sum capacity from circuits linked to Pre-sold or Active orders
+    let usedCapacity = 0
+    for (const c of (circuits ?? []) as Record<string, unknown>[]) {
+        const links = c.sales_item_circuits as { sales_order_items: { sales_orders: { status: string } } }[] | undefined
+        if (links && links.length > 0) {
+            const orderStatus = links[0]?.sales_order_items?.sales_orders?.status
+            if (orderStatus === 'Pre-sold' || orderStatus === 'Active') {
+                usedCapacity += Number(c.capacity) || 0
+            }
+        }
+    }
 
     // Get total capacity for status calculation
     const { data: resource } = await supabase
@@ -46,6 +128,48 @@ async function recalcForOrder(salesOrderId: string): Promise<void> {
 
     const ids = [...new Set((items ?? []).map(i => i.inventory_resource_id as string))]
     await Promise.all(ids.map(recalcInventoryCapacity))
+}
+
+/** Sync circuit statuses when order status changes */
+async function syncCircuitStatuses(salesOrderId: string, newStatus: string): Promise<void> {
+    // Get all item IDs for this order
+    const { data: items } = await supabase
+        .from('sales_order_items')
+        .select('id')
+        .eq('sales_order_id', salesOrderId)
+
+    if (!items || items.length === 0) return
+    const itemIds = items.map(i => i.id as string)
+
+    // Get all circuit IDs linked to these items
+    const { data: links } = await supabase
+        .from('sales_item_circuits')
+        .select('inventory_circuit_id')
+        .in('sales_order_item_id', itemIds)
+
+    if (!links || links.length === 0) return
+    const circuitIds = links.map(l => l.inventory_circuit_id as string)
+
+    if (['Pre-sold', 'Active'].includes(newStatus)) {
+        // Allocate
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Allocated', updated_at: new Date().toISOString() })
+            .in('id', circuitIds)
+    } else if (['Expired', 'Terminated', 'Cancelled'].includes(newStatus)) {
+        // Release — also remove junction rows
+        await supabase.from('sales_item_circuits').delete().in('sales_order_item_id', itemIds)
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Available', updated_at: new Date().toISOString() })
+            .in('id', circuitIds)
+    } else {
+        // Draft → Reserved
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Reserved', updated_at: new Date().toISOString() })
+            .in('id', circuitIds)
+    }
 }
 
 // ============================================
@@ -121,21 +245,25 @@ export async function updateSalesOrder(id: string, payload: Partial<{
         .eq('id', id)
 
     if (error) throw error
-    // Recalc capacity for all linked resources when status changes
+    // Sync circuit statuses and recalc capacity when status changes
     if (payload.status) {
+        await syncCircuitStatuses(id, payload.status)
         await recalcForOrder(id)
     }
 }
 
 export async function deleteSalesOrder(id: string): Promise<void> {
-    // Collect affected inventory resources before cascade delete
+    // Collect affected resources and deallocate circuits before cascade delete
     const { data: items } = await supabase
         .from('sales_order_items')
-        .select('inventory_resource_id')
+        .select('id, inventory_resource_id')
         .eq('sales_order_id', id)
-        .not('inventory_resource_id', 'is', null)
 
-    const affectedIds = [...new Set((items ?? []).map(i => i.inventory_resource_id as string))]
+    const affectedResourceIds = new Set<string>()
+    for (const item of (items ?? [])) {
+        if (item.inventory_resource_id) affectedResourceIds.add(item.inventory_resource_id as string)
+        await deallocateCircuits(item.id as string)
+    }
 
     const { error } = await supabase
         .from('sales_orders')
@@ -145,7 +273,7 @@ export async function deleteSalesOrder(id: string): Promise<void> {
     if (error) throw error
 
     // Recalc after deletion
-    await Promise.all(affectedIds.map(recalcInventoryCapacity))
+    await Promise.all([...affectedResourceIds].map(recalcInventoryCapacity))
 }
 
 // ============================================
@@ -160,7 +288,7 @@ export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderI
         .order('created_at', { ascending: true })
 
     if (error) throw error
-    return (data ?? []).map((row: Record<string, unknown>) => {
+    const items = (data ?? []).map((row: Record<string, unknown>) => {
         const inv = row.inventory_resources as { resource_id: string; cable_system_id: string | null; cable_system: { name: string } | null } | null
         return {
             ...row,
@@ -168,6 +296,13 @@ export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderI
             cable_system_name: inv?.cable_system?.name ?? null,
         }
     }) as SalesOrderItem[]
+
+    // Load allocated circuits for each item
+    for (const item of items) {
+        item.allocated_circuits = await fetchAllocatedCircuits(item.id)
+    }
+
+    return items
 }
 
 export async function createOrderItem(payload: {
@@ -195,33 +330,16 @@ export async function createOrderItem(payload: {
         .single()
 
     if (error) throw error
-    // Recalc capacity if item is linked to an inventory resource
-    if (payload.inventory_resource_id) {
-        await recalcInventoryCapacity(payload.inventory_resource_id)
-    }
     return data as SalesOrderItem
 }
 
 export async function updateOrderItem(id: string, payload: Record<string, unknown>): Promise<void> {
-    // Get old inventory_resource_id before update
-    const { data: oldItem } = await supabase
-        .from('sales_order_items')
-        .select('inventory_resource_id')
-        .eq('id', id)
-        .single()
-
     const { error } = await supabase
         .from('sales_order_items')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id)
 
     if (error) throw error
-
-    // Recalc for both old and new inventory resources
-    const toRecalc = new Set<string>()
-    if (oldItem?.inventory_resource_id) toRecalc.add(oldItem.inventory_resource_id as string)
-    if (payload.inventory_resource_id) toRecalc.add(payload.inventory_resource_id as string)
-    await Promise.all([...toRecalc].map(recalcInventoryCapacity))
 }
 
 export async function deleteOrderItem(id: string): Promise<void> {
@@ -231,6 +349,9 @@ export async function deleteOrderItem(id: string): Promise<void> {
         .select('inventory_resource_id')
         .eq('id', id)
         .single()
+
+    // Deallocate circuits first
+    await deallocateCircuits(id)
 
     const { error } = await supabase
         .from('sales_order_items')

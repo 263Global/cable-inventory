@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Loader2, FileText, Package } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Plus, Trash2, Loader2, FileText, Package, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -13,6 +13,8 @@ import {
     createOrderItem,
     updateOrderItem,
     deleteOrderItem,
+    allocateCircuits,
+    deallocateCircuits,
 } from './api'
 import type { SalesStatus, SalesItemType, DisposalType } from '@/types'
 
@@ -51,6 +53,16 @@ interface ItemDraft {
     sell_om_rate: string
     sell_annual_om: string
     status: SalesStatus
+    selectedCircuitIds: string[]
+    existingCircuitIds: string[]  // circuits already allocated (for edit mode)
+}
+
+interface AvailCircuit {
+    id: string
+    circuit_number: number
+    capacity: number
+    interface_type: string
+    status: string
 }
 
 const emptyItem = (): ItemDraft => ({
@@ -69,6 +81,8 @@ const emptyItem = (): ItemDraft => ({
     sell_om_rate: '4',
     sell_annual_om: '',
     status: 'Draft',
+    selectedCircuitIds: [],
+    existingCircuitIds: [],
 })
 
 export function SalesFormPage() {
@@ -87,6 +101,8 @@ export function SalesFormPage() {
     const [items, setItems] = useState<ItemDraft[]>([])
     const [customers, setCustomers] = useState<Customer[]>([])
     const [resources, setResources] = useState<InvResource[]>([])
+    // Circuits per resource: { resourceId: AvailCircuit[] }
+    const [circuitsByResource, setCircuitsByResource] = useState<Record<string, AvailCircuit[]>>({})
 
     // Load reference data
     useEffect(() => {
@@ -149,12 +165,55 @@ export function SalesFormPage() {
                 sell_om_rate: it.sell_om_rate?.toString() ?? '4',
                 sell_annual_om: it.sell_annual_om?.toString() ?? '',
                 status: it.status,
+                selectedCircuitIds: (it.allocated_circuits ?? []).map(c => c.inventory_circuit_id),
+                existingCircuitIds: (it.allocated_circuits ?? []).map(c => c.inventory_circuit_id),
             })))
+
+            // Pre-load circuits for linked resources
+            const resourceIds = [...new Set(existingItems.filter(it => it.inventory_resource_id).map(it => it.inventory_resource_id!))]
+            for (const rid of resourceIds) {
+                loadCircuitsForResource(rid)
+            }
         })()
-    }, [id, isEdit, navigate])
+    }, [id, isEdit, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const addItem = () => setItems([...items, emptyItem()])
     const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx))
+
+    // Fetch circuits when resource changes
+    const loadCircuitsForResource = async (resourceId: string) => {
+        if (!resourceId || circuitsByResource[resourceId]) return
+        const { data } = await supabase
+            .from('inventory_circuits')
+            .select('id, circuit_number, capacity, status, current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name)')
+            .eq('inventory_resource_id', resourceId)
+            .order('circuit_number')
+        setCircuitsByResource(prev => ({
+            ...prev,
+            [resourceId]: (data ?? []).map((c: Record<string, unknown>) => ({
+                id: c.id as string,
+                circuit_number: c.circuit_number as number,
+                capacity: c.capacity as number,
+                interface_type: (c.current_type as { name: string } | null)?.name ?? '—',
+                status: c.status as string,
+            })),
+        }))
+    }
+
+    const toggleCircuit = (idx: number, circuitId: string) => {
+        setItems(prev => prev.map((item, i) => {
+            if (i !== idx) return item
+            const selected = item.selectedCircuitIds.includes(circuitId)
+                ? item.selectedCircuitIds.filter(id => id !== circuitId)
+                : [...item.selectedCircuitIds, circuitId]
+            // Auto-calc capacity from selected circuits
+            const circuits = circuitsByResource[item.inventory_resource_id] ?? []
+            const totalCap = circuits
+                .filter(c => selected.includes(c.id))
+                .reduce((sum, c) => sum + c.capacity, 0)
+            return { ...item, selectedCircuitIds: selected, capacity: totalCap.toString() }
+        }))
+    }
 
     const updateItem = (idx: number, field: keyof ItemDraft, value: string) => {
         setItems(items.map((item, i) => {
@@ -198,7 +257,7 @@ export function SalesFormPage() {
                 salesOrderId = order.id
             }
 
-            // Save items
+            // Save items + allocate circuits
             for (const item of items) {
                 const payload = {
                     sales_order_id: salesOrderId!,
@@ -218,10 +277,24 @@ export function SalesFormPage() {
                     sell_annual_om: item.sell_annual_om ? parseFloat(item.sell_annual_om) : undefined,
                     status: item.status,
                 }
+                let itemId = item.id
                 if (item.id && isEdit) {
                     await updateOrderItem(item.id, payload)
                 } else {
-                    await createOrderItem(payload)
+                    const created = await createOrderItem(payload)
+                    itemId = created.id
+                }
+
+                // Handle circuit allocation changes
+                if (itemId && item.inventory_resource_id) {
+                    // Deallocate old circuits first (edit mode)
+                    if (item.existingCircuitIds.length > 0) {
+                        await deallocateCircuits(itemId)
+                    }
+                    // Allocate new circuits
+                    if (item.selectedCircuitIds.length > 0) {
+                        await allocateCircuits(itemId, item.selectedCircuitIds, status)
+                    }
                 }
             }
 
@@ -374,9 +447,16 @@ export function SalesFormPage() {
                                             }
                                             value={item.inventory_resource_id}
                                             onChange={(v) => {
-                                                updateItem(idx, 'inventory_resource_id', v)
                                                 const res = resources.find(r => r.id === v)
-                                                if (res?.spec) updateItem(idx, 'spec', res.spec)
+                                                // Single state update: set resource, spec, and reset circuits
+                                                setItems(prev => prev.map((it, i) => i === idx ? {
+                                                    ...it,
+                                                    inventory_resource_id: v,
+                                                    spec: res?.spec || it.spec,
+                                                    selectedCircuitIds: [],
+                                                    capacity: '',
+                                                } : it))
+                                                if (v) loadCircuitsForResource(v)
                                             }}
                                             placeholder="Select resource..."
                                         />
@@ -391,6 +471,54 @@ export function SalesFormPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Circuit Picker */}
+                            {canLinkInventory(item.type) && item.inventory_resource_id && (() => {
+                                const circuits = circuitsByResource[item.inventory_resource_id] ?? []
+                                if (circuits.length === 0) return null
+                                return (
+                                    <div className="p-3 bg-background rounded-lg border border-border-subtle">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-medium text-text-muted">Select Circuits</span>
+                                            <span className="text-xs text-text-dim">
+                                                {item.selectedCircuitIds.length} selected · {item.capacity || 0}G total
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {circuits.map((c) => {
+                                                const isSelected = item.selectedCircuitIds.includes(c.id)
+                                                const isOwnExisting = item.existingCircuitIds.includes(c.id)
+                                                const isAvailable = c.status === 'Available' || c.status === 'Planned' || isOwnExisting
+                                                return (
+                                                    <button
+                                                        key={c.id}
+                                                        type="button"
+                                                        disabled={!isAvailable && !isSelected}
+                                                        onClick={() => toggleCircuit(idx, c.id)}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-colors cursor-pointer ${isSelected
+                                                            ? 'bg-primary/10 border-primary text-primary'
+                                                            : isAvailable
+                                                                ? 'bg-surface border-border-subtle text-text hover:border-primary/30'
+                                                                : 'bg-surface/50 border-border-subtle/50 text-text-dim opacity-50 cursor-not-allowed'
+                                                            }`}
+                                                    >
+                                                        <span className={`w-4 h-4 rounded flex items-center justify-center border ${isSelected ? 'bg-primary border-primary' : 'border-border'
+                                                            }`}>
+                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </span>
+                                                        <span className="font-mono">#{c.circuit_number}</span>
+                                                        <span>{c.capacity}G</span>
+                                                        <span className="text-text-dim">{c.interface_type}</span>
+                                                        {!isAvailable && !isSelected && (
+                                                            <span className="text-warning text-[10px]">In use</span>
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
 
                             {/* Row 2: Capacity + Spec + Dates */}
                             <div className="grid grid-cols-4 gap-4">
