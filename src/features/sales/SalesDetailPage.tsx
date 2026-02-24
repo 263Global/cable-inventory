@@ -43,7 +43,7 @@ export function SalesDetailPage() {
 
     // Renew form
     const [renewItems, setRenewItems] = useState<{
-        itemId: string; label: string;
+        itemId: string; label: string; selected: boolean;
         startDate: string; termMonths: number; endDate: string;
         mrc: number; nrc: number;
     }[]>([])
@@ -154,6 +154,7 @@ export function SalesDetailPage() {
             return {
                 itemId: item.id,
                 label: `${item.type}${item.resource_id ? ` (${item.resource_id})` : item.description ? ` — ${item.description}` : ''}`,
+                selected: true,
                 startDate: newStart,
                 termMonths: term,
                 endDate: calcEndDate(newStart, term),
@@ -183,7 +184,7 @@ export function SalesDetailPage() {
         if (!id) return
         setActionLoading(true)
         try {
-            await renewSalesOrder(id, renewItems.map(r => ({
+            await renewSalesOrder(id, renewItems.filter(r => r.selected).map(r => ({
                 itemId: r.itemId,
                 startDate: r.startDate,
                 termMonths: r.termMonths,
@@ -584,8 +585,16 @@ export function SalesDetailPage() {
                         </p>
                         <div className="space-y-4">
                             {renewItems.map((r, idx) => (
-                                <div key={r.itemId} className="bg-background rounded-lg border border-border-subtle p-4">
-                                    <p className="text-sm font-medium mb-3">{r.label}</p>
+                                <div key={r.itemId} className={`bg-background rounded-lg border ${r.selected ? 'border-border-subtle' : 'border-border-subtle/50 opacity-50'} p-4 transition-opacity`}>
+                                    <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={r.selected}
+                                            onChange={() => setRenewItems(prev => prev.map((item, i) => i === idx ? { ...item, selected: !item.selected } : item))}
+                                            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                                        />
+                                        <span className="text-sm font-medium">{r.label}</span>
+                                    </label>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="text-xs text-text-dim block mb-1">Start Date</label>
@@ -645,7 +654,7 @@ export function SalesDetailPage() {
                             </button>
                             <button
                                 onClick={handleRenew}
-                                disabled={actionLoading}
+                                disabled={actionLoading || !renewItems.some(r => r.selected)}
                                 className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-colors cursor-pointer disabled:opacity-50"
                             >
                                 {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
