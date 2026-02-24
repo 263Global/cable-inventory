@@ -2,6 +2,11 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.4.1] - 2026-02-24
+
+### Changed
+- **Custom Favicon** — Replaced default Vite icon with a custom CableTrack SVG favicon (deep-sea cross-continental cable design with gradient core and landing station endpoints)
+
 ## [2.4.0] - 2026-02-24
 
 ### Added — Atomic ID Generation

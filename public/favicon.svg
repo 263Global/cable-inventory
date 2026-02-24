@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <!-- Ocean Background -->
+    <defs>
+        <radialGradient id="ocean" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#0f172a" />
+            <stop offset="100%" stop-color="#09090b" />
+        </radialGradient>
+        <linearGradient id="cable" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981" />
+            <stop offset="50%" stop-color="#3b82f6" />
+            <stop offset="100%" stop-color="#8b5cf6" />
+        </linearGradient>
+    </defs>
+    <circle cx="256" cy="256" r="256" fill="url(#ocean)" />
+
+    <!-- Wave pattern in background -->
+    <path d="M 0 300 Q 128 250 256 300 T 512 300" fill="none" stroke="#1e293b" stroke-width="15" />
+    <path d="M 0 380 Q 128 330 256 380 T 512 380" fill="none" stroke="#1e293b" stroke-width="15" />
+
+    <!-- The Cross-Continental Cable -->
+    <path d="M 80 256 L 432 256" fill="none" stroke="url(#cable)" stroke-width="60" stroke-linecap="round" />
+    
+    <!-- Glowing core data line -->
+    <path d="M 120 256 L 392 256" fill="none" stroke="#f8fafc" stroke-width="12" stroke-linecap="round" stroke-dasharray="20 15" />
+
+    <!-- Connection Points -->
+    <rect x="60" y="216" width="40" height="80" rx="10" fill="#14b8a6" />
+    <rect x="412" y="216" width="40" height="80" rx="10" fill="#8b5cf6" />
+</svg>
