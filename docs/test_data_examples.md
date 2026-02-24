@@ -59,9 +59,9 @@
 | Acquisition | IRU |
 | Protection | Protected |
 | Contract Ref | CTR-2025-003 |
-| **A-End Country** | Hong Kong |
-| **Z-End Country** | Singapore |
-| Route | HK → SG via AAE-1 |
+| **A-End Country** | China |
+| **Z-End Country** | France |
+| Route | HK → Marseille via AAE-1 |
 | Base Term | 240 months |
 | Base Start | 2024-06-01 |
 | Base OTC ($) | 800,000 |
