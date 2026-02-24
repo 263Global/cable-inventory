@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, Trash2, FileText, Package, ExternalLink, Loader2,
-    Ban, XCircle, RefreshCw, History, Calendar, AlertTriangle,
+    Ban, XCircle, RefreshCw, History, AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -325,13 +325,13 @@ export function SalesDetailPage() {
                     </h2>
                     <div className="space-y-3">
                         {[...order.renewal_history].reverse().map((snap, idx) => {
-                            const s = snap as Record<string, unknown>
+                            const s = snap as unknown as Record<string, unknown>
                             const snapItems = (s.items as Record<string, unknown>[]) ?? []
                             return (
                                 <div key={idx} className="bg-background rounded-lg border border-border-subtle p-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs text-text-dim">
-                                            Renewed on {new Date(s.renewed_at as string).toLocaleDateString()}
+                                            Renewed on {new Date(String(s.renewed_at)).toLocaleDateString()}
                                         </span>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[(s.old_status as SalesStatus) ?? 'Draft']}`}>
                                             was {s.old_status as string}
@@ -339,9 +339,9 @@ export function SalesDetailPage() {
                                     </div>
                                     {snapItems.map((si, j) => (
                                         <div key={j} className="text-xs text-text-muted mt-1">
-                                            {si.old_start_date as string} → {si.old_end_date as string}
-                                            {si.old_term_months && <span className="ml-1">({si.old_term_months as number}mo)</span>}
-                                            {si.old_mrc != null && <span className="ml-2">MRC: {formatCurrency(si.old_mrc as number)}</span>}
+                                            {String(si.old_start_date ?? '—')} → {String(si.old_end_date ?? '—')}
+                                            {si.old_term_months ? <span className="ml-1">({Number(si.old_term_months)}mo)</span> : null}
+                                            {si.old_mrc != null ? <span className="ml-2">MRC: {formatCurrency(Number(si.old_mrc))}</span> : null}
                                         </div>
                                     ))}
                                 </div>
