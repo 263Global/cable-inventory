@@ -6,52 +6,42 @@ import {
     Lock, Unlock, ExternalLink, FileText, Ban, History, AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+import {
+    calcBatchTermToBaseEnd,
+    calcEndDateFromTerm,
+    calculateAnnualOm,
+    nextDay,
+    suggestBatchStatusFromBaseEnd,
+    todayDateOnly,
+} from '@/lib/contract-utils'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
     fetchInventoryById, checkLinkedSalesOrders,
     terminateInventoryResource, renewInventoryResource,
+    fetchLinkedSalesItems,
+    type LinkedSalesItem,
 } from './api'
 import {
     fetchCircuits, createCircuit, updateCircuit, deleteCircuit,
-    fetchInterfaceTypes, fetchBatches, createBatch, deleteBatch,
+    fetchInterfaceTypes, fetchBatches, createBatch, updateBatch, deleteBatch,
     fetchHandoverLocations,
 } from '@/lib/reference-api'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import type { InventoryResource, InventoryCircuit } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import { getBatchFieldDisplayValue, shouldSaveBatchField } from '@/features/inventory/batchField'
-
-const statusColors: Record<string, string> = {
-    'Available': 'bg-status-available/15 text-status-available',
-    'Partially Used': 'bg-status-partial/15 text-status-partial',
-    'Fully Used': 'bg-status-full/15 text-status-full',
-    'Expired': 'bg-status-expired/15 text-status-expired',
-    'Terminated': 'bg-status-expired/15 text-status-expired',
-}
-const statusLabel: Record<string, string> = { 'Partially Used': 'Partial', 'Fully Used': 'Full' }
-
-const typeColors: Record<string, string> = {
-    'Capacity': 'bg-primary/15 text-primary',
-    'Terrestrial': 'bg-info/15 text-info',
-    'Fiber': 'bg-warning/15 text-warning',
-    'Spectrum': 'bg-purple-500/15 text-purple-400',
-}
+import { BatchField } from '@/features/inventory/components/BatchField'
+import {
+    resourceStatusBadgeClass,
+    resourceStatusLabel,
+    resourceTypeBadgeClass,
+    salesStatusBadgeClass,
+} from '@/lib/status-styles'
 
 const circuitStatusColors: Record<string, string> = {
     'Available': 'text-status-available',
     'Allocated': 'text-status-partial',
     'Reserved': 'text-info',
     'Planned': 'text-info',
-}
-
-const salesStatusColors: Record<string, string> = {
-    Draft: 'bg-gray-500/15 text-gray-400',
-    'Pre-sold': 'bg-amber-500/15 text-amber-400',
-    Active: 'bg-emerald-500/15 text-emerald-400',
-    Expired: 'bg-red-500/15 text-red-400',
-    Terminated: 'bg-red-500/15 text-red-400',
-    Cancelled: 'bg-gray-500/15 text-gray-400',
 }
 
 const batchStatusColors: Record<string, string> = {
@@ -83,40 +73,6 @@ interface BatchRecord {
     status: string
 }
 
-interface LinkedSalesItem {
-    id: string
-    sales_order_id: string
-    order_id: string
-    customer_name: string | null
-    capacity: number | null
-    disposal_type: string | null
-    status: string
-    order_status: string
-}
-
-// Auto-calc term from base contract dates
-function calcBatchTerm(baseStart: string | null, baseTermMonths: number | null, batchStart: string): number {
-    if (!baseStart || !baseTermMonths || !batchStart) return 0
-    const baseEnd = new Date(baseStart)
-    baseEnd.setMonth(baseEnd.getMonth() + baseTermMonths)
-    baseEnd.setDate(baseEnd.getDate() - 1)
-    const bs = new Date(batchStart)
-    if (isNaN(bs.getTime()) || baseEnd < bs) return 0
-    return (baseEnd.getFullYear() - bs.getFullYear()) * 12 + (baseEnd.getMonth() - bs.getMonth()) + 1
-}
-
-// Auto-suggest status from dates
-function suggestStatus(batchStart: string, baseEndDate: string | null): 'Planned' | 'Active' | 'Ended' {
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    if (baseEndDate) {
-        const be = new Date(baseEndDate)
-        if (be < today) return 'Ended'
-    }
-    const bs = new Date(batchStart)
-    if (isNaN(bs.getTime())) return 'Planned'
-    return bs > today ? 'Planned' : 'Active'
-}
-
 export function InventoryDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
@@ -142,7 +98,7 @@ export function InventoryDetailPage() {
 
     // Terminate / Renew state
     const [terminateOpen, setTerminateOpen] = useState(false)
-    const [terminateDate, setTerminateDate] = useState(new Date().toISOString().split('T')[0])
+    const [terminateDate, setTerminateDate] = useState(todayDateOnly())
     const [terminateReason, setTerminateReason] = useState('')
     const [terminateWarning, setTerminateWarning] = useState<{ activeOrders: { order_id: string; customer_name: string | null }[]; allocatedCircuitCount: number } | null>(null)
     const [actionLoading, setActionLoading] = useState(false)
@@ -167,26 +123,7 @@ export function InventoryDetailPage() {
         fetchInterfaceTypes().then(setInterfaceTypes).catch(console.error)
         fetchHandoverLocations().then(setHandoverLocations).catch(console.error)
 
-        // Fetch linked sales items
-        supabase
-            .from('sales_order_items')
-            .select('id, sales_order_id, capacity, disposal_type, status, sales_orders(order_id, status, customers(name))')
-            .eq('inventory_resource_id', id)
-            .then(({ data }: { data: Record<string, unknown>[] | null }) => {
-                setLinkedSales((data ?? []).map((row: Record<string, unknown>) => {
-                    const so = row.sales_orders as { order_id: string; status: string; customers: { name: string } | null } | null
-                    return {
-                        id: row.id as string,
-                        sales_order_id: row.sales_order_id as string,
-                        order_id: so?.order_id ?? '',
-                        customer_name: so?.customers?.name ?? null,
-                        capacity: row.capacity as number | null,
-                        disposal_type: row.disposal_type as string | null,
-                        status: row.status as string,
-                        order_status: so?.status ?? '',
-                    }
-                }))
-            })
+        fetchLinkedSalesItems(id).then(setLinkedSales).catch(console.error)
     }, [id, loadCircuits, loadBatches])
 
     // ── Auto-transition: Planned → Active when start_date ≤ today ──
@@ -200,7 +137,6 @@ export function InventoryDetailPage() {
         if (toUpdate.length === 0) return
         autoTransitionDone.current = true
             ; (async () => {
-                const { updateBatch } = await import('@/lib/reference-api')
                 await Promise.all(toUpdate.map((b) => updateBatch(b.id, { status: 'Active' })))
                 loadBatches()
                 toast.info(`${toUpdate.length} batch${toUpdate.length > 1 ? 'es' : ''} auto-transitioned to Active`)
@@ -275,11 +211,11 @@ export function InventoryDetailPage() {
     const handleSaveNewBatch = async () => {
         if (!id || !newBatch.capacity || !resource) return
         const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.batch_number)) + 1 : 1
-        const termMonths = newBatch.start_date ? calcBatchTerm(resource.start_date, resource.term_months, newBatch.start_date) : undefined
-        const status = newBatch.start_date ? suggestStatus(newBatch.start_date, resource.end_date) : 'Planned'
+        const termMonths = newBatch.start_date ? calcBatchTermToBaseEnd(resource.start_date, resource.term_months, newBatch.start_date) : undefined
+        const status = newBatch.start_date ? suggestBatchStatusFromBaseEnd(newBatch.start_date, resource.end_date) : 'Planned'
         const otcVal = parseFloat(newBatch.otc) || 0
         const rateVal = parseFloat(newBatch.om_rate) || 4.0
-        const calcOm = otcVal * rateVal / 100
+        const calcOm = calculateAnnualOm(otcVal, rateVal)
         await createBatch({
             inventory_resource_id: id,
             batch_number: nextNum,
@@ -329,7 +265,6 @@ export function InventoryDetailPage() {
     }
 
     const handleUpdateBatchField = async (batchId: string, field: string, value: string | number) => {
-        const { updateBatch } = await import('@/lib/reference-api')
         try {
             const updates: Record<string, unknown> = { [field]: value === '' ? null : value }
             // Auto-calc O&M only if that batch's O&M is locked
@@ -338,14 +273,14 @@ export function InventoryDetailPage() {
                 if (batch) {
                     const otc = field === 'otc' ? Number(value) || 0 : Number(batch.otc) || 0
                     const rate = field === 'om_rate' ? Number(value) || 0 : Number(batch.om_rate) || 0
-                    updates.annual_om_cost = otc * rate / 100
+                    updates.annual_om_cost = calculateAnnualOm(otc, rate)
                 }
             }
             // Auto-calc term + status when start_date changes
             if (field === 'start_date' && value && resource) {
-                const term = calcBatchTerm(resource.start_date, resource.term_months, String(value))
+                const term = calcBatchTermToBaseEnd(resource.start_date, resource.term_months, String(value))
                 if (term > 0) updates.term_months = term
-                updates.status = suggestStatus(String(value), resource.end_date)
+                updates.status = suggestBatchStatusFromBaseEnd(String(value), resource.end_date)
             }
             await updateBatch(batchId, updates)
             loadBatches()
@@ -399,8 +334,8 @@ export function InventoryDetailPage() {
                     <div>
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{resource.resource_id}</h1>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[resource.type]}`}>{resource.type}</span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[resource.status]}`}>{statusLabel[resource.status] || resource.status}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${resourceTypeBadgeClass[resource.type]}`}>{resource.type}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${resourceStatusBadgeClass[resource.status]}`}>{resourceStatusLabel[resource.status] || resource.status}</span>
                             {isBatchMode && <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">Base+Batch</span>}
                         </div>
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}
@@ -425,10 +360,10 @@ export function InventoryDetailPage() {
                         <button
                             onClick={() => {
                                 const newStart = resource.end_date
-                                    ? (() => { const d = new Date(resource.end_date!); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] })()
-                                    : new Date().toISOString().split('T')[0]
+                                    ? nextDay(resource.end_date)
+                                    : todayDateOnly()
                                 const term = resource.term_months ?? 12
-                                const end = (() => { const d = new Date(newStart); d.setMonth(d.getMonth() + term); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0] })()
+                                const end = calcEndDateFromTerm(newStart, term)
                                 setRenewForm({
                                     startDate: newStart,
                                     termMonths: term,
@@ -581,7 +516,7 @@ export function InventoryDetailPage() {
                                 </div>
                                 {newBatch.start_date && resource.start_date && resource.term_months && (
                                     <p className="text-xs text-text-dim">
-                                        Term: <span className="text-text font-medium">{calcBatchTerm(resource.start_date, resource.term_months, newBatch.start_date)} months</span> (auto-calculated to Base end date)
+                                        Term: <span className="text-text font-medium">{calcBatchTermToBaseEnd(resource.start_date, resource.term_months, newBatch.start_date)} months</span> (auto-calculated to Base end date)
                                     </p>
                                 )}
                                 <div className="flex justify-end gap-2">
@@ -992,7 +927,7 @@ export function InventoryDetailPage() {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusColors[sale.order_status] ?? ''}`}>
+                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[sale.order_status as keyof typeof salesStatusBadgeClass] ?? ''}`}>
                                             {sale.order_status}
                                         </span>
                                         <ExternalLink className="h-3.5 w-3.5 text-text-dim" />
@@ -1073,8 +1008,9 @@ export function InventoryDetailPage() {
                     <div className="space-y-3">
                         {[...resource.renewal_history].reverse().map((snap, idx) => {
                             const s = snap as unknown as Record<string, unknown>
+                            const key = `${String(s.renewed_at ?? 'snapshot')}-${idx}`
                             return (
-                                <div key={idx} className="bg-background rounded-lg border border-border-subtle p-4">
+                                <div key={key} className="bg-background rounded-lg border border-border-subtle p-4">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-text-dim">
                                             Renewed on {new Date(String(s.renewed_at)).toLocaleDateString()}
@@ -1194,8 +1130,7 @@ export function InventoryDetailPage() {
                                     <input type="date" value={renewForm.startDate}
                                         onChange={e => {
                                             const s = e.target.value
-                                            const d = new Date(s); d.setMonth(d.getMonth() + renewForm.termMonths); d.setDate(d.getDate() - 1)
-                                            setRenewForm(f => ({ ...f, startDate: s, endDate: d.toISOString().split('T')[0] }))
+                                            setRenewForm(f => ({ ...f, startDate: s, endDate: calcEndDateFromTerm(s, f.termMonths) }))
                                         }}
                                         className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
                                 </div>
@@ -1204,8 +1139,7 @@ export function InventoryDetailPage() {
                                     <input type="number" min={1} value={renewForm.termMonths}
                                         onChange={e => {
                                             const m = parseInt(e.target.value) || 1
-                                            const d = new Date(renewForm.startDate); d.setMonth(d.getMonth() + m); d.setDate(d.getDate() - 1)
-                                            setRenewForm(f => ({ ...f, termMonths: m, endDate: d.toISOString().split('T')[0] }))
+                                            setRenewForm(f => ({ ...f, termMonths: m, endDate: calcEndDateFromTerm(f.startDate, m) }))
                                         }}
                                         className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
                                 </div>
@@ -1274,36 +1208,6 @@ export function InventoryDetailPage() {
                     </div>
                 </div>
             )}
-        </div>
-    )
-}
-
-// Inline-editable field for edit mode — saves on blur
-function BatchField({ label, value, onSave, type = 'text', disabled = false }: {
-    label: string; value: string | number; onSave: (v: string) => void; type?: string; disabled?: boolean
-}) {
-    const [local, setLocal] = useState(String(value ?? ''))
-    const [isEditing, setIsEditing] = useState(false)
-    const displayValue = getBatchFieldDisplayValue(isEditing, local, value)
-
-    return (
-        <div>
-            {label && <label className="block text-xs text-text-dim mb-1">{label}</label>}
-            <input
-                type={type}
-                value={displayValue}
-                onFocus={() => {
-                    setIsEditing(true)
-                    setLocal(String(value ?? ''))
-                }}
-                onChange={(e) => setLocal(e.target.value)}
-                onBlur={() => {
-                    if (shouldSaveBatchField(local, value, disabled)) onSave(local)
-                    setIsEditing(false)
-                }}
-                disabled={disabled}
-                className={`w-full px-2.5 py-1.5 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            />
         </div>
     )
 }

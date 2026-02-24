@@ -1,11 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Package, Plus, Search, Filter, Loader2, Trash2, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchInventoryResources, deleteInventoryResource, checkResourceDeletable } from './api'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatCurrency } from '@/lib/utils'
-import type { InventoryResource, ResourceType } from '@/types'
+import type { InventoryResource } from '@/types'
+import {
+    resourceStatusBadgeClass,
+    resourceStatusLabel,
+    resourceTypeBadgeClass,
+} from '@/lib/status-styles'
+import { useClickOutside } from '@/hooks/useClickOutside'
+import { usePersistentColumnVisibility } from '@/hooks/usePersistentColumnVisibility'
 
 const typeTabs: { label: string; filter: string }[] = [
     { label: 'All', filter: 'All' },
@@ -14,22 +21,6 @@ const typeTabs: { label: string; filter: string }[] = [
     { label: 'Fiber', filter: 'Fiber' },
     { label: 'Spectrum', filter: 'Spectrum' },
 ]
-
-const statusColors: Record<string, string> = {
-    'Available': 'bg-status-available/15 text-status-available',
-    'Partially Used': 'bg-status-partial/15 text-status-partial',
-    'Fully Used': 'bg-status-full/15 text-status-full',
-    'Expired': 'bg-status-expired/15 text-status-expired',
-    'Terminated': 'bg-status-expired/15 text-status-expired',
-}
-const statusLabel: Record<string, string> = { 'Partially Used': 'Partial', 'Fully Used': 'Full' }
-
-const typeColors: Record<ResourceType, string> = {
-    'Capacity': 'bg-primary/15 text-primary',
-    'Terrestrial': 'bg-info/15 text-info',
-    'Fiber': 'bg-warning/15 text-warning',
-    'Spectrum': 'bg-purple-500/15 text-purple-400',
-}
 
 // ─── Column definitions ───
 interface ColumnDef {
@@ -54,7 +45,7 @@ const allColumns: ColumnDef[] = [
     },
     {
         key: 'type', label: 'Type', group: 'Basic', defaultVisible: true,
-        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[item.type]}`}>{item.type}</span>,
+        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${resourceTypeBadgeClass[item.type]}`}>{item.type}</span>,
     },
     {
         key: 'cable_system', label: 'Cable System', group: 'Basic', defaultVisible: true,
@@ -70,7 +61,7 @@ const allColumns: ColumnDef[] = [
     },
     {
         key: 'status', label: 'Status', group: 'Basic', defaultVisible: true,
-        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColors[item.status]}`}>{statusLabel[item.status] || item.status}</span>,
+        render: (item) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${resourceStatusBadgeClass[item.status]}`}>{resourceStatusLabel[item.status] || item.status}</span>,
     },
     {
         key: 'capacity', label: 'Capacity Usage', group: 'Basic', defaultVisible: true, minWidth: '200px',
@@ -145,14 +136,7 @@ const allColumns: ColumnDef[] = [
 
 const STORAGE_KEY = 'inventory-visible-columns'
 const defaultCols = allColumns.filter((c) => c.defaultVisible).map((c) => c.key)
-
-function loadVisibleCols(): string[] {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) return JSON.parse(stored)
-    } catch { /* ignore */ }
-    return defaultCols
-}
+const allColumnKeys = allColumns.map((column) => column.key)
 
 function CapacityBar({ used, total }: { used: number; total: number }) {
     if (!total) return <span className="text-text-dim text-xs">—</span>
@@ -177,7 +161,6 @@ export function InventoryPage() {
     const [data, setData] = useState<InventoryResource[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
-    const [visibleCols, setVisibleCols] = useState<string[]>(loadVisibleCols)
     const [showColPicker, setShowColPicker] = useState(false)
     const [showFilters, setShowFilters] = useState(false)
     const [filters, setFilters] = useState<{ status: string[]; acquisition: string[]; protection: string[]; costMode: string[] }>({
@@ -186,28 +169,13 @@ export function InventoryPage() {
     const [deleteTarget, setDeleteTarget] = useState<InventoryResource | null>(null)
     const [deleteMessage, setDeleteMessage] = useState('')
     const [deleting, setDeleting] = useState(false)
-    const pickerRef = useRef<HTMLDivElement>(null)
-    const filterRef = useRef<HTMLDivElement>(null)
-
-    // Close picker on outside click
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-                setShowColPicker(false)
-            }
-        }
-        if (showColPicker) document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
-    }, [showColPicker])
-
-    // Close filter on outside click
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false)
-        }
-        if (showFilters) document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
-    }, [showFilters])
+    const { visibleKeys, toggleKey, reset } = usePersistentColumnVisibility({
+        storageKey: STORAGE_KEY,
+        allKeys: allColumnKeys,
+        defaultKeys: defaultCols,
+    })
+    const pickerRef = useClickOutside<HTMLDivElement>(showColPicker, () => setShowColPicker(false))
+    const filterRef = useClickOutside<HTMLDivElement>(showFilters, () => setShowFilters(false))
 
     const toggleFilter = (group: keyof typeof filters, val: string) => {
         setFilters((prev) => ({
@@ -218,20 +186,7 @@ export function InventoryPage() {
     const clearFilters = () => setFilters({ status: [], acquisition: [], protection: [], costMode: [] })
     const activeFilterCount = filters.status.length + filters.acquisition.length + filters.protection.length + filters.costMode.length
 
-    const toggleCol = (key: string) => {
-        setVisibleCols((prev) => {
-            const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-            return next
-        })
-    }
-
-    const resetCols = () => {
-        setVisibleCols(defaultCols)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCols))
-    }
-
-    const activeColumns = allColumns.filter((c) => visibleCols.includes(c.key))
+    const activeColumns = allColumns.filter((c) => visibleKeys.includes(c.key))
 
     const loadData = useCallback(async () => {
         try {
@@ -349,7 +304,7 @@ export function InventoryPage() {
                                 <div className="flex flex-wrap gap-1.5">
                                     {['Available', 'Partially Used', 'Fully Used', 'Expired', 'Terminated'].map((s) => (
                                         <button key={s} onClick={() => toggleFilter('status', s)}
-                                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.status.includes(s) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{statusLabel[s] || s}</button>
+                                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${filters.status.includes(s) ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}>{resourceStatusLabel[s as keyof typeof resourceStatusLabel] || s}</button>
                                     ))}
                                 </div>
                             </div>
@@ -400,7 +355,7 @@ export function InventoryPage() {
                         <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-border-subtle rounded-xl shadow-xl z-50 p-3 max-h-96 overflow-y-auto">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Visible Columns</span>
-                                <button onClick={resetCols} className="text-xs text-primary hover:underline cursor-pointer">Reset</button>
+                                <button onClick={reset} className="text-xs text-primary hover:underline cursor-pointer">Reset</button>
                             </div>
                             {groups.map((group) => (
                                 <div key={group} className="mb-3">
@@ -409,8 +364,8 @@ export function InventoryPage() {
                                         <label key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-surface-hover cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                checked={visibleCols.includes(col.key)}
-                                                onChange={() => toggleCol(col.key)}
+                                                checked={visibleKeys.includes(col.key)}
+                                                onChange={() => toggleKey(col.key)}
                                                 className="rounded border-border text-primary focus:ring-primary accent-[var(--color-primary)] cursor-pointer"
                                             />
                                             <span className="text-sm">{col.label}</span>
@@ -511,11 +466,11 @@ export function InventoryPage() {
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-semibold font-mono text-primary">{item.resource_id}</span>
                                             <div className="flex items-center gap-1.5">
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[item.type]}`}>
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${resourceTypeBadgeClass[item.type]}`}>
                                                     {item.type}
                                                 </span>
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status] ?? 'bg-gray-500/15 text-gray-400'}`}>
-                                                    {statusLabel[item.status] ?? item.status}
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${resourceStatusBadgeClass[item.status] ?? 'bg-gray-500/15 text-gray-400'}`}>
+                                                    {resourceStatusLabel[item.status] ?? item.status}
                                                 </span>
                                             </div>
                                         </div>

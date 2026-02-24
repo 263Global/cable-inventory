@@ -2,6 +2,36 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.4.0] - 2026-02-24
+
+### Added — Atomic ID Generation
+- **Database sequences + triggers** for `resource_id` (RES-XXXXX) and `order_id` (SO-XXXXX) — eliminates race conditions from client-side read-then-increment pattern
+- Migration `020_atomic_id_sequences.sql`: creates `resource_id_seq`, wires existing `sales_order_seq`, adds `BEFORE INSERT` triggers on both tables
+- Safe regex extraction handles non-standard historical IDs gracefully
+- `CREATE SEQUENCE IF NOT EXISTS` guard for environments where migration 016 may not have run
+
+### Refactored — Code Splitting & Module Decomposition
+- **App.tsx**: route-level code splitting with `React.lazy` + `Suspense`
+- **Sales API**: decomposed 670-line `api.ts` → `api/{capacity,circuits,items,lifecycle,orders,shared}.ts` with barrel re-export
+- **Sales Form**: extracted `form-helpers.ts` (draft/payload types + factories), `form-api.ts` (reference data queries, circuit fetching)
+- **Inventory**: extracted `form-batches.ts`, `BatchField` component, added `fetchLinkedSalesItems`, `fetchCountryIdByName`
+- **Dashboard**: extracted `api.ts`, `types.ts`, `useDashboardData` hook
+- **CRM**: new `api.ts` for customer/supplier shared logic
+- **Reference Data**: extracted `ReferenceDataTable` component
+- **Shared Utils**: `contract-utils.ts` (timezone-safe `formatDateOnly`, batch calculations), `supabase-utils.ts` (`assertNoError`), `status-styles.ts`
+- **Custom Hooks**: `useClickOutside`, `usePersistentColumnVisibility`
+
+### Changed
+- `assertNoError` pattern replaces all `if (error) throw error` across Supabase calls with contextual error messages
+- `createInventoryResource` no longer generates `resource_id` client-side — DB trigger handles it
+- `createSalesOrder` `order_id` now optional — DB trigger auto-assigns on insert
+- `SalesFormPage` no longer pre-generates order ID on mount; shows ID after creation
+- React keys changed from index-based to stable composite keys
+- N+1 query fix: batch circuit loading in `fetchOrderItems`
+
+### Added — Tests
+- `contract-utils.test.ts`: unit tests for date formatting, parsing, calculations, and status suggestions
+
 ## [2.3.1] - 2026-02-24
 
 ### Added — Mobile Responsive

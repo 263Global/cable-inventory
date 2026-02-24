@@ -5,6 +5,7 @@ import {
     Ban, XCircle, RefreshCw, History, AlertTriangle, Unlock,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { calcEndDateFromTerm, nextDay, todayDateOnly } from '@/lib/contract-utils'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
     fetchSalesOrderById, fetchOrderItems, deleteSalesOrder, deleteOrderItem,
@@ -12,15 +13,7 @@ import {
 } from './api'
 import type { SalesOrder, SalesOrderItem, SalesStatus } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-
-const STATUS_COLORS: Record<SalesStatus, string> = {
-    Draft: 'bg-gray-500/15 text-gray-400',
-    'Pre-sold': 'bg-amber-500/15 text-amber-400',
-    Active: 'bg-emerald-500/15 text-emerald-400',
-    Expired: 'bg-red-500/15 text-red-400',
-    Terminated: 'bg-red-500/15 text-red-400',
-    Cancelled: 'bg-gray-500/15 text-gray-400',
-}
+import { salesStatusBadgeClass } from '@/lib/status-styles'
 
 export function SalesDetailPage() {
     const { id } = useParams<{ id: string }>()
@@ -38,7 +31,7 @@ export function SalesDetailPage() {
     const [releaseOpen, setReleaseOpen] = useState(false)
 
     // Terminate / Cancel form
-    const [terminateDate, setTerminateDate] = useState(new Date().toISOString().split('T')[0])
+    const [terminateDate, setTerminateDate] = useState(todayDateOnly())
     const [terminateReason, setTerminateReason] = useState('')
     const [actionLoading, setActionLoading] = useState(false)
 
@@ -166,7 +159,7 @@ export function SalesDetailPage() {
         if (!id) return
         setActionLoading(true)
         try {
-            await terminateSalesOrder(id, new Date().toISOString().split('T')[0], '合同到期释放', releaseItems.map(r => ({
+            await terminateSalesOrder(id, todayDateOnly(), '合同到期释放', releaseItems.map(r => ({
                 itemId: r.itemId,
                 selected: r.selected,
                 terminationFee: 0,
@@ -192,26 +185,20 @@ export function SalesDetailPage() {
         order && ['Active', 'Expired'].includes(order.status) && renewableItems.length > 0,
         [order, renewableItems])
 
-    function calcEndDate(start: string, months: number): string {
-        const d = new Date(start)
-        d.setMonth(d.getMonth() + months)
-        d.setDate(d.getDate() - 1)
-        return d.toISOString().split('T')[0]
-    }
-
     const openRenewModal = () => {
         setRenewItems(renewableItems.map(item => {
             const newStart = item.end_date
-                ? (() => { const d = new Date(item.end_date); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] })()
-                : new Date().toISOString().split('T')[0]
+                ? nextDay(item.end_date)
+                : todayDateOnly()
             const term = item.term_months ?? 12
+            const endDate = calcEndDateFromTerm(newStart, term)
             return {
                 itemId: item.id,
                 label: `${item.type}${item.resource_id ? ` (${item.resource_id})` : item.description ? ` — ${item.description}` : ''}`,
                 selected: true,
                 startDate: newStart,
                 termMonths: term,
-                endDate: calcEndDate(newStart, term),
+                endDate,
                 mrc: Number(item.sell_mrc ?? 0),
                 nrc: 0,
             }
@@ -224,7 +211,7 @@ export function SalesDetailPage() {
             const next = [...prev]
             const item = { ...next[idx], [field]: value }
             if (field === 'startDate' || field === 'termMonths') {
-                item.endDate = calcEndDate(
+                item.endDate = calcEndDateFromTerm(
                     field === 'startDate' ? value as string : item.startDate,
                     field === 'termMonths' ? value as number : item.termMonths,
                 )
@@ -275,7 +262,7 @@ export function SalesDetailPage() {
                     </button>
                     <FileText className="h-6 w-6 text-primary shrink-0" />
                     <h1 className="text-xl font-bold font-mono">{order.order_id}</h1>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${salesStatusBadgeClass[order.status]}`}>
                         {order.status}
                     </span>
                 </div>
@@ -403,13 +390,14 @@ export function SalesDetailPage() {
                         {[...order.renewal_history].reverse().map((snap, idx) => {
                             const s = snap as unknown as Record<string, unknown>
                             const snapItems = (s.items as Record<string, unknown>[]) ?? []
+                            const key = `${String(s.renewed_at ?? 'snapshot')}-${idx}`
                             return (
-                                <div key={idx} className="bg-background rounded-lg border border-border-subtle p-4">
+                                <div key={key} className="bg-background rounded-lg border border-border-subtle p-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs text-text-dim">
                                             Renewed on {new Date(String(s.renewed_at)).toLocaleDateString()}
                                         </span>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[(s.old_status as SalesStatus) ?? 'Draft']}`}>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${salesStatusBadgeClass[(s.old_status as SalesStatus) ?? 'Draft']}`}>
                                             was {s.old_status as string}
                                         </span>
                                     </div>
@@ -454,7 +442,7 @@ export function SalesDetailPage() {
                                                     {item.disposal_type}
                                                 </span>
                                             )}
-                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status]}`}>
+                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[item.status]}`}>
                                                 {item.status}
                                             </span>
                                         </div>
