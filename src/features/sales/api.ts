@@ -424,3 +424,173 @@ export async function deleteOrderItem(id: string): Promise<void> {
         await recalcInventoryCapacity(item.inventory_resource_id as string)
     }
 }
+
+// ============================================
+// Terminate / Cancel / Renew
+// ============================================
+
+/** Cancel a Pre-sold order → Cancelled */
+export async function cancelSalesOrder(
+    id: string,
+    reason: string,
+): Promise<void> {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+        .from('sales_orders')
+        .update({
+            status: 'Cancelled',
+            terminated_at: new Date().toISOString().split('T')[0],
+            termination_reason: reason || null,
+            updated_at: now,
+        })
+        .eq('id', id)
+    if (error) throw error
+
+    // Update all items to Cancelled
+    await supabase
+        .from('sales_order_items')
+        .update({ status: 'Cancelled', updated_at: now })
+        .eq('sales_order_id', id)
+
+    // Release circuits and recalc capacity
+    await syncCircuitStatuses(id, 'Cancelled')
+    await recalcForOrder(id)
+}
+
+/** Terminate selected items in an Active order. Full termination → order Terminated; partial → stays Active. */
+export async function terminateSalesOrder(
+    id: string,
+    terminatedAt: string,
+    reason: string,
+    items: { itemId: string; selected: boolean; terminationFee: number }[],
+): Promise<void> {
+    const now = new Date().toISOString()
+    const selectedIds = items.filter(i => i.selected).map(i => i.itemId)
+    if (selectedIds.length === 0) return
+
+    // 1. Terminate selected items
+    for (const item of items) {
+        if (!item.selected) continue
+        await supabase
+            .from('sales_order_items')
+            .update({
+                status: 'Terminated',
+                terminated_at: terminatedAt,
+                termination_fee: item.terminationFee || 0,
+                updated_at: now,
+            })
+            .eq('id', item.itemId)
+    }
+
+    // 2. Release circuits for terminated items only
+    const { data: links } = await supabase
+        .from('sales_item_circuits')
+        .select('inventory_circuit_id')
+        .in('sales_order_item_id', selectedIds)
+
+    if (links && links.length > 0) {
+        const circuitIds = links.map(l => l.inventory_circuit_id as string)
+        await supabase.from('sales_item_circuits').delete().in('sales_order_item_id', selectedIds)
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Available', updated_at: now })
+            .in('id', circuitIds)
+    }
+
+    // 3. Determine order-level status
+    const { data: allItems } = await supabase
+        .from('sales_order_items')
+        .select('status')
+        .eq('sales_order_id', id)
+
+    const statuses = (allItems ?? []).map(i => i.status as string)
+    const allTerminal = statuses.every(s => ['Terminated', 'Cancelled', 'Expired'].includes(s))
+
+    await supabase
+        .from('sales_orders')
+        .update({
+            status: allTerminal ? 'Terminated' : undefined,
+            terminated_at: allTerminal ? terminatedAt : undefined,
+            termination_reason: reason || null,
+            updated_at: now,
+        })
+        .eq('id', id)
+
+    // 4. Recalc capacity for affected resources
+    await recalcForOrder(id)
+}
+
+/** Renew a sales order — only Lease Out / Swap Out items get renewed */
+export async function renewSalesOrder(
+    id: string,
+    renewals: {
+        itemId: string
+        startDate: string
+        termMonths: number
+        endDate: string
+        mrc: number | null
+        nrc: number | null
+    }[],
+): Promise<void> {
+    const now = new Date().toISOString()
+
+    // 1. Fetch current order for snapshot
+    const { data: order } = await supabase
+        .from('sales_orders')
+        .select('*, sales_order_items(*)')
+        .eq('id', id)
+        .single()
+
+    if (!order) throw new Error('Order not found')
+
+    // 2. Build snapshot of old contract
+    const snapshot = {
+        renewed_at: now,
+        old_status: order.status,
+        items: (order.sales_order_items as Record<string, unknown>[]).map((item) => ({
+            item_id: item.id,
+            old_start_date: item.start_date,
+            old_end_date: item.end_date,
+            old_term_months: item.term_months,
+            old_mrc: item.sell_mrc,
+            old_nrc: item.sell_nrc,
+        })),
+    }
+
+    // 3. Append to renewal_history
+    const history = Array.isArray(order.renewal_history) ? order.renewal_history : []
+    history.push(snapshot)
+
+    // 4. Update each renewed item
+    for (const r of renewals) {
+        await supabase
+            .from('sales_order_items')
+            .update({
+                start_date: r.startDate,
+                end_date: r.endDate,
+                term_months: r.termMonths,
+                sell_mrc: r.mrc,
+                sell_nrc: r.nrc,
+                status: new Date(r.startDate) <= new Date() ? 'Active' : 'Pre-sold',
+                updated_at: now,
+            })
+            .eq('id', r.itemId)
+    }
+
+    // 5. Determine new order status from items
+    const today = new Date()
+    const hasActive = renewals.some(r => new Date(r.startDate) <= today && new Date(r.endDate) >= today)
+    const newStatus = hasActive ? 'Active' : 'Pre-sold'
+
+    // 6. Update order
+    await supabase
+        .from('sales_orders')
+        .update({
+            status: newStatus,
+            renewal_history: history,
+            terminated_at: null,
+            termination_reason: null,
+            updated_at: now,
+        })
+        .eq('id', id)
+}

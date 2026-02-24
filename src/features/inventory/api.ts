@@ -147,3 +147,141 @@ export async function deleteInventoryResource(id: string) {
         .eq('id', id)
     if (error) throw error
 }
+
+// ============================================
+// Terminate / Renew
+// ============================================
+
+/** Check linked active sales orders for a resource (for termination warning) */
+export async function checkLinkedSalesOrders(resourceId: string): Promise<{
+    activeOrders: { order_id: string; customer_name: string | null }[]
+    allocatedCircuitCount: number
+}> {
+    // Linked sales orders
+    const { data: items } = await supabase
+        .from('sales_order_items')
+        .select('sales_orders!inner(order_id, status, customers(name))')
+        .eq('inventory_resource_id', resourceId)
+
+    const seen = new Set<string>()
+    const activeOrders: { order_id: string; customer_name: string | null }[] = []
+    for (const item of (items ?? [])) {
+        const order = item.sales_orders as unknown as { order_id: string; status: string; customers: { name: string } | null }
+        if (['Pre-sold', 'Active'].includes(order.status) && !seen.has(order.order_id)) {
+            seen.add(order.order_id)
+            activeOrders.push({
+                order_id: order.order_id,
+                customer_name: order.customers?.name ?? null,
+            })
+        }
+    }
+
+    // Allocated circuits
+    const { data: circuits } = await supabase
+        .from('inventory_circuits')
+        .select('id')
+        .eq('inventory_resource_id', resourceId)
+        .eq('status', 'Allocated')
+
+    return { activeOrders, allocatedCircuitCount: circuits?.length ?? 0 }
+}
+
+/** Terminate an inventory resource — cascade release circuits and clear allocations */
+export async function terminateInventoryResource(
+    id: string,
+    terminatedAt: string,
+    reason: string,
+): Promise<void> {
+    const now = new Date().toISOString()
+
+    // 1. Release all circuits (set to Available, remove sales_item_circuits links)
+    const { data: circuits } = await supabase
+        .from('inventory_circuits')
+        .select('id')
+        .eq('inventory_resource_id', id)
+        .in('status', ['Allocated', 'Reserved'])
+
+    if (circuits && circuits.length > 0) {
+        const circuitIds = circuits.map(c => c.id as string)
+        // Remove from sales_item_circuits junction
+        await supabase.from('sales_item_circuits').delete().in('inventory_circuit_id', circuitIds)
+        // Reset status
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Available', updated_at: now })
+            .in('id', circuitIds)
+    }
+
+    // 2. Update resource
+    await supabase
+        .from('inventory_resources')
+        .update({
+            status: 'Terminated',
+            terminated_at: terminatedAt,
+            termination_reason: reason || null,
+            used_capacity: 0,
+            updated_at: now,
+        })
+        .eq('id', id)
+}
+
+/** Renew an inventory resource — snapshot old data then update dates/costs */
+export async function renewInventoryResource(
+    id: string,
+    newStartDate: string,
+    newTermMonths: number,
+    newEndDate: string,
+    costs?: { mrc?: number | null; nrc?: number | null; otc?: number | null; om_rate?: number | null },
+): Promise<void> {
+    const now = new Date().toISOString()
+
+    // 1. Get current resource data for snapshot
+    const { data: resource } = await supabase
+        .from('inventory_resources')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+    if (!resource) throw new Error('Resource not found')
+
+    // 2. Build snapshot
+    const snapshot = {
+        renewed_at: now,
+        old_start_date: resource.start_date,
+        old_end_date: resource.end_date,
+        old_term_months: resource.term_months,
+        old_mrc: resource.mrc,
+        old_nrc: resource.nrc,
+        old_otc: resource.otc,
+        old_om_rate: resource.om_rate,
+        old_status: resource.status,
+    }
+
+    const history = Array.isArray(resource.renewal_history) ? resource.renewal_history : []
+    history.push(snapshot)
+
+    // 3. Update resource
+    const updates: Record<string, unknown> = {
+        start_date: newStartDate,
+        end_date: newEndDate,
+        term_months: newTermMonths,
+        status: 'Available',
+        terminated_at: null,
+        termination_reason: null,
+        renewal_history: history,
+        updated_at: now,
+    }
+    if (costs?.mrc !== undefined) updates.mrc = costs.mrc
+    if (costs?.nrc !== undefined) updates.nrc = costs.nrc
+    if (costs?.otc !== undefined) updates.otc = costs.otc
+    if (costs?.om_rate !== undefined) updates.om_rate = costs.om_rate
+    // Auto-calc annual O&M if OTC and rate provided
+    if (costs?.otc != null && costs?.om_rate != null) {
+        updates.annual_om_cost = (costs.otc * costs.om_rate) / 100
+    }
+
+    await supabase
+        .from('inventory_resources')
+        .update(updates)
+        .eq('id', id)
+}

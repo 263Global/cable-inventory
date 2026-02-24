@@ -3,12 +3,15 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, MapPin, DollarSign, BarChart3, Loader2,
     Shield, ShieldOff, Calendar, Plus, Trash2, RefreshCw, Layers, Check,
-    Lock, Unlock, ExternalLink, FileText,
+    Lock, Unlock, ExternalLink, FileText, Ban, History, AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { fetchInventoryById } from './api'
+import {
+    fetchInventoryById, checkLinkedSalesOrders,
+    terminateInventoryResource, renewInventoryResource,
+} from './api'
 import {
     fetchCircuits, createCircuit, updateCircuit, deleteCircuit,
     fetchInterfaceTypes, fetchBatches, createBatch, deleteBatch,
@@ -136,6 +139,15 @@ export function InventoryDetailPage() {
     const [newBatch, setNewBatch] = useState({ capacity: '', model: 'IRU', start_date: '', otc: '', om_rate: '4.0', mrc: '', annual_om_cost: '' })
     const [newBatchOmUnlocked, setNewBatchOmUnlocked] = useState(false)
     const [omUnlockedBatches, setOmUnlockedBatches] = useState<Set<string>>(new Set())
+
+    // Terminate / Renew state
+    const [terminateOpen, setTerminateOpen] = useState(false)
+    const [terminateDate, setTerminateDate] = useState(new Date().toISOString().split('T')[0])
+    const [terminateReason, setTerminateReason] = useState('')
+    const [terminateWarning, setTerminateWarning] = useState<{ activeOrders: { order_id: string; customer_name: string | null }[]; allocatedCircuitCount: number } | null>(null)
+    const [actionLoading, setActionLoading] = useState(false)
+    const [renewOpen, setRenewOpen] = useState(false)
+    const [renewForm, setRenewForm] = useState({ startDate: '', termMonths: 12, endDate: '', mrc: 0, nrc: 0 })
 
     const loadCircuits = useCallback(async () => {
         if (!id) return
@@ -394,9 +406,47 @@ export function InventoryDetailPage() {
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}
                     </div>
                 </div>
-                <button onClick={() => navigate(`/inventory/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-primary text-primary hover:bg-primary/10 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                    <Pencil className="h-4 w-4" /> Edit
-                </button>
+                <div className="flex items-center gap-2">
+                    {/* Terminate — not for Owned, not if already Terminated/Expired */}
+                    {resource.acquisition_type !== 'Owned' && !['Terminated', 'Expired'].includes(resource.status) && (
+                        <button
+                            onClick={async () => {
+                                const info = await checkLinkedSalesOrders(resource.id)
+                                setTerminateWarning(info)
+                                setTerminateOpen(true)
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+                        >
+                            <Ban className="h-4 w-4" /> Terminate
+                        </button>
+                    )}
+                    {/* Renew — Lease or Swap-In only */}
+                    {['Lease', 'Swap-In'].includes(resource.acquisition_type) && resource.status !== 'Terminated' && (
+                        <button
+                            onClick={() => {
+                                const newStart = resource.end_date
+                                    ? (() => { const d = new Date(resource.end_date!); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] })()
+                                    : new Date().toISOString().split('T')[0]
+                                const term = resource.term_months ?? 12
+                                const end = (() => { const d = new Date(newStart); d.setMonth(d.getMonth() + term); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0] })()
+                                setRenewForm({
+                                    startDate: newStart,
+                                    termMonths: term,
+                                    endDate: end,
+                                    mrc: Number(resource.mrc ?? 0),
+                                    nrc: 0,
+                                })
+                                setRenewOpen(true)
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                        >
+                            <RefreshCw className="h-4 w-4" /> Renew
+                        </button>
+                    )}
+                    <button onClick={() => navigate(`/inventory/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-primary text-primary hover:bg-primary/10 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        <Pencil className="h-4 w-4" /> Edit
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-6">
@@ -995,6 +1045,54 @@ export function InventoryDetailPage() {
                 </div>
             </div>
 
+            {/* Termination Info */}
+            {resource.terminated_at && (
+                <div className="bg-red-500/5 rounded-xl border border-red-500/20 p-6">
+                    <h2 className="text-sm font-medium text-red-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" /> Termination Info
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                            <span className="text-xs text-text-dim">Terminated On</span>
+                            <p className="text-sm font-medium mt-0.5">{resource.terminated_at}</p>
+                        </div>
+                        <div className="col-span-2">
+                            <span className="text-xs text-text-dim">Reason</span>
+                            <p className="text-sm mt-0.5 text-text-muted">{resource.termination_reason || '—'}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Renewal History */}
+            {resource.renewal_history && resource.renewal_history.length > 0 && (
+                <div className="bg-surface rounded-xl border border-border-subtle p-6">
+                    <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <History className="h-4 w-4" /> Renewal History ({resource.renewal_history.length})
+                    </h2>
+                    <div className="space-y-3">
+                        {[...resource.renewal_history].reverse().map((snap, idx) => {
+                            const s = snap as unknown as Record<string, unknown>
+                            return (
+                                <div key={idx} className="bg-background rounded-lg border border-border-subtle p-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-text-dim">
+                                            Renewed on {new Date(String(s.renewed_at)).toLocaleDateString()}
+                                        </span>
+                                        <span className="text-xs text-text-muted">was {String(s.old_status)}</span>
+                                    </div>
+                                    <div className="text-xs text-text-muted mt-1">
+                                        {String(s.old_start_date ?? '—')} → {String(s.old_end_date ?? '—')}
+                                        {s.old_term_months ? <span className="ml-1">({Number(s.old_term_months)}mo)</span> : null}
+                                        {s.old_mrc != null ? <span className="ml-2">MRC: {formatCurrency(Number(s.old_mrc))}</span> : null}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog
                 open={!!pendingDelete}
@@ -1006,6 +1104,176 @@ export function InventoryDetailPage() {
                 onCancel={() => setPendingDelete(null)}
                 onConfirm={confirmPendingDelete}
             />
+
+            {/* ─── Terminate Modal ─── */}
+            {terminateOpen && resource && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setTerminateOpen(false)}>
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                            <Ban className="h-5 w-5 text-red-400" /> Terminate Resource
+                        </h3>
+                        <p className="text-sm text-text-muted mb-4">
+                            This will terminate <span className="font-medium text-text">{resource.resource_id}</span> and release all allocated circuits.
+                        </p>
+
+                        {terminateWarning && (terminateWarning.activeOrders.length > 0 || terminateWarning.allocatedCircuitCount > 0) && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4">
+                                <p className="text-sm font-medium text-amber-400 flex items-center gap-1.5 mb-1">
+                                    <AlertTriangle className="h-4 w-4" /> Warning
+                                </p>
+                                {terminateWarning.allocatedCircuitCount > 0 && (
+                                    <p className="text-xs text-text-muted">{terminateWarning.allocatedCircuitCount} allocated circuit(s) will be released.</p>
+                                )}
+                                {terminateWarning.activeOrders.length > 0 && (
+                                    <div className="mt-1">
+                                        <p className="text-xs text-text-muted">Linked Active/Pre-sold orders:</p>
+                                        {terminateWarning.activeOrders.map(o => (
+                                            <p key={o.order_id} className="text-xs text-amber-400 mt-0.5">
+                                                {o.order_id} — {o.customer_name ?? 'Unknown'}
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs text-text-dim block mb-1">Termination Date</label>
+                                <input type="date" value={terminateDate} onChange={e => setTerminateDate(e.target.value)}
+                                    className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-text-dim block mb-1">Reason (optional)</label>
+                                <textarea value={terminateReason} onChange={e => setTerminateReason(e.target.value)}
+                                    placeholder="e.g. SLA breach, cost optimization"
+                                    className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm resize-none h-20" />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setTerminateOpen(false)} className="px-4 py-2 text-sm rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">Back</button>
+                            <button
+                                onClick={async () => {
+                                    setActionLoading(true)
+                                    try {
+                                        await terminateInventoryResource(resource.id, terminateDate, terminateReason)
+                                        toast.success('Resource terminated')
+                                        setTerminateOpen(false)
+                                        setTerminateReason('')
+                                        const updated = await fetchInventoryById(resource.id)
+                                        if (updated) setResource(updated)
+                                        loadCircuits()
+                                    } catch (err) { console.error(err); toast.error('Failed to terminate') }
+                                    finally { setActionLoading(false) }
+                                }}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                                {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Confirm Terminate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Renew Modal ─── */}
+            {renewOpen && resource && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRenewOpen(false)}>
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                            <RefreshCw className="h-5 w-5 text-emerald-400" /> Renew Resource
+                        </h3>
+                        <p className="text-sm text-text-muted mb-4">
+                            Renewing <span className="font-medium text-text">{resource.resource_id}</span>
+                        </p>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs text-text-dim block mb-1">Start Date</label>
+                                    <input type="date" value={renewForm.startDate}
+                                        onChange={e => {
+                                            const s = e.target.value
+                                            const d = new Date(s); d.setMonth(d.getMonth() + renewForm.termMonths); d.setDate(d.getDate() - 1)
+                                            setRenewForm(f => ({ ...f, startDate: s, endDate: d.toISOString().split('T')[0] }))
+                                        }}
+                                        className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-text-dim block mb-1">Term (months)</label>
+                                    <input type="number" min={1} value={renewForm.termMonths}
+                                        onChange={e => {
+                                            const m = parseInt(e.target.value) || 1
+                                            const d = new Date(renewForm.startDate); d.setMonth(d.getMonth() + m); d.setDate(d.getDate() - 1)
+                                            setRenewForm(f => ({ ...f, termMonths: m, endDate: d.toISOString().split('T')[0] }))
+                                        }}
+                                        className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-text-dim block mb-1">End Date</label>
+                                <input type="date" value={renewForm.endDate} readOnly className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-dim" />
+                            </div>
+                            {/* Fee fields: Lease = MRC/NRC, Swap-In = OTC/O&M */}
+                            {resource.acquisition_type === 'Swap-In' ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs text-text-dim block mb-1">OTC</label>
+                                        <input type="number" min={0} step={0.01} value={renewForm.mrc}
+                                            onChange={e => setRenewForm(f => ({ ...f, mrc: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-text-dim block mb-1">O&M Rate (%)</label>
+                                        <input type="number" min={0} step={0.1} value={renewForm.nrc}
+                                            onChange={e => setRenewForm(f => ({ ...f, nrc: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs text-text-dim block mb-1">MRC</label>
+                                        <input type="number" min={0} step={0.01} value={renewForm.mrc}
+                                            onChange={e => setRenewForm(f => ({ ...f, mrc: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-text-dim block mb-1">NRC</label>
+                                        <input type="number" min={0} step={0.01} value={renewForm.nrc}
+                                            onChange={e => setRenewForm(f => ({ ...f, nrc: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setRenewOpen(false)} className="px-4 py-2 text-sm rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">Back</button>
+                            <button
+                                onClick={async () => {
+                                    setActionLoading(true)
+                                    try {
+                                        const costs = resource.acquisition_type === 'Swap-In'
+                                            ? { otc: renewForm.mrc || null, om_rate: renewForm.nrc || null }
+                                            : { mrc: renewForm.mrc || null, nrc: renewForm.nrc || null }
+                                        await renewInventoryResource(resource.id, renewForm.startDate, renewForm.termMonths, renewForm.endDate, costs)
+                                        toast.success('Resource renewed')
+                                        setRenewOpen(false)
+                                        const updated = await fetchInventoryById(resource.id)
+                                        if (updated) setResource(updated)
+                                    } catch (err) { console.error(err); toast.error('Failed to renew') }
+                                    finally { setActionLoading(false) }
+                                }}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                                {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Confirm Renew
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
