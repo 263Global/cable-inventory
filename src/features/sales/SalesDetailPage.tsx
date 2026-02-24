@@ -268,18 +268,18 @@ export function SalesDetailPage() {
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <button onClick={() => navigate('/sales')} className="p-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">
                         <ArrowLeft className="h-5 w-5 text-text-muted" />
                     </button>
-                    <FileText className="h-6 w-6 text-primary" />
+                    <FileText className="h-6 w-6 text-primary shrink-0" />
                     <h1 className="text-xl font-bold font-mono">{order.order_id}</h1>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
                         {order.status}
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Cancel — Pre-sold only */}
                     {order.status === 'Pre-sold' && (
                         <button
@@ -324,13 +324,13 @@ export function SalesDetailPage() {
 
             {/* Expired order reminder */}
             {order.status === 'Expired' && !order.terminated_at && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start gap-3">
                     <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
                     <div className="flex-1">
                         <p className="text-sm font-medium text-amber-400">此订单已到期，资源尚未释放</p>
                         <p className="text-xs text-text-muted mt-1">请确认客户是否续约。如不续约，请终止订单以释放电路和容量。</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
                         {canRenew && (
                             <button onClick={openRenewModal} className="px-3 py-1.5 text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors cursor-pointer">
                                 续约 Renew
