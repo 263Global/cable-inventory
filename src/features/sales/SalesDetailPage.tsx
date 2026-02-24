@@ -297,7 +297,8 @@ export function SalesDetailPage() {
                         >
                             <Ban className="h-4 w-4" /> Terminate
                         </button>
-                    )}\n                    {/* Renew — Active only in header (Expired has it in the banner) */}
+                    )}
+                    {/* Renew — Active only in header (Expired has it in the banner) */}
                     {canRenew && order.status === 'Active' && (
                         <button
                             onClick={openRenewModal}
