@@ -2,6 +2,42 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.2.0] - 2026-02-24
+
+### Added — Terminate / Cancel / Renew
+
+**Database**
+- Migration `018_termination_renewal.sql`: added `terminated_at` (DATE), `termination_reason` (TEXT), `renewal_history` (JSONB, default `'[]'`) to both `sales_orders` and `inventory_resources` tables
+- New TypeScript type `RenewalSnapshot` in `src/types/index.ts`
+
+**Business Rules** — 按类型区分操作可用性
+
+| 类型 | Cancel | Terminate | Renew |
+|------|--------|-----------|-------|
+| Lease / Lease Out | Pre-sold | Active | ✅ |
+| IRU / IRU Out | Pre-sold | Active | ❌ (不可撤销) |
+| Swap-In / Swap Out | Pre-sold | Active | ✅ |
+| Owned | — | — | — |
+| Self Use | — | Active | — |
+| NRC | — | — | — |
+
+**Sales Module** (`SalesDetailPage.tsx`, `sales/api.ts`)
+- **Cancel** 按钮: Pre-sold 状态时显示, 状态改 Cancelled, 释放电路, 刷新容量
+- **Terminate** 按钮: Active 状态时显示, 填写终止日期和原因, 状态改 Terminated, 全部 item 同步终止, 解绑电路, 刷新容量
+- **Renew** 按钮: Active/Expired 且有 Lease Out 或 Swap Out item 时显示; 混合订单只列出可续约 item (IRU Out 和 NRC 自动跳过); 可编辑新起始日/合同期/MRC/NRC; 旧合同快照存入 `renewal_history`
+- 详情页新增 **Termination Info** 区域 (红色边框) 和 **Renewal History** 区域 (按时间倒序)
+- API: `cancelSalesOrder()`, `terminateSalesOrder()`, `renewSalesOrder()`
+
+**Inventory Module** (`InventoryDetailPage.tsx`, `inventory/api.ts`)
+- **Terminate** 按钮: acquisition_type ≠ Owned 且状态非 Terminated/Expired 时显示; 弹窗中先查询关联的 Active/Pre-sold Sales Orders 和 Allocated 电路数量; 有关联时弹出**黄色警告**列表; 确认后: 释放电路 (Available), 删除 `sales_item_circuits` 关联行, 资源 `used_capacity` 清零, 状态改 Terminated
+- **Renew** 按钮: Lease 或 Swap-In 时显示; Lease 续约编辑 MRC/NRC; **Swap-In 续约编辑 OTC/O&M Rate** (自动算 annual_om_cost); 旧合同快照存入 `renewal_history`
+- 详情页新增 **Termination Info** 和 **Renewal History** 区域
+- API: `checkLinkedSalesOrders()`, `terminateInventoryResource()`, `renewInventoryResource(costs?)` — 接受 `{mrc, nrc}` 或 `{otc, om_rate}` 对象
+
+### Changed
+- `renewInventoryResource()` 签名改为接受 `costs` 对象而不是独立参数, 支持 Lease (MRC/NRC) 和 Swap-In (OTC/O&M) 两种费用模式
+- `SalesDetailPage.tsx` 完全重写, 加入 3 个弹窗 (Cancel / Terminate / Renew) 和历史展示
+
 ## [2.1.0] - 2026-02-24
 
 ### Added

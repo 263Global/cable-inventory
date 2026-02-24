@@ -231,8 +231,7 @@ export async function renewInventoryResource(
     newStartDate: string,
     newTermMonths: number,
     newEndDate: string,
-    newMrc?: number | null,
-    newNrc?: number | null,
+    costs?: { mrc?: number | null; nrc?: number | null; otc?: number | null; om_rate?: number | null },
 ): Promise<void> {
     const now = new Date().toISOString()
 
@@ -253,6 +252,8 @@ export async function renewInventoryResource(
         old_term_months: resource.term_months,
         old_mrc: resource.mrc,
         old_nrc: resource.nrc,
+        old_otc: resource.otc,
+        old_om_rate: resource.om_rate,
         old_status: resource.status,
     }
 
@@ -270,8 +271,14 @@ export async function renewInventoryResource(
         renewal_history: history,
         updated_at: now,
     }
-    if (newMrc !== undefined) updates.mrc = newMrc
-    if (newNrc !== undefined) updates.nrc = newNrc
+    if (costs?.mrc !== undefined) updates.mrc = costs.mrc
+    if (costs?.nrc !== undefined) updates.nrc = costs.nrc
+    if (costs?.otc !== undefined) updates.otc = costs.otc
+    if (costs?.om_rate !== undefined) updates.om_rate = costs.om_rate
+    // Auto-calc annual O&M if OTC and rate provided
+    if (costs?.otc != null && costs?.om_rate != null) {
+        updates.annual_om_cost = (costs.otc * costs.om_rate) / 100
+    }
 
     await supabase
         .from('inventory_resources')
