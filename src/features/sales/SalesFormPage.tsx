@@ -39,7 +39,7 @@ const ITEM_TYPES: SalesItemType[] = ['Capacity', 'Backhaul', 'Cross-Connect', 'N
 // Field visibility config per item type
 const FIELD_CFG: Record<string, { disposal: boolean; resource: boolean | 'terrestrial'; circuits: boolean; capacity: boolean; description: 'optional' | 'required'; term: boolean; mrc: boolean; nrc: boolean }> = {
     'Capacity': { disposal: true, resource: true, circuits: true, capacity: true, description: 'optional', term: true, mrc: true, nrc: true },
-    'Backhaul': { disposal: true, resource: 'terrestrial', circuits: false, capacity: true, description: 'optional', term: true, mrc: true, nrc: true },
+    'Backhaul': { disposal: true, resource: 'terrestrial', circuits: true, capacity: true, description: 'optional', term: true, mrc: true, nrc: true },
     'Cross-Connect': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: true, mrc: true, nrc: true },
     'NRC': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: false, mrc: false, nrc: true },
     'Other': { disposal: false, resource: false, circuits: false, capacity: false, description: 'required', term: true, mrc: true, nrc: true },
