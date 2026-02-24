@@ -263,7 +263,7 @@ export function SalesFormPage() {
                 const cfg = FIELD_CFG[value] ?? FIELD_CFG['Other']
                 if (!cfg.resource) { updated.inventory_resource_id = ''; updated.selectedCircuitIds = []; updated.existingCircuitIds = [] }
                 if (!cfg.capacity) { updated.capacity = ''; updated.spec = '' }
-                if (!cfg.disposal) { updated.disposal_type = 'IRU Out' as DisposalType }
+                if (!cfg.disposal) { updated.disposal_type = (value === 'Cross-Connect' ? 'Lease Out' : 'IRU Out') as DisposalType }
                 if (!cfg.term) { updated.term_months = ''; updated.end_date = '' }
                 if (!cfg.mrc) { updated.sell_mrc = ''; updated.sell_otc = ''; updated.sell_om_rate = ''; updated.sell_annual_om = '' }
             }
