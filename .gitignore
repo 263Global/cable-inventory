@@ -25,3 +25,6 @@ dist/
 # Temp
 tmp/
 .tmp-tests/
+
+# PDFs
+*.pdf
