@@ -45,11 +45,12 @@ const allColumns: ColumnDef[] = [
     {
         key: 'resource_id', label: 'Resource ID', group: 'Basic', defaultVisible: true,
         render: (item) => (
-            <div>
-                <span className="text-sm font-medium">{item.resource_id}</span>
-                {item.internal_ref && <span className="text-xs text-text-dim ml-2">({item.internal_ref})</span>}
-            </div>
+            <span className="text-sm font-medium">{item.resource_id}</span>
         ),
+    },
+    {
+        key: 'internal_ref', label: 'Internal Ref', group: 'Basic', defaultVisible: false,
+        render: (item) => <span className="text-sm font-mono text-text-muted">{item.internal_ref ?? '—'}</span>,
     },
     {
         key: 'type', label: 'Type', group: 'Basic', defaultVisible: true,
