@@ -41,6 +41,11 @@ export function SalesDetailPage() {
     const [terminateReason, setTerminateReason] = useState('')
     const [actionLoading, setActionLoading] = useState(false)
 
+    // Per-item terminate
+    const [terminateItems, setTerminateItems] = useState<{
+        itemId: string; label: string; selected: boolean; fee: number;
+    }[]>([])
+
     // Renew form
     const [renewItems, setRenewItems] = useState<{
         itemId: string; label: string; selected: boolean;
@@ -110,19 +115,34 @@ export function SalesDetailPage() {
         }
     }
 
-    // ─── Terminate (Active → Terminated) ───
+    // ─── Terminate (Active → per-item) ───
+    const openTerminateModal = () => {
+        const terminable = items.filter(i => i.status !== 'Terminated' && i.status !== 'Cancelled')
+        setTerminateItems(terminable.map(i => ({
+            itemId: i.id,
+            label: `${i.type}${i.resource_id ? ` (${i.resource_id})` : i.description ? ` — ${i.description}` : ''}`,
+            selected: true,
+            fee: 0,
+        })))
+        setTerminateOpen(true)
+    }
+
     const handleTerminate = async () => {
         if (!id) return
         setActionLoading(true)
         try {
-            await terminateSalesOrder(id, terminateDate, terminateReason)
-            toast.success('Order terminated')
+            await terminateSalesOrder(id, terminateDate, terminateReason, terminateItems.map(t => ({
+                itemId: t.itemId,
+                selected: t.selected,
+                terminationFee: t.fee,
+            })))
+            toast.success(terminateItems.every(t => t.selected) ? 'Order terminated' : 'Selected items terminated')
             setTerminateOpen(false)
             setTerminateReason('')
             load()
         } catch (err) {
             console.error(err)
-            toast.error('Failed to terminate order')
+            toast.error('Failed to terminate')
         } finally {
             setActionLoading(false)
         }
@@ -238,7 +258,7 @@ export function SalesDetailPage() {
                     {/* Terminate — Active only */}
                     {order.status === 'Active' && (
                         <button
-                            onClick={() => setTerminateOpen(true)}
+                            onClick={openTerminateModal}
                             className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
                         >
                             <Ban className="h-4 w-4" /> Terminate
@@ -282,7 +302,7 @@ export function SalesDetailPage() {
                                 续约 Renew
                             </button>
                         )}
-                        <button onClick={() => setTerminateOpen(true)} className="px-3 py-1.5 text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors cursor-pointer">
+                        <button onClick={openTerminateModal} className="px-3 py-1.5 text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors cursor-pointer">
                             终止 Terminate
                         </button>
                     </div>
@@ -475,6 +495,20 @@ export function SalesDetailPage() {
                                         </div>
                                     </div>
 
+                                    {/* Per-item termination info */}
+                                    {item.terminated_at && (
+                                        <div className="mt-3 pt-3 border-t border-red-500/20 flex items-center gap-4 text-sm">
+                                            <span className="text-red-400 text-xs font-medium flex items-center gap-1">
+                                                <Ban className="h-3 w-3" /> Terminated {item.terminated_at}
+                                            </span>
+                                            {item.termination_fee != null && item.termination_fee > 0 && (
+                                                <span className="text-xs text-text-muted">
+                                                    ETF: {formatCurrency(item.termination_fee)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Allocated Circuits */}
                                     {item.allocated_circuits && item.allocated_circuits.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-border-subtle">
@@ -547,43 +581,61 @@ export function SalesDetailPage() {
                 </div>
             )}
 
-            {/* ─── Terminate Modal (Active) ─── */}
+            {/* ─── Terminate Modal (Active — per-item) ─── */}
             {terminateOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setTerminateOpen(false)}>
-                    <div className="bg-surface rounded-xl border border-border-subtle p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
                             <Ban className="h-5 w-5 text-red-400" /> Terminate Order
                         </h3>
                         <p className="text-sm text-text-muted mb-4">
-                            This will terminate <span className="font-medium text-text">{order.order_id}</span>, release allocated circuits, and recalculate capacity.
+                            Terminating <span className="font-medium text-text">{order.order_id}</span> — select items to terminate. Unselected items remain active.
                         </p>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-xs text-text-dim block mb-1">Termination Date</label>
-                                <input
-                                    type="date"
-                                    value={terminateDate}
-                                    onChange={e => setTerminateDate(e.target.value)}
-                                    className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-text-dim block mb-1">Reason (optional)</label>
-                                <textarea
-                                    value={terminateReason}
-                                    onChange={e => setTerminateReason(e.target.value)}
-                                    placeholder="e.g. SLA breach, customer request"
-                                    className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm resize-none h-20"
-                                />
+
+                        {/* Shared fields */}
+                        <div className="space-y-3 mb-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs text-text-dim block mb-1">Termination Date</label>
+                                    <input type="date" value={terminateDate} onChange={e => setTerminateDate(e.target.value)}
+                                        className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-text-dim block mb-1">Reason (optional)</label>
+                                    <input type="text" value={terminateReason} onChange={e => setTerminateReason(e.target.value)}
+                                        placeholder="e.g. SLA breach"
+                                        className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm" />
+                                </div>
                             </div>
                         </div>
+
+                        {/* Per-item list */}
+                        <div className="space-y-2">
+                            {terminateItems.map((t, idx) => (
+                                <div key={t.itemId} className={`bg-background rounded-lg border ${t.selected ? 'border-red-500/30' : 'border-border-subtle/50 opacity-50'} p-3 transition-opacity`}>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={t.selected}
+                                            onChange={() => setTerminateItems(prev => prev.map((item, i) => i === idx ? { ...item, selected: !item.selected } : item))}
+                                            className="h-4 w-4 rounded border-border accent-red-500 cursor-pointer" />
+                                        <span className="text-sm font-medium flex-1">{t.label}</span>
+                                    </label>
+                                    {t.selected && (
+                                        <div className="mt-2 ml-6">
+                                            <label className="text-xs text-text-dim block mb-1">Early Termination Fee ($)</label>
+                                            <input type="number" min={0} step={0.01} value={t.fee}
+                                                onChange={e => setTerminateItems(prev => prev.map((item, i) => i === idx ? { ...item, fee: parseFloat(e.target.value) || 0 } : item))}
+                                                className="w-full max-w-[200px] bg-surface border border-border-subtle rounded-lg px-3 py-1.5 text-sm" />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="flex justify-end gap-2 mt-4">
-                            <button onClick={() => setTerminateOpen(false)} className="px-4 py-2 text-sm rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">
-                                Back
-                            </button>
+                            <button onClick={() => setTerminateOpen(false)} className="px-4 py-2 text-sm rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">Back</button>
                             <button
                                 onClick={handleTerminate}
-                                disabled={actionLoading}
+                                disabled={actionLoading || !terminateItems.some(t => t.selected)}
                                 className="flex items-center gap-2 px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors cursor-pointer disabled:opacity-50"
                             >
                                 {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}

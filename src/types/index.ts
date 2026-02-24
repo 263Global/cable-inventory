@@ -202,6 +202,9 @@ export interface SalesOrderItem {
     status: SalesStatus
     // Allocated circuits (joined)
     allocated_circuits?: SalesItemCircuit[]
+    // Per-item termination
+    terminated_at?: string | null
+    termination_fee?: number | null
     created_at: string
     updated_at: string
 }

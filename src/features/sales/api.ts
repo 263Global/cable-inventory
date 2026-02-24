@@ -457,32 +457,66 @@ export async function cancelSalesOrder(
     await recalcForOrder(id)
 }
 
-/** Terminate an Active order → Terminated */
+/** Terminate selected items in an Active order. Full termination → order Terminated; partial → stays Active. */
 export async function terminateSalesOrder(
     id: string,
     terminatedAt: string,
     reason: string,
+    items: { itemId: string; selected: boolean; terminationFee: number }[],
 ): Promise<void> {
     const now = new Date().toISOString()
-    const { error } = await supabase
+    const selectedIds = items.filter(i => i.selected).map(i => i.itemId)
+    if (selectedIds.length === 0) return
+
+    // 1. Terminate selected items
+    for (const item of items) {
+        if (!item.selected) continue
+        await supabase
+            .from('sales_order_items')
+            .update({
+                status: 'Terminated',
+                terminated_at: terminatedAt,
+                termination_fee: item.terminationFee || 0,
+                updated_at: now,
+            })
+            .eq('id', item.itemId)
+    }
+
+    // 2. Release circuits for terminated items only
+    const { data: links } = await supabase
+        .from('sales_item_circuits')
+        .select('inventory_circuit_id')
+        .in('sales_order_item_id', selectedIds)
+
+    if (links && links.length > 0) {
+        const circuitIds = links.map(l => l.inventory_circuit_id as string)
+        await supabase.from('sales_item_circuits').delete().in('sales_order_item_id', selectedIds)
+        await supabase
+            .from('inventory_circuits')
+            .update({ status: 'Available', updated_at: now })
+            .in('id', circuitIds)
+    }
+
+    // 3. Determine order-level status
+    const { data: allItems } = await supabase
+        .from('sales_order_items')
+        .select('status')
+        .eq('sales_order_id', id)
+
+    const statuses = (allItems ?? []).map(i => i.status as string)
+    const allTerminal = statuses.every(s => ['Terminated', 'Cancelled', 'Expired'].includes(s))
+
+    await supabase
         .from('sales_orders')
         .update({
-            status: 'Terminated',
-            terminated_at: terminatedAt,
+            status: allTerminal ? 'Terminated' : undefined,
+            terminated_at: allTerminal ? terminatedAt : undefined,
             termination_reason: reason || null,
             updated_at: now,
         })
         .eq('id', id)
-    if (error) throw error
 
-    // Update all items to Terminated
-    await supabase
-        .from('sales_order_items')
-        .update({ status: 'Terminated', updated_at: now })
-        .eq('sales_order_id', id)
-
-    // Release circuits and recalc capacity
-    await syncCircuitStatuses(id, 'Terminated')
+    // 4. Recalc capacity for affected resources
     await recalcForOrder(id)
 }
 
