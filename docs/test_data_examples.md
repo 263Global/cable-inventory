@@ -127,7 +127,6 @@
 | Term | 180 months |
 | Sell OTC ($) | 120,000 |
 | O&M Rate | 4% |
-| NRC ($) | 5,000 |
 
 ---
 
