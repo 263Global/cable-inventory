@@ -121,7 +121,7 @@
 | Disposal | IRU Out |
 | Resource | *(选 INV-1 / APCN-2)* |
 | Circuits | *(如有，勾选)* |
-| Capacity | 200 |
+| Capacity | 50 |
 | Spec | 100G |
 | Start Date | 2025-03-01 |
 | Term | 180 months |
