@@ -282,7 +282,8 @@ export function SalesPage() {
                 </div>
             ) : (
                 <div className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* Desktop table */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-border-subtle text-text-muted text-left">
@@ -319,6 +320,30 @@ export function SalesPage() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                    {/* Mobile cards */}
+                    <div className="md:hidden divide-y divide-border-subtle/50">
+                        {filtered.map((order) => (
+                            <div
+                                key={order.id}
+                                onClick={() => navigate(`/sales/${order.id}`)}
+                                className="px-4 py-3 hover:bg-surface-hover/50 cursor-pointer transition-colors active:bg-surface-hover"
+                            >
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-sm font-semibold font-mono text-primary">{order.order_id}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
+                                        {order.status}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-text-muted">
+                                    <span>{order.customer_name || '—'}</span>
+                                    <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                                </div>
+                                {order.internal_ref && (
+                                    <p className="text-xs text-text-dim mt-1">Ref: {order.internal_ref}</p>
+                                )}
+                            </div>
+                        ))}
                     </div>
                     <div className="px-4 py-3 border-t border-border-subtle text-xs text-text-dim">
                         {filtered.length} order{filtered.length !== 1 ? 's' : ''}

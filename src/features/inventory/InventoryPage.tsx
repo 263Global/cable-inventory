@@ -442,60 +442,97 @@ export function InventoryPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-border-subtle">
-                                    {activeColumns.map((col) => (
-                                        <th key={col.key}
-                                            className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider"
-                                            style={col.minWidth ? { minWidth: col.minWidth } : undefined}
+                    <>
+                        {/* Desktop table */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-border-subtle">
+                                        {activeColumns.map((col) => (
+                                            <th key={col.key}
+                                                className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider"
+                                                style={col.minWidth ? { minWidth: col.minWidth } : undefined}
+                                            >
+                                                {col.label}
+                                            </th>
+                                        ))}
+                                        <th className="w-12 px-4 py-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {filteredData.map((item) => (
+                                        <tr
+                                            key={item.id}
+                                            onClick={() => navigate(`/inventory/${item.id}`)}
+                                            className="hover:bg-surface-hover transition-colors cursor-pointer"
                                         >
-                                            {col.label}
-                                        </th>
+                                            {activeColumns.map((col) => (
+                                                <td key={col.key} className="px-4 py-3">
+                                                    {col.render(item)}
+                                                </td>
+                                            ))}
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation()
+                                                        const check = await checkResourceDeletable(item.id)
+                                                        if (check.status === 'blocked') {
+                                                            toast.error(`Cannot delete — linked to active orders: ${check.activeOrders.join(', ')}`)
+                                                            return
+                                                        }
+                                                        if (check.status === 'warn') {
+                                                            setDeleteMessage(`This resource is linked to orders: ${check.otherOrders.join(', ')}. Deleting will remove these associations.`)
+                                                        } else {
+                                                            setDeleteMessage('This will permanently delete the resource and all its batches and circuits.')
+                                                        }
+                                                        setDeleteTarget(item)
+                                                    }}
+                                                    className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
                                     ))}
-                                    <th className="w-12 px-4 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border-subtle">
-                                {filteredData.map((item) => (
-                                    <tr
+                                </tbody>
+                            </table>
+                        </div>
+                        {/* Mobile cards */}
+                        <div className="md:hidden divide-y divide-border-subtle/50">
+                            {filteredData.map((item) => {
+                                const pct = item.total_capacity ? Math.round(((item.used_capacity ?? 0) / item.total_capacity) * 100) : 0
+                                return (
+                                    <div
                                         key={item.id}
                                         onClick={() => navigate(`/inventory/${item.id}`)}
-                                        className="hover:bg-surface-hover transition-colors cursor-pointer"
+                                        className="px-4 py-3 hover:bg-surface-hover/50 cursor-pointer transition-colors active:bg-surface-hover"
                                     >
-                                        {activeColumns.map((col) => (
-                                            <td key={col.key} className="px-4 py-3">
-                                                {col.render(item)}
-                                            </td>
-                                        ))}
-                                        <td className="px-4 py-3">
-                                            <button
-                                                onClick={async (e) => {
-                                                    e.stopPropagation()
-                                                    const check = await checkResourceDeletable(item.id)
-                                                    if (check.status === 'blocked') {
-                                                        toast.error(`Cannot delete — linked to active orders: ${check.activeOrders.join(', ')}`)
-                                                        return
-                                                    }
-                                                    if (check.status === 'warn') {
-                                                        setDeleteMessage(`This resource is linked to orders: ${check.otherOrders.join(', ')}. Deleting will remove these associations.`)
-                                                    } else {
-                                                        setDeleteMessage('This will permanently delete the resource and all its batches and circuits.')
-                                                    }
-                                                    setDeleteTarget(item)
-                                                }}
-                                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm font-semibold font-mono text-primary">{item.resource_id}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[item.type]}`}>
+                                                    {item.type}
+                                                </span>
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status] ?? 'bg-gray-500/15 text-gray-400'}`}>
+                                                    {statusLabel[item.status] ?? item.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-text-muted mb-1.5">{item.cable_system_name || '—'}{item.route_description ? ` · ${item.route_description}` : ''}</p>
+                                        {(item.total_capacity ?? 0) > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 bg-border-subtle rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${pct >= 90 ? 'bg-red-400' : pct >= 50 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${pct}%` }} />
+                                                </div>
+                                                <span className="text-xs text-text-dim whitespace-nowrap">{item.used_capacity ?? 0}G/{item.total_capacity}G</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </>
                 )}
                 <div className="px-4 py-3 border-t border-border-subtle text-xs text-text-dim">
                     {filteredData.length} resource{filteredData.length !== 1 ? 's' : ''}
