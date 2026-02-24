@@ -15,11 +15,12 @@
 
 ## Project Status
 
-> [!IMPORTANT]
-> **Full rewrite in progress.** Migrating from Vanilla JS SPA to React modern stack.
-> - Dashboard: Under Construction (placeholder)
+> [!NOTE]
+> **Rewrite complete** (v2.5.0). All modules fully implemented on React modern stack.
+> - Dashboard: KPI cards, capacity charts, sales pipeline, expiring contracts
 > - Sales Profitability: Disabled (MVP pivot)
-> - Fiber/Spectrum resource types: Separate Tabs (implemented)
+> - All resource types: Capacity, Terrestrial, Fiber, Spectrum
+> - Mobile responsive: card views, collapsible sidebar
 > - Toast notifications: Sonner (dark, bottom-right, auto-dismiss)
 
 ## Tech Stack
@@ -36,34 +37,45 @@
 
 ---
 
-## Project Structure (New)
+## Project Structure
 
 ```
 cable-inventory/
 ├── src/
 │   ├── main.tsx              # App entry point
-│   ├── App.tsx               # Root component + routing
+│   ├── App.tsx               # Root component + routing (React.lazy code splitting)
 │   ├── lib/
 │   │   ├── supabase.ts       # Supabase client config
-│   │   └── utils.ts          # Shared utilities
+│   │   ├── supabase-utils.ts # assertNoError helper
+│   │   ├── contract-utils.ts # Date/contract calculations
+│   │   ├── status-styles.ts  # Badge/status CSS helpers
+│   │   ├── reference-api.ts  # Shared reference data queries
+│   │   └── utils.ts          # General utilities
 │   ├── components/
 │   │   ├── ui/               # shadcn/ui components
 │   │   ├── layout/           # Sidebar, Header, Layout
 │   │   └── shared/           # Searchable dropdowns, modals
 │   ├── features/
-│   │   ├── auth/             # Login, logout, password reset
-│   │   ├── inventory/        # List, form, detail views
-│   │   ├── sales/            # List, form, detail views
+│   │   ├── inventory/
+│   │   │   ├── InventoryPage.tsx          # List page (thin renderer)
+│   │   │   ├── InventoryFormPage.tsx      # Create/edit form
+│   │   │   ├── InventoryDetailPage.tsx    # Detail view
+│   │   │   ├── useInventory*Controller.ts # Controller hooks
+│   │   │   ├── useInventory*Data.ts       # Data fetching hooks
+│   │   │   ├── useInventory*Actions.ts    # Action hooks
+│   │   │   ├── api/                       # Supabase API (resources, lifecycle, etc.)
+│   │   │   ├── components/                # UI components (18 files)
+│   │   │   └── *-types.ts, *-config.ts    # Types and config
+│   │   ├── sales/            # Same pattern as inventory
+│   │   ├── dashboard/        # KPI cards, charts, analytics
 │   │   ├── crm/              # Customers & Suppliers
-│   │   ├── dashboard/        # Placeholder (future)
+│   │   ├── auth/             # Login, password reset
 │   │   └── settings/         # Reference data management
-│   ├── hooks/                # Custom React hooks
-│   └── types/                # TypeScript type definitions
-├── public/                   # Static assets
-├── docs/
-│   ├── supabase_schema.sql   # Database schema
-│   └── reference_data/       # Pre-populated cable systems, countries
-├── supabase/                 # Supabase migrations
+│   ├── hooks/                # Shared hooks (useClickOutside, usePersistentColumnVisibility)
+│   └── types/                # Global TypeScript type definitions
+├── public/                   # Static assets (favicon)
+├── docs/                     # DB schema, reference data, seed data
+├── supabase/                 # Database migrations (020+)
 └── vite.config.ts            # Vite configuration
 ```
 
@@ -71,42 +83,55 @@ cable-inventory/
 
 ## Architecture
 
-### Component-Based (React)
+### Controller-Hook Pattern (v2.5.0+)
 
-- **Pages** → Route-level components in `features/*/`
-- **Components** → Reusable UI in `components/`
-- **Hooks** → Data fetching & business logic in `hooks/`
-- **Supabase** → Direct client queries (no API layer needed)
+All major pages follow a consistent decomposition:
 
-### Key Patterns
+```
+Page (thin renderer, ~100–260 lines)
+  └─ useXxxController (orchestrator)
+       ├─ useXxxData (fetching, state)
+       ├─ useXxxActions (mutations, handlers)
+       └─ useXxxLifecycle (terminate, renew — optional)
+  └─ UI Components (extracted into components/ subdirectory)
+```
 
-1. **Supabase hooks**: Custom hooks for data fetching with loading/error states
+- **Pages** → Thin renderers that destructure controller hook and render components
+- **Controller Hooks** → Compose sub-hooks, compute derived state, return flat API
+- **Sub-Hooks** → Single-responsibility: data fetching, action handlers, lifecycle
+- **Components** → Barrel-exported via index files for clean imports
+- **API modules** → Supabase queries in `api/` subdirectory with barrel re-export
+
+### Other Patterns
+
+1. **`assertNoError()`**: Wraps all Supabase calls with contextual error messages
 2. **shadcn/ui components**: Copy-pasted source code, fully customizable
 3. **Tailwind utility-first**: No custom CSS files unless absolutely needed
 4. **TypeScript throughout**: Strict types for all data models
+5. **Route-level code splitting**: `React.lazy` + `Suspense` for each page
 
 ---
 
 ## Key Modules
 
-### Inventory (Primary Focus)
-- Three resource types: **Fiber** / **Spectrum** / **Capacity**
-- Four resource tabs on list page + Column Picker (21 columns, localStorage-persisted)
-- Capacity specs: 10G, 40G, 100G, 400G, 800G, 1.6T
+### Inventory
+- Four resource types: **Capacity** / **Terrestrial** / **Fiber** / **Spectrum** (tab-filtered)
+- Column Picker (21 columns, localStorage-persisted)
 - Status auto-computed from circuit allocations (Available → Partially Used → Fully Used)
-- Base + Batch mode for staged lighting
+- Base + Batch mode for staged lighting with auto-transition (Planned → Active)
 - **Circuits**: individual circuit instances with interface type, batch, handover locations
 - **Capacity Breakdown**: multi-segment bar (Allocated/Available/Planned/Unlit)
 - **Linked Sales**: shows allocated sales orders per resource
+- Termination & Renewal with linked-sales safety checks
 - Reference data: Cable Systems (~600 pre-loaded), Landing Stations, Countries
 
-### Sales (MVP — Profitability Disabled)
+### Sales (Profitability Disabled for MVP)
 - Sales Orders with multi-item line items
 - Disposal types: IRU Out, Lease Out, Swap Out, Self Use
 - **Circuit-level allocation**: sales items link to specific inventory circuits
 - Capacity auto-calculated from selected circuits
-- Renewal & Termination flows
-- Profitability calculations disabled for MVP
+- Per-item termination with ETF, selective renewal, resource release
+- Auto status transitions: Pre-sold → Active → Expired
 
 ### CRM
 - Customers & Suppliers CRUD

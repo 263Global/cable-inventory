@@ -8,17 +8,24 @@ Cable Inventory Manager: a React SPA for managing submarine cable inventory reso
 ## Architecture
 - **Framework**: React 19 + Vite 6 (client-side SPA, deployed as static files)
 - **UI**: Tailwind CSS 4 + shadcn/ui components
-- **Routing**: React Router v7
+- **Routing**: React Router v7 (route-level code splitting via `React.lazy`)
 - **Data layer**: Supabase client (PostgreSQL + Auth + RLS), no API server
 - **Language**: TypeScript (strict)
 - **Toast**: Sonner (`import { toast } from 'sonner'`)
 
+### Controller-Hook Pattern (v2.5.0+)
+All major pages follow: **Page → `useXxxController` → `useXxxData` + `useXxxActions` → UI Components**
+- Page files are thin renderers (~100–260 lines), delegating all logic to controller hooks
+- Controller hooks compose smaller sub-hooks for data fetching, actions, and lifecycle
+- UI components are extracted into `components/` subdirectories per feature
+- API functions are modularized into `api/` subdirectories with barrel re-exports
+
 ## Project Status
-- **Full rewrite in progress** from vanilla JS to React
-- Inventory module: primary focus (Capacity type fully implemented, Fiber/Spectrum placeholder)
-- Sales: circuit-level allocation, profitability calculations disabled (MVP pivot)
-- Dashboard: Under Construction placeholder
+- Inventory: fully implemented (Capacity, Terrestrial, Fiber, Spectrum) with circuit-level allocation
+- Sales: multi-item orders, circuit allocation, termination/renewal/release flows (profitability disabled for MVP)
+- Dashboard: KPI cards, capacity charts, sales pipeline, expiring contracts, recent activity
 - CRM (Customers/Suppliers): standard CRUD
+- Mobile: responsive card views, collapsible sidebar
 
 ## How To Run
 ```bash
@@ -29,12 +36,18 @@ npm run build      # Build for production
 
 ## Directory Guide
 - `src/` — application source code
-  - `src/features/` — feature modules (auth, inventory, sales, crm, settings)
+  - `src/features/` — feature modules, each containing:
+    - `*Page.tsx` — thin page renderer
+    - `use*Controller.ts` — controller hook (composes sub-hooks)
+    - `use*Data.ts`, `use*Actions.ts` — data fetching and action hooks
+    - `components/` — extracted UI components
+    - `api/` — Supabase API functions (modularized with barrel re-export)
+    - `*-types.ts`, `*-config.ts` — type definitions and config constants
   - `src/components/ui/` — shadcn/ui components
   - `src/components/layout/` — sidebar, header, layout shell
-  - `src/hooks/` — custom React hooks for data fetching
-  - `src/lib/` — Supabase client, utilities
-  - `src/types/` — TypeScript type definitions
+  - `src/hooks/` — shared custom hooks (`useClickOutside`, `usePersistentColumnVisibility`)
+  - `src/lib/` — Supabase client, utilities (`contract-utils`, `supabase-utils`, `status-styles`)
+  - `src/types/` — global TypeScript type definitions
 - `docs/` — reference docs, DB schema, test data
 - `supabase/` — database migrations
 
@@ -52,9 +65,11 @@ npm run build      # Build for production
 - `cable_systems`, `landing_stations`, `countries` — reference data
 
 ## Development Notes
+- Follow the Controller-Hook pattern: page renders UI, `useXxxController` owns all state and logic
 - Use shadcn/ui components for all form elements and dialogs
 - Use Tailwind utility classes, avoid custom CSS
 - All data fetching via custom hooks wrapping Supabase client
+- Use `assertNoError()` from `supabase-utils.ts` for all Supabase error handling
 - Reference data (Cable Systems, Landing Stations, Countries) are pre-populated and managed via Settings page
 - Inventory status is auto-computed from circuit allocations (Available → Partially Used → Fully Used)
 - Circuit allocation: sales items link to specific inventory circuits via `sales_item_circuits` junction
