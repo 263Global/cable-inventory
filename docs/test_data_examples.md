@@ -57,7 +57,7 @@
 | Capacity (Base) | 1000 |
 | Cable System | AAE-1 |
 | Acquisition | IRU |
-| Protection | Protected |
+| Protection | Unprotected |
 | Contract Ref | CTR-2025-003 |
 | **A-End Country** | China |
 | **Z-End Country** | France |
