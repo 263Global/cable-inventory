@@ -293,14 +293,18 @@ export function DashboardPage() {
                                     })}
                                 </div>
                                 {/* Legend */}
-                                <div className="grid grid-cols-3 gap-3 mt-4">
-                                    {pipeline.map((p) => (
-                                        <div key={p.status} className="flex items-center gap-2">
-                                            <span className={`inline-block w-2.5 h-2.5 rounded-full ${dotColors[p.status]}`} />
-                                            <span className="text-xs text-text-muted">{p.status}</span>
-                                            <span className="text-xs font-semibold ml-auto">{p.count}</span>
-                                        </div>
-                                    ))}
+                                <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4">
+                                    {pipeline.map((p) => {
+                                        const pct = Math.round((p.count / total) * 100)
+                                        return (
+                                            <div key={p.status} className="flex items-center gap-1.5">
+                                                <span className={`inline-block w-2.5 h-2.5 rounded-full ${dotColors[p.status]}`} />
+                                                <span className="text-xs text-text-muted">{p.status}</span>
+                                                <span className="text-xs font-semibold">{p.count}</span>
+                                                <span className="text-xs text-text-dim">({pct}%)</span>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )
