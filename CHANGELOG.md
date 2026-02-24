@@ -2,6 +2,39 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.3.0] - 2026-02-24
+
+### Added — Per-Item Termination & Resource Release
+
+**Database**
+- Migration `019_item_termination.sql`: added `terminated_at` (DATE) and `termination_fee` (NUMERIC) to `sales_order_items` table
+
+**Per-Item Termination** (`SalesDetailPage.tsx`, `sales/api.ts`)
+- Terminate modal redesigned: checkbox per item, early termination fee (ETF) input per item
+- Selective termination: only selected items are terminated, circuits released, capacity recalculated
+- Smart order status: order becomes `Terminated` only if all items terminated, stays `Active` otherwise
+- Terminated items display red badge with date and ETF amount on detail page
+
+**Release Button — Expired Orders**
+- New amber-themed 🔓 Release button for Expired orders (replaces Terminate)
+- Simplified modal: checkboxes only, no reason/fee fields needed
+- Expired warning banner with "续约 Renew" + "释放资源 Release" action buttons
+- Header shows only Edit/Delete for Expired orders (actions in banner, no duplication)
+
+**Selective Renewal**
+- Renew modal now has per-item checkboxes (default selected)
+- Unselected items visually disabled; confirm button disabled if none selected
+- Cross-Connect items default to "Lease Out" for renewal eligibility
+
+**Dashboard Improvements**
+- Expired-order alert: amber banner listing orders still holding resources, with clickable links
+- Capacity by Resource: sorted by utilization (high→low), limited to Top 10, excludes Terminated/Expired
+- "查看全部 X 个资源 →" link when >10 resources
+
+### Changed
+- `terminateSalesOrder()` signature updated: now accepts `items` array with `{itemId, selected, terminationFee}`
+- `SalesOrderItem` type extended with `terminated_at` and `termination_fee` fields
+
 ## [2.2.0] - 2026-02-24
 
 ### Added — Terminate / Cancel / Renew
