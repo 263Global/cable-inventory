@@ -323,8 +323,15 @@ export function InventoryFormPage() {
         }
 
         if (s === 1) {
-            // Step 2: Locations — at least one endpoint
-            if (!form.country_a && !form.country_z) errors.push('At least one endpoint country is required')
+            // Step 2: Locations
+            if (form.type === 'Terrestrial') {
+                // Terrestrial has no country/landing station — only handover locations
+                if (!form.handover_location_a_id && !form.handover_location_z_id) {
+                    errors.push('At least one handover location is required')
+                }
+            } else {
+                if (!form.country_a && !form.country_z) errors.push('At least one endpoint country is required')
+            }
         }
 
         if (s === 2) {
