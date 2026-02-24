@@ -63,6 +63,13 @@ interface RecentOrder {
     updated_at: string
 }
 
+interface ExpiredUnreleased {
+    id: string
+    order_id: string
+    customer_name: string | null
+    end_date: string
+}
+
 export function DashboardPage() {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
@@ -71,6 +78,7 @@ export function DashboardPage() {
     const [pipeline, setPipeline] = useState<PipelineItem[]>([])
     const [expiring, setExpiring] = useState<ExpiringItem[]>([])
     const [recent, setRecent] = useState<RecentOrder[]>([])
+    const [expiredUnreleased, setExpiredUnreleased] = useState<ExpiredUnreleased[]>([])
 
     useEffect(() => {
         (async () => {
@@ -158,6 +166,25 @@ export function DashboardPage() {
                     activeOrders: activeCount,
                     expiringSoon: expiringRows.length,
                 })
+
+                // 4. Expired orders that haven't been terminated (resources still held)
+                const expiredOrders = allOrders.filter(o => o.status === 'Expired')
+                if (expiredOrders.length > 0) {
+                    // Get end_date from items for display
+                    const { data: expiredDetails } = await supabase
+                        .from('sales_orders')
+                        .select('id, order_id, customers(name)')
+                        .eq('status', 'Expired')
+                        .is('terminated_at', null)
+                        .limit(10)
+
+                    setExpiredUnreleased((expiredDetails ?? []).map((o: Record<string, unknown>) => ({
+                        id: o.id as string,
+                        order_id: o.order_id as string,
+                        customer_name: (o.customers as { name: string } | null)?.name ?? null,
+                        end_date: '',
+                    })))
+                }
             } catch (err) {
                 console.error('Dashboard load error:', err)
             } finally {
@@ -212,6 +239,30 @@ export function DashboardPage() {
                     color={kpi.expiringSoon > 0 ? 'text-warning' : 'text-text-dim'}
                 />
             </div>
+
+            {/* Expired orders alert */}
+            {expiredUnreleased.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-400">
+                            {expiredUnreleased.length} 个已到期订单资源未释放
+                        </p>
+                        <p className="text-xs text-text-muted mt-1">请确认是否续约，如不续约请终止以释放电路和容量。</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {expiredUnreleased.map(o => (
+                                <button key={o.id}
+                                    onClick={() => navigate(`/sales/${o.id}`)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                >
+                                    {o.order_id}{o.customer_name ? ` — ${o.customer_name}` : ''}
+                                    <ExternalLink className="h-3 w-3" />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Row 2: Capacity + Pipeline */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
