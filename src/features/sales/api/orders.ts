@@ -1,9 +1,43 @@
 import { todayDateOnly } from '@/lib/contract-utils'
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
-import type { SalesOrder } from '@/types'
+import type { SalesOrder, SalesStatus } from '@/types'
 import { recalcForOrder, recalcInventoryCapacity } from './capacity'
 import { deallocateCircuits, syncCircuitStatuses } from './circuits'
+
+type MaybeRelation<T> = T | T[] | null
+
+interface OrderStatusSyncRow {
+    id: string
+    sales_order_items: MaybeRelation<{ start_date: string | null; end_date: string | null }>
+}
+
+interface SalesOrderQueryRow extends Omit<SalesOrder, 'customer_name'> {
+    customers: MaybeRelation<{ name: string }>
+}
+
+interface SalesOrderItemLinkRow {
+    id: string
+    inventory_resource_id: string | null
+}
+
+function pickRelation<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
+
+function relationToArray<T>(value: MaybeRelation<T> | undefined): T[] {
+    if (Array.isArray(value)) return value
+    return value ? [value] : []
+}
+
+function mapSalesOrderRow(row: SalesOrderQueryRow): SalesOrder {
+    const customer = pickRelation(row.customers)
+    return {
+        ...row,
+        customer_name: customer?.name,
+    }
+}
 
 export async function syncOrderStatuses(): Promise<number> {
     const today = todayDateOnly()
@@ -15,9 +49,10 @@ export async function syncOrderStatuses(): Promise<number> {
         .eq('status', 'Pre-sold')
     assertNoError(presoldError, 'Failed to load Pre-sold orders for status sync')
 
-    for (const order of (presoldOrders ?? [])) {
-        const items = order.sales_order_items as { start_date: string | null }[] | null
-        const hasStarted = items?.some((item) => item.start_date && item.start_date <= today)
+    const presoldRows = (presoldOrders ?? []) as OrderStatusSyncRow[]
+    for (const order of presoldRows) {
+        const items = relationToArray(order.sales_order_items)
+        const hasStarted = items.some((item) => item.start_date && item.start_date <= today)
         if (!hasStarted) continue
 
         const { error } = await supabase
@@ -37,8 +72,9 @@ export async function syncOrderStatuses(): Promise<number> {
         .eq('status', 'Active')
     assertNoError(activeError, 'Failed to load Active orders for status sync')
 
-    for (const order of (activeOrders ?? [])) {
-        const items = order.sales_order_items as { end_date: string | null }[] | null
+    const activeRows = (activeOrders ?? []) as OrderStatusSyncRow[]
+    for (const order of activeRows) {
+        const items = relationToArray(order.sales_order_items)
         if (!items || items.length === 0) continue
 
         const allExpired = items.every((item) => item.end_date && item.end_date < today)
@@ -65,10 +101,8 @@ export async function fetchSalesOrders(): Promise<SalesOrder[]> {
         .order('created_at', { ascending: false })
 
     assertNoError(error, 'Failed to load sales orders')
-    return (data ?? []).map((row: Record<string, unknown>) => ({
-        ...row,
-        customer_name: (row.customers as { name: string } | null)?.name ?? null,
-    })) as SalesOrder[]
+    const rows = (data ?? []) as SalesOrderQueryRow[]
+    return rows.map(mapSalesOrderRow)
 }
 
 export async function fetchSalesOrderById(id: string): Promise<SalesOrder | null> {
@@ -79,12 +113,7 @@ export async function fetchSalesOrderById(id: string): Promise<SalesOrder | null
         .single()
 
     assertNoError(error, 'Failed to load sales order')
-    return data
-        ? {
-            ...data,
-            customer_name: (data.customers as { name: string } | null)?.name ?? null,
-        } as SalesOrder
-        : null
+    return data ? mapSalesOrderRow(data as SalesOrderQueryRow) : null
 }
 
 // order_id is auto-assigned by DB trigger when omitted
@@ -92,7 +121,7 @@ export async function createSalesOrder(payload: {
     order_id?: string
     internal_ref?: string
     customer_id: string
-    status: string
+    status: SalesStatus
     notes?: string
 }): Promise<SalesOrder> {
     const { data, error } = await supabase
@@ -105,12 +134,10 @@ export async function createSalesOrder(payload: {
     return data as SalesOrder
 }
 
-export async function updateSalesOrder(id: string, payload: Partial<{
-    internal_ref: string
-    customer_id: string
-    status: string
-    notes: string
-}>): Promise<void> {
+export async function updateSalesOrder(
+    id: string,
+    payload: Partial<Pick<SalesOrder, 'internal_ref' | 'customer_id' | 'status' | 'notes'>>,
+): Promise<void> {
     const { error } = await supabase
         .from('sales_orders')
         .update({ ...payload, updated_at: new Date().toISOString() })
@@ -131,9 +158,10 @@ export async function deleteSalesOrder(id: string): Promise<void> {
     assertNoError(itemsError, 'Failed to load sales order items before deletion')
 
     const affectedResourceIds = new Set<string>()
-    for (const item of (items ?? [])) {
-        if (item.inventory_resource_id) affectedResourceIds.add(item.inventory_resource_id as string)
-        await deallocateCircuits(item.id as string)
+    const itemRows = (items ?? []) as SalesOrderItemLinkRow[]
+    for (const item of itemRows) {
+        if (item.inventory_resource_id) affectedResourceIds.add(item.inventory_resource_id)
+        await deallocateCircuits(item.id)
     }
 
     const { error } = await supabase

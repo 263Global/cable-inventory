@@ -2,6 +2,33 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.5.0] - 2026-02-24
+
+### Refactored — Page-Level Decomposition (Phase 2)
+
+**Controller-Hook Architecture** — All 6 major page files decomposed from monolithic components into focused modules using a consistent pattern: Page → Controller Hook → Data/Action sub-hooks + UI components.
+
+**Inventory Module** (`src/features/inventory/`)
+- `InventoryPage.tsx` (539 → 117 lines): extracted `useInventoryPageController`, `InventoryPageControls`, `InventoryPageTable`, `inventory-page-config`
+- `InventoryFormPage.tsx` (861 → 166 lines): extracted `useInventoryFormController` → `useInventoryFormData` + `useInventoryFormActions`, plus `InventoryResourceInfoStep`, `InventoryLocationsStep`, `InventoryContractCostsStep` step components
+- `InventoryDetailPage.tsx` (1292 → 262 lines): extracted `useInventoryDetailController` → `useInventoryDetailData` + `useInventoryDetailBatchCircuit` + `useInventoryDetailLifecycle` + `useInventoryDetailBatchActions` + `useInventoryDetailCircuitActions`, plus 11 section/card components and lifecycle modals
+- `api.ts` decomposed into `api/{resources,lifecycle,sales-links,shared}.ts` with barrel re-export
+
+**Sales Module** (`src/features/sales/`)
+- `SalesPage.tsx` (365 → 98 lines): extracted `useSalesPageController`, `SalesPageControls`, `SalesPageTable`, `sales-page-config`
+- `SalesFormPage.tsx` (593 → 104 lines): extracted `useSalesFormController` → `useSalesFormData` + `useSalesFormActions`, plus `SalesFormOrderInfoStep`, `SalesFormLineItemsStep`
+- `SalesDetailPage.tsx` (916 → 186 lines): extracted `useSalesDetailController`, `sales-detail-helpers`, plus `SalesDetailHeader`, `ExpiredOrderBanner`, `SalesOrderInfoCard`, `SalesTerminationInfoCard`, `SalesRenewalHistoryCard`, `SalesLineItemsCard`, and 4 lifecycle modal components
+
+**Shared**
+- `reference-api.ts`: streamlined with removed dead code
+- `types/index.ts`: cleaned up type definitions
+- New type files: `inventory-detail-types.ts`, `inventory-detail-controller-types.ts`, `inventory-form-types.ts`, `sales-form-config.ts`
+
+### Changed
+- Net reduction: **−4,419 lines removed, +1,025 lines added** across 22 modified files
+- ~40 new focused modules extracted (components, hooks, helpers, config, types)
+- No functional changes — pure structural refactor preserving all existing behavior
+
 ## [2.4.1] - 2026-02-24
 
 ### Changed

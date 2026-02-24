@@ -120,7 +120,7 @@ export interface InventoryResource {
     // Termination & Renewal
     terminated_at: string | null
     termination_reason: string | null
-    renewal_history: RenewalSnapshot[] | null
+    renewal_history: InventoryRenewalSnapshot[] | null
 
     created_at: string
     updated_at: string
@@ -144,6 +144,26 @@ export interface InventoryCircuit {
     updated_at: string
 }
 
+export type InventoryBatchModel = 'IRU' | 'Lease'
+export type InventoryBatchStatus = 'Planned' | 'Active' | 'Ended'
+
+export interface InventoryBatch {
+    id: string
+    inventory_resource_id: string
+    batch_number: number
+    capacity: number
+    model: InventoryBatchModel
+    start_date: string | null
+    term_months: number | null
+    otc: number | null
+    om_rate: number | null
+    annual_om_cost: number | null
+    mrc: number | null
+    status: InventoryBatchStatus
+    created_at: string
+    updated_at: string
+}
+
 // ============================================
 // Sales Types
 // ============================================
@@ -152,15 +172,32 @@ export type DisposalType = 'IRU Out' | 'Lease Out' | 'Swap Out' | 'Self Use'
 export type SalesStatus = 'Draft' | 'Pre-sold' | 'Active' | 'Expired' | 'Terminated' | 'Cancelled'
 export type SalesItemType = 'Capacity' | 'Backhaul' | 'Cross-Connect' | 'NRC' | 'Other'
 
-export interface RenewalSnapshot {
+export interface InventoryRenewalSnapshot {
     renewed_at: string
     old_start_date: string | null
     old_end_date: string | null
     old_term_months: number | null
     old_mrc: number | null
     old_nrc: number | null
+    old_otc?: number | null
+    old_om_rate?: number | null
     old_status: string
     notes?: string
+}
+
+export interface SalesRenewalSnapshotItem {
+    item_id: string
+    old_start_date: string | null
+    old_end_date: string | null
+    old_term_months: number | null
+    old_mrc: number | null
+    old_nrc: number | null
+}
+
+export interface SalesRenewalSnapshot {
+    renewed_at: string
+    old_status: SalesStatus
+    items: SalesRenewalSnapshotItem[]
 }
 
 export interface SalesOrder {
@@ -173,7 +210,7 @@ export interface SalesOrder {
     notes: string | null
     terminated_at: string | null
     termination_reason: string | null
-    renewal_history: RenewalSnapshot[] | null
+    renewal_history: SalesRenewalSnapshot[] | null
     created_at: string
     updated_at: string
 }
