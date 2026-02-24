@@ -1,19 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Users, Search, Plus, Pencil, Trash2, X, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import {
+    createCustomer,
+    deleteCustomer,
+    fetchCustomers,
+    updateCustomer,
+    type CustomerRecord,
+} from '@/features/crm/api'
 
-interface Customer {
-    id: string
-    name: string
-    full_name: string | null
-    contact_name: string | null
-    contact_email: string | null
-    phone: string | null
-    country: string | null
-    notes: string | null
-}
+type Customer = CustomerRecord
 
 export function CustomersPage() {
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -28,10 +25,15 @@ export function CustomersPage() {
     const [deleting, setDeleting] = useState(false)
 
     const load = useCallback(async () => {
-        setLoading(true)
-        const { data, error } = await supabase.from('customers').select('*').order('name')
-        if (!error) setCustomers(data ?? [])
-        setLoading(false)
+        try {
+            setLoading(true)
+            setCustomers(await fetchCustomers())
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to load customers')
+        } finally {
+            setLoading(false)
+        }
     }, [])
 
     useEffect(() => { load() }, [load])
@@ -75,12 +77,10 @@ export function CustomersPage() {
                 notes: formData.notes.trim() || null,
             }
             if (editingItem) {
-                const { error } = await supabase.from('customers').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingItem.id)
-                if (error) throw error
+                await updateCustomer(editingItem.id, payload)
                 toast.success('Customer updated')
             } else {
-                const { error } = await supabase.from('customers').insert(payload)
-                if (error) throw error
+                await createCustomer(payload)
                 toast.success('Customer created')
             }
             setShowModal(false); load()
@@ -191,7 +191,7 @@ export function CustomersPage() {
                     if (!deleteTarget) return
                     setDeleting(true)
                     try {
-                        await supabase.from('customers').delete().eq('id', deleteTarget.id)
+                        await deleteCustomer(deleteTarget.id)
                         toast.success(`${deleteTarget.name} deleted`)
                         load()
                     } catch (err) {

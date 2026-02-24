@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Building2, Search, Plus, Pencil, Trash2, X, Loader2, Globe, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import {
+    createSupplier,
+    deleteSupplier,
+    fetchSuppliers,
+    updateSupplier,
+    type SupplierRecord,
+} from '@/features/crm/api'
 
-interface Supplier {
-    id: string
-    name: string
-    contact_name: string | null
-    contact_email: string | null
-    phone: string | null
-    website: string | null
-    notes: string | null
-}
+type Supplier = SupplierRecord
 
 export function SuppliersPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -27,10 +25,15 @@ export function SuppliersPage() {
     const [deleting, setDeleting] = useState(false)
 
     const load = useCallback(async () => {
-        setLoading(true)
-        const { data, error } = await supabase.from('suppliers').select('*').order('name')
-        if (!error) setSuppliers(data ?? [])
-        setLoading(false)
+        try {
+            setLoading(true)
+            setSuppliers(await fetchSuppliers())
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to load suppliers')
+        } finally {
+            setLoading(false)
+        }
     }, [])
 
     useEffect(() => { load() }, [load])
@@ -67,12 +70,10 @@ export function SuppliersPage() {
                 notes: formData.notes.trim() || null,
             }
             if (editingItem) {
-                const { error } = await supabase.from('suppliers').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingItem.id)
-                if (error) throw error
+                await updateSupplier(editingItem.id, payload)
                 toast.success('Supplier updated')
             } else {
-                const { error } = await supabase.from('suppliers').insert(payload)
-                if (error) throw error
+                await createSupplier(payload)
                 toast.success('Supplier created')
             }
             setShowModal(false); load()
@@ -185,7 +186,7 @@ export function SuppliersPage() {
                     if (!deleteTarget) return
                     setDeleting(true)
                     try {
-                        await supabase.from('suppliers').delete().eq('id', deleteTarget.id)
+                        await deleteSupplier(deleteTarget.id)
                         toast.success(`${deleteTarget.name} deleted`)
                         load()
                     } catch (err) {

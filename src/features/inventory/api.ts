@@ -1,18 +1,52 @@
 import { supabase } from '@/lib/supabase'
+import { assertNoError } from '@/lib/supabase-utils'
 import type { InventoryResource } from '@/types'
 
-// Generate next resource ID (RES-XXXXX)
-async function generateResourceId(): Promise<string> {
-    const { data } = await supabase
-        .from('inventory_resources')
-        .select('resource_id')
-        .order('resource_id', { ascending: false })
-        .limit(1)
+export interface LinkedSalesItem {
+    id: string
+    sales_order_id: string
+    order_id: string
+    customer_name: string | null
+    capacity: number | null
+    disposal_type: string | null
+    status: string
+    order_status: string
+}
 
-    if (!data || data.length === 0) return 'RES-10001'
+export async function fetchCountryIdByName(name: string): Promise<string> {
+    const { data, error } = await supabase
+        .from('countries')
+        .select('id')
+        .eq('name', name)
+        .single()
+    assertNoError(error, `Failed to load country ID for ${name}`)
 
-    const lastNum = parseInt(data[0].resource_id.replace('RES-', ''), 10)
-    return `RES-${String(lastNum + 1).padStart(5, '0')}`
+    if (!data?.id) {
+        throw new Error(`Country not found: ${name}`)
+    }
+    return data.id as string
+}
+
+export async function fetchLinkedSalesItems(resourceId: string): Promise<LinkedSalesItem[]> {
+    const { data, error } = await supabase
+        .from('sales_order_items')
+        .select('id, sales_order_id, capacity, disposal_type, status, sales_orders(order_id, status, customers(name))')
+        .eq('inventory_resource_id', resourceId)
+    assertNoError(error, 'Failed to load linked sales items')
+
+    return (data ?? []).map((row: Record<string, unknown>) => {
+        const so = row.sales_orders as { order_id: string; status: string; customers: { name: string } | null } | null
+        return {
+            id: row.id as string,
+            sales_order_id: row.sales_order_id as string,
+            order_id: so?.order_id ?? '',
+            customer_name: so?.customers?.name ?? null,
+            capacity: row.capacity as number | null,
+            disposal_type: row.disposal_type as string | null,
+            status: row.status as string,
+            order_status: so?.status ?? '',
+        }
+    })
 }
 
 // Fetch all inventory resources with joined names
@@ -38,7 +72,7 @@ export async function fetchInventoryResources(typeFilter?: string): Promise<Inve
 
     const { data, error } = await query
 
-    if (error) throw error
+    assertNoError(error, 'Failed to load inventory resources')
 
     return (data ?? []).map((r) => ({
         ...r,
@@ -71,7 +105,7 @@ export async function fetchInventoryById(id: string): Promise<InventoryResource 
         .eq('id', id)
         .single()
 
-    if (error) throw error
+    assertNoError(error, 'Failed to load inventory resource')
     if (!data) return null
 
     return {
@@ -87,16 +121,15 @@ export async function fetchInventoryById(id: string): Promise<InventoryResource 
     } as InventoryResource
 }
 
-// Create
+// Create (resource_id is auto-assigned by DB trigger)
 export async function createInventoryResource(resource: Record<string, unknown>) {
-    const resource_id = await generateResourceId()
     const { data, error } = await supabase
         .from('inventory_resources')
-        .insert({ ...resource, resource_id, status: 'Available', used_capacity: 0 })
+        .insert({ ...resource, status: 'Available', used_capacity: 0 })
         .select()
         .single()
 
-    if (error) throw error
+    assertNoError(error, 'Failed to create inventory resource')
     return data
 }
 
@@ -108,7 +141,7 @@ export async function updateInventoryResource(id: string, updates: Record<string
         .eq('id', id)
         .select()
         .single()
-    if (error) throw error
+    assertNoError(error, 'Failed to update inventory resource')
     return data
 }
 
@@ -119,10 +152,11 @@ export async function checkResourceDeletable(resourceId: string): Promise<{
     activeOrders: string[]
     otherOrders: string[]
 }> {
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('sales_order_items')
         .select('sales_orders!inner(order_id, status)')
         .eq('inventory_resource_id', resourceId)
+    assertNoError(error, 'Failed to check resource deletable state')
 
     const activeOrders: string[] = []
     const otherOrders: string[] = []
@@ -145,7 +179,7 @@ export async function deleteInventoryResource(id: string) {
         .from('inventory_resources')
         .delete()
         .eq('id', id)
-    if (error) throw error
+    assertNoError(error, 'Failed to delete inventory resource')
 }
 
 // ============================================
@@ -158,10 +192,11 @@ export async function checkLinkedSalesOrders(resourceId: string): Promise<{
     allocatedCircuitCount: number
 }> {
     // Linked sales orders
-    const { data: items } = await supabase
+    const { data: items, error: itemsError } = await supabase
         .from('sales_order_items')
         .select('sales_orders!inner(order_id, status, customers(name))')
         .eq('inventory_resource_id', resourceId)
+    assertNoError(itemsError, 'Failed to load linked sales orders')
 
     const seen = new Set<string>()
     const activeOrders: { order_id: string; customer_name: string | null }[] = []
@@ -177,11 +212,12 @@ export async function checkLinkedSalesOrders(resourceId: string): Promise<{
     }
 
     // Allocated circuits
-    const { data: circuits } = await supabase
+    const { data: circuits, error: circuitsError } = await supabase
         .from('inventory_circuits')
         .select('id')
         .eq('inventory_resource_id', resourceId)
         .eq('status', 'Allocated')
+    assertNoError(circuitsError, 'Failed to load allocated circuits')
 
     return { activeOrders, allocatedCircuitCount: circuits?.length ?? 0 }
 }
@@ -195,25 +231,31 @@ export async function terminateInventoryResource(
     const now = new Date().toISOString()
 
     // 1. Release all circuits (set to Available, remove sales_item_circuits links)
-    const { data: circuits } = await supabase
+    const { data: circuits, error: circuitsError } = await supabase
         .from('inventory_circuits')
         .select('id')
         .eq('inventory_resource_id', id)
         .in('status', ['Allocated', 'Reserved'])
+    assertNoError(circuitsError, 'Failed to load resource circuits for termination')
 
     if (circuits && circuits.length > 0) {
         const circuitIds = circuits.map(c => c.id as string)
         // Remove from sales_item_circuits junction
-        await supabase.from('sales_item_circuits').delete().in('inventory_circuit_id', circuitIds)
+        const { error: deleteLinksError } = await supabase
+            .from('sales_item_circuits')
+            .delete()
+            .in('inventory_circuit_id', circuitIds)
+        assertNoError(deleteLinksError, 'Failed to clear circuit allocations during termination')
         // Reset status
-        await supabase
+        const { error: resetCircuitError } = await supabase
             .from('inventory_circuits')
             .update({ status: 'Available', updated_at: now })
             .in('id', circuitIds)
+        assertNoError(resetCircuitError, 'Failed to reset circuits during termination')
     }
 
     // 2. Update resource
-    await supabase
+    const { error: updateError } = await supabase
         .from('inventory_resources')
         .update({
             status: 'Terminated',
@@ -223,6 +265,7 @@ export async function terminateInventoryResource(
             updated_at: now,
         })
         .eq('id', id)
+    assertNoError(updateError, 'Failed to terminate inventory resource')
 }
 
 /** Renew an inventory resource — snapshot old data then update dates/costs */
@@ -236,11 +279,12 @@ export async function renewInventoryResource(
     const now = new Date().toISOString()
 
     // 1. Get current resource data for snapshot
-    const { data: resource } = await supabase
+    const { data: resource, error } = await supabase
         .from('inventory_resources')
         .select('*')
         .eq('id', id)
         .single()
+    assertNoError(error, 'Failed to load inventory resource for renewal')
 
     if (!resource) throw new Error('Resource not found')
 
@@ -280,8 +324,9 @@ export async function renewInventoryResource(
         updates.annual_om_cost = (costs.otc * costs.om_rate) / 100
     }
 
-    await supabase
+    const { error: updateError } = await supabase
         .from('inventory_resources')
         .update(updates)
         .eq('id', id)
+    assertNoError(updateError, 'Failed to renew inventory resource')
 }

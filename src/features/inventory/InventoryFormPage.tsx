@@ -2,7 +2,19 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { createInventoryResource, updateInventoryResource, fetchInventoryById } from './api'
+import {
+    calcBatchTermToBaseEnd,
+    calcEndDateFromTerm,
+    calculateAnnualOm,
+    parsePositiveInt,
+    suggestBatchStatusFromBaseTerm,
+} from '@/lib/contract-utils'
+import {
+    createInventoryResource,
+    updateInventoryResource,
+    fetchInventoryById,
+    fetchCountryIdByName,
+} from './api'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import {
     fetchCableSystems,
@@ -10,8 +22,10 @@ import {
     fetchStationsForCableAndCountry,
     fetchHandoverLocations,
     fetchSuppliers,
+    fetchBatches,
 } from '@/lib/reference-api'
 import type { ResourceType, AcquisitionType, CostMode } from '@/types'
+import { newBatchRow, syncResourceBatches, type BatchRow } from '@/features/inventory/form-batches'
 
 const steps = ['Resource Info', 'Locations', 'Contract & Costs']
 const resourceTypes: ResourceType[] = ['Capacity', 'Terrestrial']
@@ -31,74 +45,6 @@ function specToCapacity(spec: string): string {
     }
     const num = parseFloat(upper)
     return isNaN(num) ? '' : String(num)
-}
-
-// Calculate end date from start + months
-function calcEndDate(start: string, months: string): string {
-    if (!start || !months) return ''
-    const d = new Date(start)
-    const m = parseInt(months, 10)
-    if (isNaN(d.getTime()) || isNaN(m) || m <= 0) return ''
-    d.setMonth(d.getMonth() + m)
-    d.setDate(d.getDate() - 1)
-    return d.toISOString().split('T')[0]
-}
-
-// Calculate batch term: base end date - batch start date (months)
-function calcBatchTerm(baseStart: string, baseTermMonths: string, batchStart: string): number {
-    if (!baseStart || !baseTermMonths || !batchStart) return 0
-    const baseEnd = new Date(baseStart)
-    const bm = parseInt(baseTermMonths, 10)
-    if (isNaN(bm) || bm <= 0) return 0
-    baseEnd.setMonth(baseEnd.getMonth() + bm)
-    baseEnd.setDate(baseEnd.getDate() - 1)
-    const bs = new Date(batchStart)
-    if (isNaN(bs.getTime()) || baseEnd < bs) return 0
-    return (baseEnd.getFullYear() - bs.getFullYear()) * 12 + (baseEnd.getMonth() - bs.getMonth()) + 1
-}
-
-// Auto-suggest batch status based on dates
-function suggestBatchStatus(batchStart: string, baseStart: string, baseTermMonths: string): 'Planned' | 'Active' | 'Ended' {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // Calculate base end date
-    if (baseStart && baseTermMonths) {
-        const baseEnd = new Date(baseStart)
-        const bm = parseInt(baseTermMonths, 10)
-        if (!isNaN(bm) && bm > 0) {
-            baseEnd.setMonth(baseEnd.getMonth() + bm)
-            baseEnd.setDate(baseEnd.getDate() - 1)
-            if (baseEnd < today) return 'Ended'
-        }
-    }
-
-    if (!batchStart) return 'Planned'
-    const bs = new Date(batchStart)
-    if (isNaN(bs.getTime())) return 'Planned'
-    return bs > today ? 'Planned' : 'Active'
-}
-
-// Batch row type for local state
-interface BatchRow {
-    id: string
-    capacity: string
-    model: 'IRU' | 'Lease'
-    start_date: string
-    term_months: string
-    otc: string
-    om_rate: string
-    annual_om_cost: string
-    mrc: string
-    status: 'Planned' | 'Active' | 'Ended'
-}
-
-function newBatchRow(): BatchRow {
-    return {
-        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        capacity: '', model: 'IRU', start_date: '', term_months: '',
-        otc: '', om_rate: '4.0', annual_om_cost: '', mrc: '', status: 'Planned',
-    }
 }
 
 export function InventoryFormPage() {
@@ -162,16 +108,18 @@ export function InventoryFormPage() {
             const next = { ...prev, [key]: value }
             // Auto-calc end date
             if (key === 'start_date' || key === 'term_months') {
-                next.end_date = calcEndDate(
-                    key === 'start_date' ? value : prev.start_date,
-                    key === 'term_months' ? value : prev.term_months,
+                const startDate = key === 'start_date' ? value : prev.start_date
+                const termMonths = key === 'term_months' ? value : prev.term_months
+                next.end_date = calcEndDateFromTerm(
+                    startDate,
+                    parsePositiveInt(termMonths),
                 )
             }
             // Auto-calc annual O&M
             if (key === 'otc' || key === 'om_rate') {
                 const otc = parseFloat(key === 'otc' ? value : prev.otc) || 0
                 const rate = parseFloat(key === 'om_rate' ? value : prev.om_rate) || 0
-                next.annual_om_cost = (otc * rate / 100).toFixed(2)
+                next.annual_om_cost = calculateAnnualOm(otc, rate).toFixed(2)
             }
             // Terrestrial: clear submarine-only fields
             if (key === 'type' && value === 'Terrestrial') {
@@ -189,9 +137,9 @@ export function InventoryFormPage() {
                 prev.map((b) => ({
                     ...b,
                     term_months: b.start_date
-                        ? String(calcBatchTerm(
+                        ? String(calcBatchTermToBaseEnd(
                             key === 'start_date' ? value : form.start_date,
-                            key === 'term_months' ? value : form.term_months,
+                            parsePositiveInt(key === 'term_months' ? value : form.term_months),
                             b.start_date))
                         : '',
                 }))
@@ -206,16 +154,16 @@ export function InventoryFormPage() {
                 const next = { ...b, [key]: value }
                 // Auto-calc batch term when start_date changes
                 if (key === 'start_date') {
-                    const term = calcBatchTerm(form.start_date, form.term_months, value)
+                    const term = calcBatchTermToBaseEnd(form.start_date, parsePositiveInt(form.term_months), value)
                     next.term_months = term > 0 ? String(term) : ''
                     // Auto-suggest status based on dates
-                    next.status = suggestBatchStatus(value, form.start_date, form.term_months)
+                    next.status = suggestBatchStatusFromBaseTerm(value, form.start_date, parsePositiveInt(form.term_months))
                 }
                 // Auto-calc batch O&M
                 if (key === 'otc' || key === 'om_rate') {
                     const otc = parseFloat(key === 'otc' ? value : b.otc) || 0
                     const rate = parseFloat(key === 'om_rate' ? value : b.om_rate) || 0
-                    next.annual_om_cost = (otc * rate / 100).toFixed(2)
+                    next.annual_om_cost = calculateAnnualOm(otc, rate).toFixed(2)
                 }
                 return next
             })
@@ -267,7 +215,6 @@ export function InventoryFormPage() {
                     })
                     // Load batches if batch mode
                     if (res.cost_mode === 'Base+Batch') {
-                        const { fetchBatches } = await import('@/lib/reference-api')
                         const existingBatches = await fetchBatches(editId)
                         setBatches(existingBatches.map((b: Record<string, unknown>) => ({
                             id: b.id as string,
@@ -281,6 +228,8 @@ export function InventoryFormPage() {
                             mrc: b.mrc != null ? String(b.mrc) : '',
                             status: ((b.status as string) ?? 'Planned') as 'Planned' | 'Active' | 'Ended',
                         })))
+                    } else {
+                        setBatches([])
                     }
                 } catch (err) { console.error(err) }
                 finally { setLoadingEdit(false) }
@@ -412,6 +361,7 @@ export function InventoryFormPage() {
 
             if (isEdit && editId) {
                 await updateInventoryResource(editId, payload)
+                await syncResourceBatches(editId, batches, isBatchMode)
                 toast.success('Resource updated')
                 navigate(`/inventory/${editId}`)
             } else {
@@ -419,23 +369,7 @@ export function InventoryFormPage() {
 
                 // If batch mode, create batch records
                 if (isBatchMode && batches.length > 0) {
-                    const { createBatch } = await import('@/lib/reference-api')
-                    for (let i = 0; i < batches.length; i++) {
-                        const b = batches[i]
-                        await createBatch({
-                            inventory_resource_id: created.id,
-                            batch_number: i + 1,
-                            capacity: parseFloat(b.capacity) || 0,
-                            model: b.model,
-                            start_date: b.start_date || undefined,
-                            term_months: b.term_months ? parseInt(b.term_months, 10) : undefined,
-                            otc: b.model === 'IRU' && b.otc ? parseFloat(b.otc) : undefined,
-                            om_rate: b.model === 'IRU' && b.om_rate ? parseFloat(b.om_rate) : undefined,
-                            annual_om_cost: b.model === 'IRU' && b.annual_om_cost ? parseFloat(b.annual_om_cost) : undefined,
-                            mrc: b.model === 'Lease' && b.mrc ? parseFloat(b.mrc) : undefined,
-                            status: b.status,
-                        })
-                    }
+                    await syncResourceBatches(created.id, batches, true)
                 }
 
                 navigate(`/inventory/${created.id}`)
@@ -859,9 +793,11 @@ export function InventoryFormPage() {
 
 // Helper: get country UUID by name
 async function getCountryId(name: string): Promise<string | null> {
-    const { supabase } = await import('@/lib/supabase')
-    const { data } = await supabase.from('countries').select('id').eq('name', name).single()
-    return data?.id ?? null
+    try {
+        return await fetchCountryIdByName(name)
+    } catch {
+        return null
+    }
 }
 
 function FormField({ label, value, onChange, placeholder, type = 'text' }: {

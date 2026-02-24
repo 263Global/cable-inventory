@@ -1,19 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Search, Plus, Trash2, Filter, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { fetchSalesOrders, deleteSalesOrder, syncOrderStatuses } from './api'
 import type { SalesOrder, SalesStatus } from '@/types'
-
-const STATUS_COLORS: Record<SalesStatus, string> = {
-    Draft: 'bg-gray-500/15 text-gray-400',
-    'Pre-sold': 'bg-amber-500/15 text-amber-400',
-    Active: 'bg-emerald-500/15 text-emerald-400',
-    Expired: 'bg-red-500/15 text-red-400',
-    Terminated: 'bg-red-500/15 text-red-400',
-    Cancelled: 'bg-gray-500/15 text-gray-400',
-}
+import { salesStatusBadgeClass } from '@/lib/status-styles'
+import { useClickOutside } from '@/hooks/useClickOutside'
+import { usePersistentColumnVisibility } from '@/hooks/usePersistentColumnVisibility'
 
 const ALL_STATUSES: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
 
@@ -42,7 +36,7 @@ const allColumns: ColumnDef[] = [
     {
         key: 'status', label: 'Status', group: 'Basic', defaultVisible: true,
         render: (item) => (
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status]}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[item.status]}`}>
                 {item.status}
             </span>
         ),
@@ -67,14 +61,7 @@ const allColumns: ColumnDef[] = [
 
 const STORAGE_KEY = 'sales-visible-columns'
 const defaultCols = allColumns.filter((c) => c.defaultVisible).map((c) => c.key)
-
-function loadVisibleCols(): string[] {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) return JSON.parse(stored)
-    } catch { /* ignore */ }
-    return defaultCols
-}
+const allColumnKeys = allColumns.map((column) => column.key)
 
 export function SalesPage() {
     const navigate = useNavigate()
@@ -83,45 +70,18 @@ export function SalesPage() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState<SalesStatus[]>([])
     const [showFilters, setShowFilters] = useState(false)
-    const [visibleCols, setVisibleCols] = useState<string[]>(loadVisibleCols)
     const [showColPicker, setShowColPicker] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<SalesOrder | null>(null)
     const [deleting, setDeleting] = useState(false)
-    const pickerRef = useRef<HTMLDivElement>(null)
-    const filterRef = useRef<HTMLDivElement>(null)
+    const { visibleKeys, toggleKey, reset } = usePersistentColumnVisibility({
+        storageKey: STORAGE_KEY,
+        allKeys: allColumnKeys,
+        defaultKeys: defaultCols,
+    })
+    const pickerRef = useClickOutside<HTMLDivElement>(showColPicker, () => setShowColPicker(false))
+    const filterRef = useClickOutside<HTMLDivElement>(showFilters, () => setShowFilters(false))
 
-    // Close picker on outside click
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowColPicker(false)
-        }
-        if (showColPicker) document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
-    }, [showColPicker])
-
-    // Close filter on outside click
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false)
-        }
-        if (showFilters) document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
-    }, [showFilters])
-
-    const toggleCol = (key: string) => {
-        setVisibleCols((prev) => {
-            const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-            return next
-        })
-    }
-
-    const resetCols = () => {
-        setVisibleCols(defaultCols)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCols))
-    }
-
-    const activeColumns = allColumns.filter((c) => visibleCols.includes(c.key))
+    const activeColumns = allColumns.filter((c) => visibleKeys.includes(c.key))
     const groups = Array.from(new Set(allColumns.map((c) => c.group)))
 
     const load = useCallback(async () => {
@@ -247,7 +207,7 @@ export function SalesPage() {
                         <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-border-subtle rounded-xl shadow-xl z-50 p-3 max-h-96 overflow-y-auto">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Visible Columns</span>
-                                <button onClick={resetCols} className="text-xs text-primary hover:underline cursor-pointer">Reset</button>
+                                <button onClick={reset} className="text-xs text-primary hover:underline cursor-pointer">Reset</button>
                             </div>
                             {groups.map((group) => (
                                 <div key={group} className="mb-3">
@@ -256,8 +216,8 @@ export function SalesPage() {
                                         <label key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-surface-hover cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                checked={visibleCols.includes(col.key)}
-                                                onChange={() => toggleCol(col.key)}
+                                                checked={visibleKeys.includes(col.key)}
+                                                onChange={() => toggleKey(col.key)}
                                                 className="rounded border-border text-primary focus:ring-primary accent-[var(--color-primary)] cursor-pointer"
                                             />
                                             <span className="text-sm">{col.label}</span>
@@ -331,7 +291,7 @@ export function SalesPage() {
                             >
                                 <div className="flex items-center justify-between mb-1.5">
                                     <span className="text-sm font-semibold font-mono text-primary">{order.order_id}</span>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[order.status]}`}>
                                         {order.status}
                                     </span>
                                 </div>
