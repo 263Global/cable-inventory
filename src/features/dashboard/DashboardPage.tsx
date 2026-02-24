@@ -274,30 +274,48 @@ export function DashboardPage() {
                     </div>
                     {resources.length === 0 ? (
                         <p className="text-sm text-text-dim text-center py-6">No resources yet</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {resources.map((r) => {
-                                const pct = r.total_capacity > 0 ? Math.round((r.used_capacity / r.total_capacity) * 100) : 0
-                                return (
-                                    <div key={r.resource_id} className="group cursor-pointer" onClick={() => navigate('/inventory')}>
-                                        <div className="flex items-center justify-between text-sm mb-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`font-mono font-medium ${resourceTypeColors[r.type] ?? 'text-text'}`}>{r.resource_id}</span>
-                                                <span className="text-text-dim text-xs">{r.cable_system_name || r.type}</span>
+                    ) : (() => {
+                        const active = resources
+                            .filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
+                            .sort((a, b) => {
+                                const pctA = a.total_capacity > 0 ? a.used_capacity / a.total_capacity : 0
+                                const pctB = b.total_capacity > 0 ? b.used_capacity / b.total_capacity : 0
+                                return pctB - pctA
+                            })
+                        const top10 = active.slice(0, 10)
+                        return (
+                            <div className="space-y-3">
+                                {top10.map((r) => {
+                                    const pct = r.total_capacity > 0 ? Math.round((r.used_capacity / r.total_capacity) * 100) : 0
+                                    return (
+                                        <div key={r.resource_id} className="group cursor-pointer" onClick={() => navigate('/inventory')}>
+                                            <div className="flex items-center justify-between text-sm mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`font-mono font-medium ${resourceTypeColors[r.type] ?? 'text-text'}`}>{r.resource_id}</span>
+                                                    <span className="text-text-dim text-xs">{r.cable_system_name || r.type}</span>
+                                                </div>
+                                                <span className="text-text-muted text-xs">{r.used_capacity}G / {r.total_capacity}G ({pct}%)</span>
                                             </div>
-                                            <span className="text-text-muted text-xs">{r.used_capacity}G / {r.total_capacity}G ({pct}%)</span>
+                                            <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-status-full' : 'bg-status-partial'}`}
+                                                    style={{ width: `${Math.min(pct, 100)}%` }}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-status-full' : 'bg-status-partial'}`}
-                                                style={{ width: `${Math.min(pct, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
+                                    )
+                                })}
+                                {active.length > 10 && (
+                                    <button
+                                        onClick={() => navigate('/inventory')}
+                                        className="w-full text-center text-xs text-primary hover:text-primary/80 py-2 cursor-pointer transition-colors"
+                                    >
+                                        查看全部 {active.length} 个资源 →
+                                    </button>
+                                )}
+                            </div>
+                        )
+                    })()}
                 </div>
 
                 {/* Sales Pipeline */}
