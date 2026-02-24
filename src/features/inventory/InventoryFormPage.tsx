@@ -320,17 +320,6 @@ export function InventoryFormPage() {
             // Step 1: Resource Info
             if (form.type !== 'Terrestrial' && !form.cable_system_id) errors.push('Cable System is required')
             if (!form.capacity_value || Number(form.capacity_value) <= 0) errors.push('Capacity must be a positive number')
-            if (isBatchMode && batches.length === 0) errors.push('Add at least one batch in Base+Batch mode')
-            if (isBatchMode && batchCapacityExceeded) errors.push('Batch total capacity exceeds base capacity')
-            // Validate each batch row
-            if (isBatchMode) {
-                batches.forEach((b, i) => {
-                    if (!b.capacity || Number(b.capacity) <= 0) errors.push(`Batch ${i + 1}: capacity is required`)
-                    if (!b.start_date) errors.push(`Batch ${i + 1}: start date is required`)
-                    if (b.model === 'IRU' && b.otc && Number(b.otc) < 0) errors.push(`Batch ${i + 1}: OTC cannot be negative`)
-                    if (b.model === 'Lease' && b.mrc && Number(b.mrc) < 0) errors.push(`Batch ${i + 1}: MRC cannot be negative`)
-                })
-            }
         }
 
         if (s === 1) {
@@ -345,6 +334,17 @@ export function InventoryFormPage() {
             if (form.nrc && Number(form.nrc) < 0) errors.push('NRC cannot be negative')
             if (form.start_date && form.end_date && form.start_date > form.end_date) {
                 errors.push('End date cannot be before start date')
+            }
+            // Batch validations (batch UI is in this step)
+            if (isBatchMode && batches.length === 0) errors.push('Add at least one batch in Base+Batch mode')
+            if (isBatchMode && batchCapacityExceeded) errors.push('Batch total capacity exceeds base capacity')
+            if (isBatchMode) {
+                batches.forEach((b, i) => {
+                    if (!b.capacity || Number(b.capacity) <= 0) errors.push(`Batch ${i + 1}: capacity is required`)
+                    if (!b.start_date) errors.push(`Batch ${i + 1}: start date is required`)
+                    if (b.model === 'IRU' && b.otc && Number(b.otc) < 0) errors.push(`Batch ${i + 1}: OTC cannot be negative`)
+                    if (b.model === 'Lease' && b.mrc && Number(b.mrc) < 0) errors.push(`Batch ${i + 1}: MRC cannot be negative`)
+                })
             }
         }
 
