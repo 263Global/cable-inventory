@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react
 import { Database, Search, Plus, Pencil, Trash2, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchAll, insertRecord, updateRecord, deleteRecord } from '@/lib/api'
 import { matchesReferenceSearch } from '@/features/reference-data/search'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export interface ReferenceColumn<T> {
     key: keyof T | string
@@ -44,6 +45,8 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
     const [formData, setFormData] = useState<Record<string, string | number>>({})
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     const loadData = useCallback(async () => {
         try {
@@ -110,13 +113,17 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
         }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Delete this record?')) return
+    const handleDeleteConfirm = async () => {
+        if (!pendingDeleteId) return
+        setDeleting(true)
         try {
-            await deleteRecord(table, id)
+            await deleteRecord(table, pendingDeleteId)
+            setPendingDeleteId(null)
             loadData()
         } catch (deleteError) {
             console.error('Failed to delete:', deleteError)
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -170,7 +177,7 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1">
                                             <button onClick={() => openEdit(item)} className="p-1.5 rounded-md hover:bg-surface-hover text-text-dim hover:text-text transition-colors cursor-pointer" title="Edit"><Pencil className="h-4 w-4" /></button>
-                                            <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                                            <button onClick={() => setPendingDeleteId(item.id)} className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer" title="Delete"><Trash2 className="h-4 w-4" /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -244,6 +251,17 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="Delete this record?"
+                message="This will permanently delete this record. This action cannot be undone."
+                confirmLabel="Delete"
+                variant="danger"
+                loading={deleting}
+                onCancel={() => setPendingDeleteId(null)}
+                onConfirm={handleDeleteConfirm}
+            />
         </div>
     )
 }

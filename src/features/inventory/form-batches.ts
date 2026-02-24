@@ -3,6 +3,7 @@ import {
     createBatch,
     updateBatch,
     deleteBatch,
+    type BatchUpdatePayload,
 } from '@/lib/reference-api'
 
 export interface BatchRow {
@@ -18,7 +19,7 @@ export interface BatchRow {
     status: 'Planned' | 'Active' | 'Ended'
 }
 
-interface BatchWritePayload {
+interface BatchWritePayload extends BatchUpdatePayload {
     batch_number: number
     capacity: number
     model: 'IRU' | 'Lease'
@@ -70,7 +71,7 @@ export async function syncResourceBatches(
     draftBatches: BatchRow[],
     isBatchMode: boolean,
 ): Promise<void> {
-    const existing = (await fetchBatches(resourceId)) as Array<{ id: string }>
+    const existing = await fetchBatches(resourceId)
 
     if (!isBatchMode) {
         await Promise.all(existing.map((batch) => deleteBatch(batch.id)))
@@ -108,7 +109,7 @@ export async function syncResourceBatches(
                 status: payload.status,
             })
         } else {
-            await updateBatch(draft.id, payload as unknown as Record<string, unknown>)
+            await updateBatch(draft.id, payload)
         }
     }
 }

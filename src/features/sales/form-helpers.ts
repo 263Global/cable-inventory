@@ -1,4 +1,5 @@
 import type { DisposalType, SalesItemType, SalesOrderItem, SalesStatus } from '@/types'
+import type { OrderItemWritePayload } from '@/features/sales/api/items'
 
 export interface ItemDraft {
     ui_id: string
@@ -22,23 +23,8 @@ export interface ItemDraft {
     existingCircuitIds: string[]
 }
 
-export interface ItemPayload extends Record<string, unknown> {
+export interface ItemPayload extends OrderItemWritePayload {
     sales_order_id: string
-    type: string
-    inventory_resource_id?: string
-    description?: string
-    disposal_type?: string
-    capacity?: number
-    spec?: string
-    start_date?: string
-    end_date?: string
-    term_months?: number
-    sell_otc?: number
-    sell_mrc?: number
-    sell_nrc?: number
-    sell_om_rate?: number
-    sell_annual_om?: number
-    status?: string
 }
 
 export function createDraftId(seed?: string): string {

@@ -1,6 +1,29 @@
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 
+type MaybeRelation<T> = T | T[] | null
+
+interface CircuitAllocationLink {
+    sales_order_item_id: string
+    sales_order_items: MaybeRelation<{ sales_orders: MaybeRelation<{ status: string }> }>
+}
+
+interface CircuitCapacityRow {
+    id: string
+    capacity: number | null
+    sales_item_circuits: MaybeRelation<CircuitAllocationLink>
+}
+
+interface LegacyItemRow {
+    id: string
+    capacity: number | null
+}
+
+function pickRelation<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
+
 /** Recalculate used_capacity on an inventory_resource from allocated circuits + legacy items */
 export async function recalcInventoryCapacity(inventoryResourceId: string): Promise<void> {
     const { data: circuits, error: circuitsError } = await supabase
@@ -11,14 +34,17 @@ export async function recalcInventoryCapacity(inventoryResourceId: string): Prom
 
     let usedCapacity = 0
     const itemsWithCircuits = new Set<string>()
-    for (const circuit of (circuits ?? []) as Record<string, unknown>[]) {
-        const links = circuit.sales_item_circuits as { sales_order_item_id: string; sales_order_items: { sales_orders: { status: string } } }[] | undefined
-        if (links && links.length > 0) {
-            const orderStatus = links[0]?.sales_order_items?.sales_orders?.status
+    const circuitRows = (circuits ?? []) as CircuitCapacityRow[]
+    for (const circuit of circuitRows) {
+        const link = pickRelation(circuit.sales_item_circuits)
+        if (link) {
+            const salesItem = pickRelation(link.sales_order_items)
+            const salesOrder = pickRelation(salesItem?.sales_orders)
+            const orderStatus = salesOrder?.status
             if (orderStatus === 'Pre-sold' || orderStatus === 'Active') {
                 usedCapacity += Number(circuit.capacity) || 0
             }
-            itemsWithCircuits.add(links[0].sales_order_item_id)
+            itemsWithCircuits.add(link.sales_order_item_id)
         }
     }
 
@@ -29,8 +55,9 @@ export async function recalcInventoryCapacity(inventoryResourceId: string): Prom
         .in('sales_orders.status', ['Pre-sold', 'Active'])
     assertNoError(legacyItemsError, 'Failed to load legacy sales items for capacity recalculation')
 
-    for (const item of (legacyItems ?? []) as Record<string, unknown>[]) {
-        if (!itemsWithCircuits.has(item.id as string)) {
+    const legacyRows = (legacyItems ?? []) as LegacyItemRow[]
+    for (const item of legacyRows) {
+        if (!itemsWithCircuits.has(item.id)) {
             usedCapacity += Number(item.capacity) || 0
         }
     }

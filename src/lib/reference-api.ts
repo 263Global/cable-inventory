@@ -1,5 +1,18 @@
 import { supabase } from '@/lib/supabase'
 import { fetchAllPaginated } from '@/lib/api'
+import type {
+    InventoryBatch,
+    InventoryBatchModel,
+    InventoryBatchStatus,
+    InventoryCircuit,
+} from '@/types'
+
+type MaybeRelation<T> = T | T[] | null
+
+function pickRelation<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
 
 /**
  * Cascading reference data queries for the inventory form.
@@ -20,7 +33,7 @@ export async function fetchCableSystems() {
 // Fetch countries that a cable system passes through
 export async function fetchCountriesForCable(cableSystemId: string) {
     const PAGE = 1000
-    const all: { landing_stations: { country: string } | null }[] = []
+    const all: { landing_stations: MaybeRelation<{ country: string }> }[] = []
     let from = 0
 
     while (true) {
@@ -31,7 +44,7 @@ export async function fetchCountriesForCable(cableSystemId: string) {
             .range(from, from + PAGE - 1)
 
         if (error) throw error
-        const rows = (data ?? []) as unknown as typeof all
+        const rows = (data ?? []) as typeof all
         all.push(...rows)
         if (rows.length < PAGE) break
         from += PAGE
@@ -40,8 +53,8 @@ export async function fetchCountriesForCable(cableSystemId: string) {
     // Extract unique countries
     const countrySet = new Set<string>()
     for (const row of all) {
-        const ls = row.landing_stations as { country: string } | null
-        if (ls?.country) countrySet.add(ls.country)
+        const landingStation = pickRelation(row.landing_stations)
+        if (landingStation?.country) countrySet.add(landingStation.country)
     }
     return [...countrySet].sort()
 }
@@ -52,7 +65,10 @@ export async function fetchStationsForCableAndCountry(
     country: string
 ) {
     const PAGE = 1000
-    type JunctionRow = { landing_station_id: string; landing_stations: { id: string; name: string; country: string } | null }
+    interface JunctionRow {
+        landing_station_id: string
+        landing_stations: MaybeRelation<{ id: string; name: string; country: string }>
+    }
     const all: JunctionRow[] = []
     let from = 0
 
@@ -64,7 +80,7 @@ export async function fetchStationsForCableAndCountry(
             .range(from, from + PAGE - 1)
 
         if (error) throw error
-        const rows = (data ?? []) as unknown as JunctionRow[]
+        const rows = (data ?? []) as JunctionRow[]
         all.push(...rows)
         if (rows.length < PAGE) break
         from += PAGE
@@ -72,7 +88,7 @@ export async function fetchStationsForCableAndCountry(
 
     // Filter by country
     return all
-        .map((j) => j.landing_stations)
+        .map((junction) => pickRelation(junction.landing_stations))
         .filter((s): s is { id: string; name: string; country: string } =>
             s !== null && s.country === country
         )
@@ -144,27 +160,47 @@ export async function fetchCircuits(inventoryResourceId: string) {
         .eq('inventory_resource_id', inventoryResourceId)
         .order('circuit_number')
     if (error) throw error
-    return data ?? []
+    return (data ?? []) as InventoryCircuit[]
 }
 
-export async function createCircuit(circuit: {
+export interface CircuitCreatePayload {
     inventory_resource_id: string
     circuit_number: number
     capacity: number
     original_interface_type_id: string
     current_interface_type_id: string
+    handover_location_a_id?: string | null
+    handover_location_z_id?: string | null
+    batch_id?: string
+    status?: 'Available' | 'Allocated' | 'Reserved' | 'Planned'
     notes?: string
-}) {
+}
+
+export type CircuitUpdatePayload = Partial<
+    Pick<
+        InventoryCircuit,
+        | 'capacity'
+        | 'current_interface_type_id'
+        | 'original_interface_type_id'
+        | 'handover_location_a_id'
+        | 'handover_location_z_id'
+        | 'batch_id'
+        | 'status'
+        | 'notes'
+    >
+>
+
+export async function createCircuit(circuit: CircuitCreatePayload) {
     const { data, error } = await supabase
         .from('inventory_circuits')
         .insert(circuit)
         .select()
         .single()
     if (error) throw error
-    return data
+    return data as InventoryCircuit
 }
 
-export async function updateCircuit(id: string, updates: Record<string, unknown>) {
+export async function updateCircuit(id: string, updates: CircuitUpdatePayload) {
     const { data, error } = await supabase
         .from('inventory_circuits')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -172,7 +208,7 @@ export async function updateCircuit(id: string, updates: Record<string, unknown>
         .select()
         .single()
     if (error) throw error
-    return data
+    return data as InventoryCircuit
 }
 
 export async function deleteCircuit(id: string) {
@@ -217,32 +253,50 @@ export async function fetchBatches(inventoryResourceId: string) {
         .eq('inventory_resource_id', inventoryResourceId)
         .order('batch_number')
     if (error) throw error
-    return data ?? []
+    return (data ?? []) as InventoryBatch[]
 }
 
-export async function createBatch(batch: {
+export interface BatchCreatePayload {
     inventory_resource_id: string
     batch_number: number
     capacity: number
-    model: string
+    model: InventoryBatchModel
     start_date?: string
     term_months?: number
     otc?: number
     om_rate?: number
     annual_om_cost?: number
     mrc?: number
-    status?: string
-}) {
+    status?: InventoryBatchStatus
+}
+
+export type BatchUpdatePayload = Partial<
+    Pick<
+        InventoryBatch,
+        | 'batch_number'
+        | 'capacity'
+        | 'model'
+        | 'start_date'
+        | 'term_months'
+        | 'otc'
+        | 'om_rate'
+        | 'annual_om_cost'
+        | 'mrc'
+        | 'status'
+    >
+>
+
+export async function createBatch(batch: BatchCreatePayload) {
     const { data, error } = await supabase
         .from('inventory_batches')
         .insert(batch)
         .select()
         .single()
     if (error) throw error
-    return data
+    return data as InventoryBatch
 }
 
-export async function updateBatch(id: string, updates: Record<string, unknown>) {
+export async function updateBatch(id: string, updates: BatchUpdatePayload) {
     const { data, error } = await supabase
         .from('inventory_batches')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -250,7 +304,7 @@ export async function updateBatch(id: string, updates: Record<string, unknown>) 
         .select()
         .single()
     if (error) throw error
-    return data
+    return data as InventoryBatch
 }
 
 export async function deleteBatch(id: string) {

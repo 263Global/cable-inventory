@@ -2,24 +2,37 @@ import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 import type { SalesItemCircuit } from '@/types'
 
-type SalesItemCircuitRow = Record<string, unknown>
+type MaybeRelation<T> = T | T[] | null
 
-function mapSalesItemCircuitRow(row: SalesItemCircuitRow): SalesItemCircuit {
-    const c = row.inventory_circuits as {
+interface SalesItemCircuitRow {
+    id: string
+    sales_order_item_id: string
+    inventory_circuit_id: string
+    inventory_circuits: MaybeRelation<{
         circuit_number: number
         capacity: number
         status: string
-        current_type: { name: string } | null
-    } | null
+        current_type: MaybeRelation<{ name: string }>
+    }>
+}
+
+function pickRelation<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
+
+function mapSalesItemCircuitRow(row: SalesItemCircuitRow): SalesItemCircuit {
+    const circuit = pickRelation(row.inventory_circuits)
+    const currentType = pickRelation(circuit?.current_type)
 
     return {
-        id: row.id as string,
-        sales_order_item_id: row.sales_order_item_id as string,
-        inventory_circuit_id: row.inventory_circuit_id as string,
-        circuit_number: c?.circuit_number,
-        capacity: c?.capacity,
-        interface_type_name: c?.current_type?.name ?? undefined,
-        status: c?.status,
+        id: row.id,
+        sales_order_item_id: row.sales_order_item_id,
+        inventory_circuit_id: row.inventory_circuit_id,
+        circuit_number: circuit?.circuit_number,
+        capacity: circuit?.capacity,
+        interface_type_name: currentType?.name ?? undefined,
+        status: circuit?.status,
     }
 }
 
@@ -36,8 +49,9 @@ export async function fetchAllocatedCircuitsMap(
 
     assertNoError(error, 'Failed to load allocated circuits')
 
-    for (const row of (data ?? []) as SalesItemCircuitRow[]) {
-        const key = row.sales_order_item_id as string
+    const rows = (data ?? []) as SalesItemCircuitRow[]
+    for (const row of rows) {
+        const key = row.sales_order_item_id
         const arr = mapped.get(key)
         const mappedRow = mapSalesItemCircuitRow(row)
         if (arr) {

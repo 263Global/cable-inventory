@@ -3,6 +3,13 @@ import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 import { recalcForOrder } from './capacity'
 import { syncCircuitStatuses } from './circuits'
+import type { SalesOrderItem, SalesRenewalSnapshot, SalesStatus } from '@/types'
+
+interface SalesOrderRenewalRow {
+    status: SalesStatus
+    renewal_history: SalesRenewalSnapshot[] | null
+    sales_order_items: SalesOrderItem[] | null
+}
 
 /** Cancel a Pre-sold order → Cancelled */
 export async function cancelSalesOrder(
@@ -63,7 +70,9 @@ export async function terminateSalesOrder(
     assertNoError(linksError, 'Failed to load circuit links for termination')
 
     if (links && links.length > 0) {
-        const circuitIds = links.map((link) => link.inventory_circuit_id as string)
+        const circuitIds = links
+            .map((link) => link.inventory_circuit_id)
+            .filter((circuitId): circuitId is string => typeof circuitId === 'string')
         const { error: deleteError } = await supabase
             .from('sales_item_circuits')
             .delete()
@@ -122,11 +131,12 @@ export async function renewSalesOrder(
     assertNoError(orderLoadError, 'Failed to load sales order for renewal')
 
     if (!order) throw new Error('Order not found')
+    const orderRow = order as SalesOrderRenewalRow
 
-    const snapshot = {
+    const snapshot: SalesRenewalSnapshot = {
         renewed_at: now,
-        old_status: order.status,
-        items: (order.sales_order_items as Record<string, unknown>[]).map((item) => ({
+        old_status: orderRow.status,
+        items: (orderRow.sales_order_items ?? []).map((item) => ({
             item_id: item.id,
             old_start_date: item.start_date,
             old_end_date: item.end_date,
@@ -136,7 +146,7 @@ export async function renewSalesOrder(
         })),
     }
 
-    const history = Array.isArray(order.renewal_history) ? order.renewal_history : []
+    const history = Array.isArray(orderRow.renewal_history) ? orderRow.renewal_history : []
     history.push(snapshot)
 
     for (const renewal of renewals) {

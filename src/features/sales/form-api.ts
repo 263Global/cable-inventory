@@ -31,6 +31,45 @@ export interface AvailableCircuit {
     handover_z: string | null
 }
 
+interface ResourceJoinName {
+    name: string
+}
+
+type JoinNameValue = ResourceJoinName | ResourceJoinName[] | null
+
+interface RawSalesFormResourceRow {
+    id: string
+    resource_id: string
+    type: string
+    spec: string | null
+    total_capacity: number | null
+    used_capacity: number | null
+    route_description: string | null
+    cable_system: JoinNameValue
+    landing_station_a: JoinNameValue
+    landing_station_z: JoinNameValue
+    handover_a: JoinNameValue
+    handover_z: JoinNameValue
+}
+
+interface RawCircuitRow {
+    id: string
+    circuit_number: number
+    capacity: number
+    status: string
+    current_type: JoinNameValue
+    handover_a: JoinNameValue
+    handover_z: JoinNameValue
+}
+
+function getJoinName(value: JoinNameValue): string | null {
+    if (!value) return null
+    if (Array.isArray(value)) {
+        return value[0]?.name ?? null
+    }
+    return value.name ?? null
+}
+
 export async function fetchSalesFormReferences(): Promise<{
     customers: SalesFormCustomer[]
     resources: SalesFormResource[]
@@ -52,7 +91,7 @@ export async function fetchSalesFormReferences(): Promise<{
 
     return {
         customers: (custs ?? []) as SalesFormCustomer[],
-        resources: (res ?? []).map((resource: Record<string, unknown>) => ({
+        resources: ((res ?? []) as RawSalesFormResourceRow[]).map((resource) => ({
             id: resource.id as string,
             resource_id: resource.resource_id as string,
             type: resource.type as string,
@@ -60,11 +99,11 @@ export async function fetchSalesFormReferences(): Promise<{
             total_capacity: resource.total_capacity as number | null,
             used_capacity: resource.used_capacity as number | null,
             route_description: resource.route_description as string | null,
-            cable_system_name: (resource.cable_system as { name: string } | null)?.name ?? null,
-            landing_a_name: (resource.landing_station_a as { name: string } | null)?.name ?? null,
-            landing_z_name: (resource.landing_station_z as { name: string } | null)?.name ?? null,
-            handover_a_name: (resource.handover_a as { name: string } | null)?.name ?? null,
-            handover_z_name: (resource.handover_z as { name: string } | null)?.name ?? null,
+            cable_system_name: getJoinName(resource.cable_system),
+            landing_a_name: getJoinName(resource.landing_station_a),
+            landing_z_name: getJoinName(resource.landing_station_z),
+            handover_a_name: getJoinName(resource.handover_a),
+            handover_z_name: getJoinName(resource.handover_z),
         })) as SalesFormResource[],
     }
 }
@@ -81,13 +120,13 @@ export async function fetchAvailableCircuitsForResource(resourceId: string): Pro
 
     assertNoError(error, 'Failed to load circuits')
 
-    return (data ?? []).map((circuit: Record<string, unknown>) => ({
+    return ((data ?? []) as RawCircuitRow[]).map((circuit) => ({
         id: circuit.id as string,
         circuit_number: circuit.circuit_number as number,
         capacity: circuit.capacity as number,
-        interface_type: (circuit.current_type as { name: string } | null)?.name ?? '—',
+        interface_type: getJoinName(circuit.current_type) ?? '—',
         status: circuit.status as string,
-        handover_a: (circuit.handover_a as { name: string } | null)?.name ?? null,
-        handover_z: (circuit.handover_z as { name: string } | null)?.name ?? null,
+        handover_a: getJoinName(circuit.handover_a),
+        handover_z: getJoinName(circuit.handover_z),
     }))
 }

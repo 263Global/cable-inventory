@@ -5,6 +5,43 @@ import { recalcInventoryCapacity } from './capacity'
 import { deallocateCircuits } from './circuits'
 import { fetchAllocatedCircuitsMap } from './shared'
 
+type MaybeRelation<T> = T | T[] | null
+
+interface SalesOrderItemResourceRow extends Omit<SalesOrderItem, 'resource_id' | 'cable_system_name' | 'allocated_circuits'> {
+    inventory_resources: MaybeRelation<{
+        resource_id: string
+        cable_system_id: string | null
+        cable_system: MaybeRelation<{ name: string }>
+    }>
+}
+
+interface SalesOrderItemLinkRow {
+    inventory_resource_id: string | null
+}
+
+export interface OrderItemWritePayload {
+    type: string
+    inventory_resource_id?: string
+    description?: string
+    disposal_type?: string | null
+    capacity?: number
+    spec?: string
+    start_date?: string
+    end_date?: string
+    term_months?: number
+    sell_otc?: number
+    sell_mrc?: number
+    sell_nrc?: number
+    sell_om_rate?: number
+    sell_annual_om?: number
+    status?: string
+}
+
+function pickRelation<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
+
 export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderItem[]> {
     const { data, error } = await supabase
         .from('sales_order_items')
@@ -13,14 +50,16 @@ export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderI
         .order('created_at', { ascending: true })
 
     assertNoError(error, 'Failed to load sales order items')
-    const items = (data ?? []).map((row: Record<string, unknown>) => {
-        const inv = row.inventory_resources as { resource_id: string; cable_system_id: string | null; cable_system: { name: string } | null } | null
+    const rows = (data ?? []) as SalesOrderItemResourceRow[]
+    const items: SalesOrderItem[] = rows.map((row) => {
+        const inventory = pickRelation(row.inventory_resources)
+        const cableSystem = pickRelation(inventory?.cable_system)
         return {
             ...row,
-            resource_id: inv?.resource_id ?? null,
-            cable_system_name: inv?.cable_system?.name ?? null,
+            resource_id: inventory?.resource_id ?? undefined,
+            cable_system_name: cableSystem?.name ?? undefined,
         }
-    }) as SalesOrderItem[]
+    })
 
     const itemIds = items.map((item) => item.id)
     const circuitMap = await fetchAllocatedCircuitsMap(itemIds)
@@ -33,22 +72,7 @@ export async function fetchOrderItems(salesOrderId: string): Promise<SalesOrderI
 
 export async function createOrderItem(payload: {
     sales_order_id: string
-    type: string
-    inventory_resource_id?: string
-    description?: string
-    disposal_type?: string
-    capacity?: number
-    spec?: string
-    start_date?: string
-    end_date?: string
-    term_months?: number
-    sell_otc?: number
-    sell_mrc?: number
-    sell_nrc?: number
-    sell_om_rate?: number
-    sell_annual_om?: number
-    status?: string
-}): Promise<SalesOrderItem> {
+} & OrderItemWritePayload): Promise<SalesOrderItem> {
     const { data, error } = await supabase
         .from('sales_order_items')
         .insert(payload)
@@ -59,7 +83,7 @@ export async function createOrderItem(payload: {
     return data as SalesOrderItem
 }
 
-export async function updateOrderItem(id: string, payload: Record<string, unknown>): Promise<void> {
+export async function updateOrderItem(id: string, payload: OrderItemWritePayload): Promise<void> {
     const { error } = await supabase
         .from('sales_order_items')
         .update({ ...payload, updated_at: new Date().toISOString() })
@@ -84,7 +108,8 @@ export async function deleteOrderItem(id: string): Promise<void> {
         .eq('id', id)
     assertNoError(error, 'Failed to delete sales order item')
 
-    if (item?.inventory_resource_id) {
-        await recalcInventoryCapacity(item.inventory_resource_id as string)
+    const linkedItem = item as SalesOrderItemLinkRow | null
+    if (linkedItem?.inventory_resource_id) {
+        await recalcInventoryCapacity(linkedItem.inventory_resource_id)
     }
 }
