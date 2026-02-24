@@ -424,3 +424,139 @@ export async function deleteOrderItem(id: string): Promise<void> {
         await recalcInventoryCapacity(item.inventory_resource_id as string)
     }
 }
+
+// ============================================
+// Terminate / Cancel / Renew
+// ============================================
+
+/** Cancel a Pre-sold order → Cancelled */
+export async function cancelSalesOrder(
+    id: string,
+    reason: string,
+): Promise<void> {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+        .from('sales_orders')
+        .update({
+            status: 'Cancelled',
+            terminated_at: new Date().toISOString().split('T')[0],
+            termination_reason: reason || null,
+            updated_at: now,
+        })
+        .eq('id', id)
+    if (error) throw error
+
+    // Update all items to Cancelled
+    await supabase
+        .from('sales_order_items')
+        .update({ status: 'Cancelled', updated_at: now })
+        .eq('sales_order_id', id)
+
+    // Release circuits and recalc capacity
+    await syncCircuitStatuses(id, 'Cancelled')
+    await recalcForOrder(id)
+}
+
+/** Terminate an Active order → Terminated */
+export async function terminateSalesOrder(
+    id: string,
+    terminatedAt: string,
+    reason: string,
+): Promise<void> {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+        .from('sales_orders')
+        .update({
+            status: 'Terminated',
+            terminated_at: terminatedAt,
+            termination_reason: reason || null,
+            updated_at: now,
+        })
+        .eq('id', id)
+    if (error) throw error
+
+    // Update all items to Terminated
+    await supabase
+        .from('sales_order_items')
+        .update({ status: 'Terminated', updated_at: now })
+        .eq('sales_order_id', id)
+
+    // Release circuits and recalc capacity
+    await syncCircuitStatuses(id, 'Terminated')
+    await recalcForOrder(id)
+}
+
+/** Renew a sales order — only Lease Out / Swap Out items get renewed */
+export async function renewSalesOrder(
+    id: string,
+    renewals: {
+        itemId: string
+        startDate: string
+        termMonths: number
+        endDate: string
+        mrc: number | null
+        nrc: number | null
+    }[],
+): Promise<void> {
+    const now = new Date().toISOString()
+
+    // 1. Fetch current order for snapshot
+    const { data: order } = await supabase
+        .from('sales_orders')
+        .select('*, sales_order_items(*)')
+        .eq('id', id)
+        .single()
+
+    if (!order) throw new Error('Order not found')
+
+    // 2. Build snapshot of old contract
+    const snapshot = {
+        renewed_at: now,
+        old_status: order.status,
+        items: (order.sales_order_items as Record<string, unknown>[]).map((item) => ({
+            item_id: item.id,
+            old_start_date: item.start_date,
+            old_end_date: item.end_date,
+            old_term_months: item.term_months,
+            old_mrc: item.sell_mrc,
+            old_nrc: item.sell_nrc,
+        })),
+    }
+
+    // 3. Append to renewal_history
+    const history = Array.isArray(order.renewal_history) ? order.renewal_history : []
+    history.push(snapshot)
+
+    // 4. Update each renewed item
+    for (const r of renewals) {
+        await supabase
+            .from('sales_order_items')
+            .update({
+                start_date: r.startDate,
+                end_date: r.endDate,
+                term_months: r.termMonths,
+                sell_mrc: r.mrc,
+                sell_nrc: r.nrc,
+                status: new Date(r.startDate) <= new Date() ? 'Active' : 'Pre-sold',
+                updated_at: now,
+            })
+            .eq('id', r.itemId)
+    }
+
+    // 5. Determine new order status from items
+    const today = new Date()
+    const hasActive = renewals.some(r => new Date(r.startDate) <= today && new Date(r.endDate) >= today)
+    const newStatus = hasActive ? 'Active' : 'Pre-sold'
+
+    // 6. Update order
+    await supabase
+        .from('sales_orders')
+        .update({
+            status: newStatus,
+            renewal_history: history,
+            terminated_at: null,
+            termination_reason: null,
+            updated_at: now,
+        })
+        .eq('id', id)
+}

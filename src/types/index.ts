@@ -117,6 +117,11 @@ export interface InventoryResource {
     total_capacity: number | null
     used_capacity: number | null
 
+    // Termination & Renewal
+    terminated_at: string | null
+    termination_reason: string | null
+    renewal_history: RenewalSnapshot[] | null
+
     created_at: string
     updated_at: string
 }
@@ -147,6 +152,17 @@ export type DisposalType = 'IRU Out' | 'Lease Out' | 'Swap Out' | 'Self Use'
 export type SalesStatus = 'Draft' | 'Pre-sold' | 'Active' | 'Expired' | 'Terminated' | 'Cancelled'
 export type SalesItemType = 'Capacity' | 'Backhaul' | 'Cross-Connect' | 'NRC' | 'Other'
 
+export interface RenewalSnapshot {
+    renewed_at: string
+    old_start_date: string | null
+    old_end_date: string | null
+    old_term_months: number | null
+    old_mrc: number | null
+    old_nrc: number | null
+    old_status: string
+    notes?: string
+}
+
 export interface SalesOrder {
     id: string
     order_id: string          // SO-XXXXX
@@ -155,6 +171,9 @@ export interface SalesOrder {
     customer_name?: string    // joined
     status: SalesStatus
     notes: string | null
+    terminated_at: string | null
+    termination_reason: string | null
+    renewal_history: RenewalSnapshot[] | null
     created_at: string
     updated_at: string
 }
