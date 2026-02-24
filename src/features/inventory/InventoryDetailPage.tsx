@@ -704,6 +704,13 @@ export function InventoryDetailPage() {
                                         <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-available" />
                                         <span className="text-text-muted">Available:</span>
                                         <span className="font-medium">{capAvailable}G</span>
+                                        {(() => {
+                                            const provisionedCap = circuits.reduce((s, c) => s + c.capacity, 0)
+                                            if (provisionedCap < capAvailable + capUsedByCircuits) {
+                                                return <span className="text-text-dim">({circuits.length} circuit{circuits.length !== 1 ? 's' : ''}, {provisionedCap}G provisioned)</span>
+                                            }
+                                            return null
+                                        })()}
                                     </div>
                                     <div className="flex items-center gap-1.5">
                                         <span className="inline-block w-2.5 h-2.5 rounded-full bg-info/40" />
