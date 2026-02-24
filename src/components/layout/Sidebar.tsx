@@ -12,12 +12,12 @@ import {
 } from 'lucide-react'
 
 const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/inventory', label: 'Inventory', icon: Package },
     { path: '/sales', label: 'Sales', icon: FileText },
     { path: '/customers', label: 'Customers', icon: Users },
     { path: '/suppliers', label: 'Suppliers', icon: Building2 },
     { path: '/reference-data', label: 'Reference Data', icon: Database },
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ]
 
 export function Sidebar() {
@@ -42,8 +42,8 @@ export function Sidebar() {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-text-muted hover:text-text hover:bg-surface-hover'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-text-muted hover:text-text hover:bg-surface-hover'
                                 }`}
                         >
                             <Icon className="h-5 w-5 shrink-0" />

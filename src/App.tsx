@@ -46,8 +46,8 @@ function ProtectedRoutes() {
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/reference-data" element={<ReferenceDataPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/" element={<Navigate to="/inventory" replace />} />
-        <Route path="*" element={<Navigate to="/inventory" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   )
