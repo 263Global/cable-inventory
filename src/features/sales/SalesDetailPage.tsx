@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Pencil, Trash2, FileText, Package, ExternalLink, Loader2,
-    Ban, XCircle, RefreshCw, History, AlertTriangle,
+    Ban, XCircle, RefreshCw, History, AlertTriangle, Unlock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -35,6 +35,7 @@ export function SalesDetailPage() {
     const [terminateOpen, setTerminateOpen] = useState(false)
     const [cancelOpen, setCancelOpen] = useState(false)
     const [renewOpen, setRenewOpen] = useState(false)
+    const [releaseOpen, setReleaseOpen] = useState(false)
 
     // Terminate / Cancel form
     const [terminateDate, setTerminateDate] = useState(new Date().toISOString().split('T')[0])
@@ -148,6 +149,39 @@ export function SalesDetailPage() {
         }
     }
 
+    // ─── Release (Expired → release resources, simpler flow) ───
+    const [releaseItems, setReleaseItems] = useState<{ itemId: string; label: string; selected: boolean }[]>([])
+
+    const openReleaseModal = () => {
+        const releasable = items.filter(i => i.status !== 'Terminated' && i.status !== 'Cancelled')
+        setReleaseItems(releasable.map(i => ({
+            itemId: i.id,
+            label: `${i.type}${i.resource_id ? ` (${i.resource_id})` : i.description ? ` — ${i.description}` : ''}`,
+            selected: true,
+        })))
+        setReleaseOpen(true)
+    }
+
+    const handleRelease = async () => {
+        if (!id) return
+        setActionLoading(true)
+        try {
+            await terminateSalesOrder(id, new Date().toISOString().split('T')[0], '合同到期释放', releaseItems.map(r => ({
+                itemId: r.itemId,
+                selected: r.selected,
+                terminationFee: 0,
+            })))
+            toast.success('资源已释放')
+            setReleaseOpen(false)
+            load()
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to release')
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
     // ─── Renew helpers ───
     const renewableItems = useMemo(() =>
         items.filter(i =>
@@ -255,13 +289,22 @@ export function SalesDetailPage() {
                             <XCircle className="h-4 w-4" /> Cancel
                         </button>
                     )}
-                    {/* Terminate — Active or Expired */}
-                    {(order.status === 'Active' || order.status === 'Expired') && (
+                    {/* Terminate — Active only */}
+                    {order.status === 'Active' && (
                         <button
                             onClick={openTerminateModal}
                             className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
                         >
                             <Ban className="h-4 w-4" /> Terminate
+                        </button>
+                    )}
+                    {/* Release — Expired only */}
+                    {order.status === 'Expired' && (
+                        <button
+                            onClick={openReleaseModal}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                        >
+                            <Unlock className="h-4 w-4" /> Release
                         </button>
                     )}
                     {/* Renew — Active/Expired + has Lease Out or Swap Out items */}
@@ -302,8 +345,8 @@ export function SalesDetailPage() {
                                 续约 Renew
                             </button>
                         )}
-                        <button onClick={openTerminateModal} className="px-3 py-1.5 text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors cursor-pointer">
-                            终止 Terminate
+                        <button onClick={openReleaseModal} className="px-3 py-1.5 text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors cursor-pointer">
+                            释放资源 Release
                         </button>
                     </div>
                 </div>
@@ -640,6 +683,43 @@ export function SalesDetailPage() {
                             >
                                 {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Confirm Terminate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Release Modal (Expired) ─── */}
+            {releaseOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setReleaseOpen(false)}>
+                    <div className="bg-surface rounded-xl border border-border-subtle p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                            <Unlock className="h-5 w-5 text-amber-400" /> 释放资源
+                        </h3>
+                        <p className="text-sm text-text-muted mb-4">
+                            合同已到期，选择要释放的 item，电路将被回收、容量重新计算。
+                        </p>
+                        <div className="space-y-2">
+                            {releaseItems.map((r, idx) => (
+                                <div key={r.itemId} className={`bg-background rounded-lg border ${r.selected ? 'border-amber-500/30' : 'border-border-subtle/50 opacity-50'} p-3 transition-opacity`}>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={r.selected}
+                                            onChange={() => setReleaseItems(prev => prev.map((item, i) => i === idx ? { ...item, selected: !item.selected } : item))}
+                                            className="h-4 w-4 rounded border-border accent-amber-500 cursor-pointer" />
+                                        <span className="text-sm font-medium">{r.label}</span>
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setReleaseOpen(false)} className="px-4 py-2 text-sm rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">Back</button>
+                            <button
+                                onClick={handleRelease}
+                                disabled={actionLoading || !releaseItems.some(r => r.selected)}
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                                {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                确认释放
                             </button>
                         </div>
                     </div>
