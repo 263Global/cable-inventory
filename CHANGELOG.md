@@ -2,6 +2,20 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.3.1] - 2026-02-24
+
+### Added — Mobile Responsive
+
+- **Collapsible Sidebar**: 手机端侧边栏隐藏，左上角 ☰ 汉堡按钮打开覆盖式菜单
+- **Layout 适配**: 手机端去掉 `ml-64`，padding 缩小，顶部留空给汉堡按钮
+- **Sales 列表卡片**: `<md` 显示卡片（Order ID + 状态徽章 + 客户 + 日期），`≥md` 保留表格
+- **Inventory 列表卡片**: `<md` 显示卡片（Resource ID + 类型/状态徽章 + 海缆系统 + 容量进度条），`≥md` 保留表格
+- **SalesDetailPage**: header 按钮自动换行，Expired 提醒条垂直堆叠
+
+### Changed
+- Customers / Suppliers 已为卡片式，无需改动
+
+
 ## [2.3.0] - 2026-02-24
 
 ### Added — Per-Item Termination & Resource Release
