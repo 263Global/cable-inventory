@@ -149,7 +149,7 @@
 | Resource | *(选 INV-2 / UNITY)* |
 | Capacity | 100 |
 | Spec | 100G |
-| Start Date | 2025-06-01 |
+| Start Date | 2026-06-01 |
 | Term | 36 months |
 | Sell MRC ($) | 4,500 |
 | NRC ($) | 3,000 |
@@ -160,7 +160,7 @@
 |-------|-------|
 | Type | Cross-Connect |
 | Description | 楼内线 Equinix TY1 3F-7F |
-| Start Date | 2025-06-01 |
+| Start Date | 2026-06-01 |
 | Term | 36 months |
 | Sell MRC ($) | 800 |
 | NRC ($) | 500 |

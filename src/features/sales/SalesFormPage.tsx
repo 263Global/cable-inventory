@@ -15,6 +15,7 @@ import {
     deleteOrderItem,
     allocateCircuits,
     deallocateCircuits,
+    recalcInventoryCapacity,
 } from './api'
 import type { SalesStatus, SalesItemType, DisposalType } from '@/types'
 
@@ -283,6 +284,7 @@ export function SalesFormPage() {
             }
 
             // Save items + allocate circuits
+            const affectedResourceIds = new Set<string>()
             for (const item of items) {
                 const payload = {
                     sales_order_id: salesOrderId!,
@@ -312,6 +314,7 @@ export function SalesFormPage() {
 
                 // Handle circuit allocation changes
                 if (itemId && item.inventory_resource_id) {
+                    affectedResourceIds.add(item.inventory_resource_id)
                     // Deallocate old circuits first (edit mode)
                     if (item.existingCircuitIds.length > 0) {
                         await deallocateCircuits(itemId)
@@ -322,6 +325,9 @@ export function SalesFormPage() {
                     }
                 }
             }
+
+            // Recalculate capacity usage for all affected inventory resources
+            await Promise.all([...affectedResourceIds].map(recalcInventoryCapacity))
 
             toast.success(isEdit ? 'Order updated' : 'Order created')
             navigate(`/sales/${salesOrderId}`)
