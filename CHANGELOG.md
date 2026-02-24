@@ -2,6 +2,29 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.1.0] - 2026-02-24
+
+### Added
+- **Dashboard** — Real dashboard replacing the "Under Construction" placeholder
+  - 4 KPI cards: Total Resources, Total Capacity (with utilization %), Active Orders, Expiring Soon (90d)
+  - Capacity by Resource panel with per-resource utilization bars
+  - Sales Pipeline stacked bar chart with legend (Draft / Pre-sold / Active / Expired / Terminated / Cancelled)
+  - Expiring Contracts panel showing items expiring within 90 days with days-remaining countdown
+  - Recent Activity panel showing latest 10 sales orders
+  - Dashboard is now the default landing page and first sidebar item
+- **Backhaul Circuit Picker** — Backhaul sales items now support circuit selection, same as Capacity
+- **Terrestrial Handover in Dropdown** — Sales form resource dropdown shows handover A → Z for Terrestrial resources
+- **Provisioned Circuit Hint** — Base+Batch capacity breakdown shows how many circuits are provisioned when not all capacity has circuits
+
+### Fixed
+- **Capacity Usage After Allocation** — Sales form now calls `recalcInventoryCapacity` after circuit allocations, fixing capacity bars stuck at 0%
+- **Capacity Bar Color Consistency** — Allocated portion always amber (was green under 50%), red only at 100%. Unified across list and detail pages
+
+### Changed
+- **Sales Circuit Picker Handover** — Circuit selection cards display handover locations (e.g. Equinix HK1 → HKIX) when routes differ
+
+---
+
 ## [2.0.1] - 2026-02-23
 
 ### Refactored
