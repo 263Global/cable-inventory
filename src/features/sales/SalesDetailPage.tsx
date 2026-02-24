@@ -255,8 +255,8 @@ export function SalesDetailPage() {
                             <XCircle className="h-4 w-4" /> Cancel
                         </button>
                     )}
-                    {/* Terminate — Active only */}
-                    {order.status === 'Active' && (
+                    {/* Terminate — Active or Expired */}
+                    {(order.status === 'Active' || order.status === 'Expired') && (
                         <button
                             onClick={openTerminateModal}
                             className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
