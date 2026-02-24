@@ -725,7 +725,7 @@ export function InventoryDetailPage() {
                                     <span className="text-text-muted">{totalCap > 0 ? Math.round((usedCap / totalCap) * 100) : 0}%</span>
                                 </div>
                                 <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
-                                    <div className={`h-full rounded-full transition-all ${usedCap >= totalCap ? 'bg-status-full' : usedCap >= totalCap / 2 ? 'bg-status-partial' : 'bg-status-available'}`}
+                                    <div className={`h-full rounded-full transition-all ${usedCap >= totalCap ? 'bg-status-full' : 'bg-status-partial'}`}
                                         style={{ width: `${totalCap > 0 ? Math.min((usedCap / totalCap) * 100, 100) : 0}%` }} />
                                 </div>
                                 <div className="flex gap-6 text-sm mt-2">

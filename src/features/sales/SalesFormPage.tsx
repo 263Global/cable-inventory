@@ -31,6 +31,8 @@ interface InvResource {
     route_description: string | null
     landing_a_name: string | null
     landing_z_name: string | null
+    handover_a_name: string | null
+    handover_z_name: string | null
 }
 
 const STATUSES: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
@@ -125,7 +127,9 @@ export function SalesFormPage() {
                     id, resource_id, type, spec, total_capacity, used_capacity, route_description,
                     cable_system:cable_systems(name),
                     landing_station_a:landing_stations!inventory_resources_landing_station_a_id_fkey(name),
-                    landing_station_z:landing_stations!inventory_resources_landing_station_z_id_fkey(name)
+                    landing_station_z:landing_stations!inventory_resources_landing_station_z_id_fkey(name),
+                    handover_a:handover_locations!inventory_resources_handover_location_a_id_fkey(name),
+                    handover_z:handover_locations!inventory_resources_handover_location_z_id_fkey(name)
                 `).order('resource_id'),
             ])
             setCustomers(custs ?? [])
@@ -140,6 +144,8 @@ export function SalesFormPage() {
                 cable_system_name: (r.cable_system as { name: string } | null)?.name ?? null,
                 landing_a_name: (r.landing_station_a as { name: string } | null)?.name ?? null,
                 landing_z_name: (r.landing_station_z as { name: string } | null)?.name ?? null,
+                handover_a_name: (r.handover_a as { name: string } | null)?.name ?? null,
+                handover_z_name: (r.handover_z as { name: string } | null)?.name ?? null,
             })) as InvResource[])
         })()
     }, [])
@@ -465,9 +471,12 @@ export function SalesFormPage() {
                                             options={resources
                                                 .filter(r => FIELD_CFG[item.type]?.resource === 'terrestrial' ? r.type === 'Terrestrial' : r.type === 'Capacity')
                                                 .map((r) => {
-                                                    const route = r.landing_a_name && r.landing_z_name
-                                                        ? `${r.landing_a_name} → ${r.landing_z_name}`
-                                                        : r.route_description || ''
+                                                    const route = r.type === 'Terrestrial'
+                                                        ? [r.handover_a_name, r.handover_z_name].filter(Boolean).join(' → ')
+                                                        || r.route_description || ''
+                                                        : r.landing_a_name && r.landing_z_name
+                                                            ? `${r.landing_a_name} → ${r.landing_z_name}`
+                                                            : r.route_description || ''
                                                     const avail = r.total_capacity
                                                         ? `${r.total_capacity - (r.used_capacity ?? 0)}G avail / ${r.total_capacity}G`
                                                         : ''

@@ -156,7 +156,7 @@ function loadVisibleCols(): string[] {
 function CapacityBar({ used, total }: { used: number; total: number }) {
     if (!total) return <span className="text-text-dim text-xs">—</span>
     const pct = Math.min((used / total) * 100, 100)
-    const color = pct >= 100 ? 'bg-status-full' : pct >= 50 ? 'bg-status-partial' : 'bg-status-available'
+    const color = pct >= 100 ? 'bg-status-full' : 'bg-status-partial'
 
     return (
         <div className="flex items-center gap-2">
