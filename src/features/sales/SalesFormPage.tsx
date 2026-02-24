@@ -72,6 +72,8 @@ interface AvailCircuit {
     capacity: number
     interface_type: string
     status: string
+    handover_a: string | null
+    handover_z: string | null
 }
 
 const emptyItem = (): ItemDraft => ({
@@ -194,7 +196,10 @@ export function SalesFormPage() {
         if (!resourceId || circuitsByResource[resourceId]) return
         const { data } = await supabase
             .from('inventory_circuits')
-            .select('id, circuit_number, capacity, status, current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name)')
+            .select(`id, circuit_number, capacity, status,
+                current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name),
+                handover_a:handover_locations!inventory_circuits_handover_location_a_id_fkey(name),
+                handover_z:handover_locations!inventory_circuits_handover_location_z_id_fkey(name)`)
             .eq('inventory_resource_id', resourceId)
             .order('circuit_number')
         setCircuitsByResource(prev => ({
@@ -205,6 +210,8 @@ export function SalesFormPage() {
                 capacity: c.capacity as number,
                 interface_type: (c.current_type as { name: string } | null)?.name ?? '—',
                 status: c.status as string,
+                handover_a: (c.handover_a as { name: string } | null)?.name ?? null,
+                handover_z: (c.handover_z as { name: string } | null)?.name ?? null,
             })),
         }))
     }
@@ -496,6 +503,8 @@ export function SalesFormPage() {
                             {FIELD_CFG[item.type]?.circuits && item.inventory_resource_id && (() => {
                                 const circuits = circuitsByResource[item.inventory_resource_id] ?? []
                                 if (circuits.length === 0) return null
+                                // Show handover info if any circuit has a non-null handover that differs
+                                const hasHandoverVariance = circuits.some((c) => c.handover_a || c.handover_z)
                                 return (
                                     <div className="p-3 bg-background rounded-lg border border-border-subtle">
                                         <div className="flex items-center justify-between mb-2">
@@ -509,28 +518,38 @@ export function SalesFormPage() {
                                                 const isSelected = item.selectedCircuitIds.includes(c.id)
                                                 const isOwnExisting = item.existingCircuitIds.includes(c.id)
                                                 const isAvailable = c.status === 'Available' || c.status === 'Planned' || isOwnExisting
+                                                const handoverLabel = hasHandoverVariance && (c.handover_a || c.handover_z)
+                                                    ? `${c.handover_a ?? '—'} → ${c.handover_z ?? '—'}`
+                                                    : null
                                                 return (
                                                     <button
                                                         key={c.id}
                                                         type="button"
                                                         disabled={!isAvailable && !isSelected}
                                                         onClick={() => toggleCircuit(idx, c.id)}
-                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-colors cursor-pointer ${isSelected
+                                                        className={`flex flex-col gap-1 px-3 py-2 rounded-lg text-xs border transition-colors cursor-pointer ${isSelected
                                                             ? 'bg-primary/10 border-primary text-primary'
                                                             : isAvailable
                                                                 ? 'bg-surface border-border-subtle text-text hover:border-primary/30'
                                                                 : 'bg-surface/50 border-border-subtle/50 text-text-dim opacity-50 cursor-not-allowed'
                                                             }`}
                                                     >
-                                                        <span className={`w-4 h-4 rounded flex items-center justify-center border ${isSelected ? 'bg-primary border-primary' : 'border-border'
-                                                            }`}>
-                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
-                                                        </span>
-                                                        <span className="font-mono">#{c.circuit_number}</span>
-                                                        <span>{c.capacity}G</span>
-                                                        <span className="text-text-dim">{c.interface_type}</span>
-                                                        {!isAvailable && !isSelected && (
-                                                            <span className="text-warning text-[10px]">In use</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-border'
+                                                                }`}>
+                                                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                            </span>
+                                                            <span className="font-mono">#{c.circuit_number}</span>
+                                                            <span>{c.capacity}G</span>
+                                                            <span className="text-text-dim">{c.interface_type}</span>
+                                                            {!isAvailable && !isSelected && (
+                                                                <span className="text-warning text-[10px]">In use</span>
+                                                            )}
+                                                        </div>
+                                                        {handoverLabel && (
+                                                            <span className="text-[10px] text-text-dim pl-6 truncate" title={handoverLabel}>
+                                                                📍 {handoverLabel}
+                                                            </span>
                                                         )}
                                                     </button>
                                                 )
