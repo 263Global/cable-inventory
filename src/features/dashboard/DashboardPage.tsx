@@ -254,34 +254,57 @@ export function DashboardPage() {
                     <div className="flex items-center gap-2 mb-4">
                         <FileText className="h-4 w-4 text-primary" />
                         <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Sales Pipeline</h2>
+                        <span className="text-xs text-text-dim ml-auto">{pipeline.reduce((s, x) => s + x.count, 0)} orders</span>
                     </div>
                     {pipeline.length === 0 ? (
                         <p className="text-sm text-text-dim text-center py-6">No orders yet</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {pipeline.map((p) => {
-                                const total = pipeline.reduce((s, x) => s + x.count, 0)
-                                const pct = total > 0 ? Math.round((p.count / total) * 100) : 0
-                                return (
-                                    <div key={p.status}>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusColors[p.status] ?? ''}`}>
-                                                {p.status}
-                                            </span>
-                                            <span className="text-sm font-medium">{p.count} <span className="text-text-dim font-normal">({pct}%)</span></span>
+                    ) : (() => {
+                        const total = pipeline.reduce((s, x) => s + x.count, 0)
+                        const barColors: Record<string, string> = {
+                            Draft: 'bg-gray-500',
+                            'Pre-sold': 'bg-amber-500',
+                            Active: 'bg-emerald-500',
+                            Expired: 'bg-red-500',
+                            Terminated: 'bg-red-400',
+                            Cancelled: 'bg-gray-400',
+                        }
+                        const dotColors: Record<string, string> = {
+                            Draft: 'bg-gray-500',
+                            'Pre-sold': 'bg-amber-500',
+                            Active: 'bg-emerald-500',
+                            Expired: 'bg-red-500',
+                            Terminated: 'bg-red-400',
+                            Cancelled: 'bg-gray-400',
+                        }
+                        return (
+                            <div>
+                                {/* Stacked bar */}
+                                <div className="w-full h-4 bg-surface-hover rounded-full overflow-hidden flex">
+                                    {pipeline.map((p) => {
+                                        const pct = (p.count / total) * 100
+                                        return (
+                                            <div
+                                                key={p.status}
+                                                className={`h-full ${barColors[p.status] ?? 'bg-primary'} transition-all first:rounded-l-full last:rounded-r-full`}
+                                                style={{ width: `${pct}%` }}
+                                                title={`${p.status}: ${p.count} (${Math.round(pct)}%)`}
+                                            />
+                                        )
+                                    })}
+                                </div>
+                                {/* Legend */}
+                                <div className="grid grid-cols-3 gap-3 mt-4">
+                                    {pipeline.map((p) => (
+                                        <div key={p.status} className="flex items-center gap-2">
+                                            <span className={`inline-block w-2.5 h-2.5 rounded-full ${dotColors[p.status]}`} />
+                                            <span className="text-xs text-text-muted">{p.status}</span>
+                                            <span className="text-xs font-semibold ml-auto">{p.count}</span>
                                         </div>
-                                        <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
-                                            <div className="h-full bg-primary/40 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            <div className="pt-2 border-t border-border-subtle flex justify-between text-sm">
-                                <span className="text-text-muted">Total Orders</span>
-                                <span className="font-semibold">{pipeline.reduce((s, x) => s + x.count, 0)}</span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
                 </div>
             </div>
 
