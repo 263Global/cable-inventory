@@ -297,18 +297,8 @@ export function SalesDetailPage() {
                         >
                             <Ban className="h-4 w-4" /> Terminate
                         </button>
-                    )}
-                    {/* Release — Expired only */}
-                    {order.status === 'Expired' && (
-                        <button
-                            onClick={openReleaseModal}
-                            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
-                        >
-                            <Unlock className="h-4 w-4" /> Release
-                        </button>
-                    )}
-                    {/* Renew — Active/Expired + has Lease Out or Swap Out items */}
-                    {canRenew && (
+                    )}\n                    {/* Renew — Active only in header (Expired has it in the banner) */}
+                    {canRenew && order.status === 'Active' && (
                         <button
                             onClick={openRenewModal}
                             className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer"
