@@ -95,12 +95,14 @@ export async function fetchStationsForCableAndCountry(
         .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-// Fetch ALL handover locations (no cable filter)
+// Fetch ALL handover locations + landing stations merged
 export async function fetchHandoverLocations(searchQuery?: string) {
     const PAGE = 1000
-    const all: { id: string; name: string; country: string; city: string; type: string }[] = []
-    let from = 0
+    type LocationRow = { id: string; name: string; country: string; city: string; type: string }
+    const all: LocationRow[] = []
 
+    // 1. Fetch handover_locations
+    let from = 0
     while (true) {
         let query = supabase
             .from('handover_locations')
@@ -115,12 +117,71 @@ export async function fetchHandoverLocations(searchQuery?: string) {
 
         const { data, error } = await query
         if (error) throw error
-        const rows = (data ?? []) as typeof all
+        const rows = (data ?? []) as LocationRow[]
         all.push(...rows)
         if (rows.length < PAGE) break
         from += PAGE
     }
 
+    // 2. Fetch landing_stations and merge as 'Landing Station' type
+    from = 0
+    while (true) {
+        let query = supabase
+            .from('landing_stations')
+            .select('id, name, country')
+            .order('country')
+            .order('name')
+            .range(from, from + PAGE - 1)
+
+        if (searchQuery && searchQuery.length >= 2) {
+            query = query.or(`name.ilike.%${searchQuery}%,country.ilike.%${searchQuery}%`)
+        }
+
+        const { data, error } = await query
+        if (error) throw error
+        const rows = (data ?? []) as { id: string; name: string; country: string }[]
+        for (const row of rows) {
+            all.push({ id: row.id, name: row.name, country: row.country, city: row.country, type: 'Landing Station' })
+        }
+        if (rows.length < PAGE) break
+        from += PAGE
+    }
+
+    // Sort merged results by country → name
+    all.sort((a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name))
+    return all
+}
+
+// Fetch merged locations with cable associations for landing stations (Reference Data page)
+export async function fetchAllLocations() {
+    type LocationRow = { id: string; name: string; country: string; city: string; type: string; cable_names?: string[] }
+
+    // 1. Fetch handover_locations
+    const handovers = await fetchAllPaginated<{ id: string; name: string; country: string; city: string; type: string }>(
+        'handover_locations', 'id, name, country, city, type', 'country'
+    )
+    const all: LocationRow[] = handovers.map((h) => ({ ...h, cable_names: [] }))
+
+    // 2. Fetch landing_stations with cable associations
+    type StationRow = { id: string; name: string; country: string; cable_landing_stations: { cable_systems: { name: string } | null }[] }
+    const stations = await fetchAllPaginated<StationRow>(
+        'landing_stations', 'id, name, country, cable_landing_stations(cable_systems(name))', 'country'
+    )
+    for (const s of stations) {
+        all.push({
+            id: s.id,
+            name: s.name,
+            country: s.country,
+            city: s.country,
+            type: 'Landing Station',
+            cable_names: (s.cable_landing_stations ?? [])
+                .map((cls) => cls.cable_systems?.name)
+                .filter(Boolean)
+                .sort() as string[],
+        })
+    }
+
+    all.sort((a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name))
     return all
 }
 

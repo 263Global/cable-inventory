@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, ChevronDown, X } from 'lucide-react'
 
 interface Option {
     value: string
     label: string
     sublabel?: string
+    group?: string
 }
 
 interface SearchableSelectProps {
@@ -47,6 +48,35 @@ export function SearchableSelect({
     )
 
     const selected = options.find((o) => o.value === value)
+
+    const hasGroups = options.some((o) => o.group)
+
+    const grouped = useMemo(() => {
+        if (!hasGroups) return null
+        const map = new Map<string, Option[]>()
+        for (const opt of filtered) {
+            const g = opt.group || 'Other'
+            const list = map.get(g) ?? []
+            list.push(opt)
+            map.set(g, list)
+        }
+        return map
+    }, [filtered, hasGroups])
+
+    const renderOption = (opt: Option) => (
+        <button
+            type="button"
+            key={opt.value}
+            onClick={() => { onChange(opt.value); setOpen(false); setSearch('') }}
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-surface-hover transition-colors cursor-pointer ${opt.value === value ? 'bg-primary/10 text-primary' : 'text-text'
+                }`}
+        >
+            <div>{opt.label}</div>
+            {opt.sublabel && (
+                <div className="text-xs text-text-dim mt-0.5">{opt.sublabel}</div>
+            )}
+        </button>
+    )
 
     return (
         <div ref={ref} className="relative">
@@ -93,21 +123,17 @@ export function SearchableSelect({
                     <div className="overflow-y-auto max-h-48">
                         {filtered.length === 0 ? (
                             <div className="px-3 py-4 text-sm text-text-dim text-center">No results</div>
-                        ) : (
-                            filtered.map((opt) => (
-                                <button
-                                    type="button"
-                                    key={opt.value}
-                                    onClick={() => { onChange(opt.value); setOpen(false); setSearch('') }}
-                                    className={`w-full px-3 py-2 text-left text-sm hover:bg-surface-hover transition-colors cursor-pointer ${opt.value === value ? 'bg-primary/10 text-primary' : 'text-text'
-                                        }`}
-                                >
-                                    <div>{opt.label}</div>
-                                    {opt.sublabel && (
-                                        <div className="text-xs text-text-dim mt-0.5">{opt.sublabel}</div>
-                                    )}
-                                </button>
+                        ) : grouped ? (
+                            Array.from(grouped.entries()).map(([groupName, groupOptions]) => (
+                                <div key={groupName}>
+                                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-dim bg-surface-hover/50 sticky top-0">
+                                        {groupName}
+                                    </div>
+                                    {groupOptions.map(renderOption)}
+                                </div>
                             ))
+                        ) : (
+                            filtered.map(renderOption)
                         )}
                     </div>
                 </div>
