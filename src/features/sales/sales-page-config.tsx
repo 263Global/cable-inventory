@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass } from '@/lib/status-styles'
 import type { SalesOrder, SalesStatus } from '@/types'
 
@@ -78,6 +79,34 @@ export const salesAllColumns: SalesColumnDef[] = [
         render: (item) => (
             <span className="text-text-muted text-sm truncate max-w-[200px] block">{item.notes || '—'}</span>
         ),
+    },
+    {
+        key: 'total_mrc',
+        label: 'Total MRC',
+        group: 'Revenue',
+        defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.total_mrc != null ? formatCurrency(item.total_mrc) : '—'}</span>,
+    },
+    {
+        key: 'total_otc',
+        label: 'Total OTC',
+        group: 'Revenue',
+        defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.total_otc != null ? formatCurrency(item.total_otc) : '—'}</span>,
+    },
+    {
+        key: 'total_nrc',
+        label: 'Total NRC',
+        group: 'Revenue',
+        defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.total_nrc != null ? formatCurrency(item.total_nrc) : '—'}</span>,
+    },
+    {
+        key: 'total_annual_om',
+        label: 'Total Annual O&M',
+        group: 'Revenue',
+        defaultVisible: false,
+        render: (item) => <span className="text-sm">{item.total_annual_om != null ? formatCurrency(item.total_annual_om) : '—'}</span>,
     },
 ]
 

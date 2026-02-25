@@ -12,8 +12,16 @@ interface OrderStatusSyncRow {
     sales_order_items: MaybeRelation<{ start_date: string | null; end_date: string | null }>
 }
 
-interface SalesOrderQueryRow extends Omit<SalesOrder, 'customer_name'> {
+interface SalesOrderItemPriceRow {
+    sell_mrc: number | null
+    sell_otc: number | null
+    sell_nrc: number | null
+    sell_annual_om: number | null
+}
+
+interface SalesOrderQueryRow extends Omit<SalesOrder, 'customer_name' | 'item_count' | 'total_mrc' | 'total_otc' | 'total_nrc' | 'total_annual_om'> {
     customers: MaybeRelation<{ name: string }>
+    sales_order_items?: MaybeRelation<SalesOrderItemPriceRow>
 }
 
 interface SalesOrderItemLinkRow {
@@ -33,9 +41,22 @@ function relationToArray<T>(value: MaybeRelation<T> | undefined): T[] {
 
 function mapSalesOrderRow(row: SalesOrderQueryRow): SalesOrder {
     const customer = pickRelation(row.customers)
+    const items = relationToArray(row.sales_order_items)
+
+    const sumField = (field: keyof SalesOrderItemPriceRow): number | null => {
+        const values = items.map((i) => i[field]).filter((v): v is number => v != null)
+        return values.length > 0 ? values.reduce((a, b) => a + b, 0) : null
+    }
+
+    const { customers: _c, sales_order_items: _i, ...rest } = row
     return {
-        ...row,
+        ...rest,
         customer_name: customer?.name,
+        item_count: items.length,
+        total_mrc: sumField('sell_mrc'),
+        total_otc: sumField('sell_otc'),
+        total_nrc: sumField('sell_nrc'),
+        total_annual_om: sumField('sell_annual_om'),
     }
 }
 
@@ -97,7 +118,7 @@ export async function syncOrderStatuses(): Promise<number> {
 export async function fetchSalesOrders(): Promise<SalesOrder[]> {
     const { data, error } = await supabase
         .from('sales_orders')
-        .select('*, customers(name)')
+        .select('*, customers(name), sales_order_items(sell_mrc, sell_otc, sell_nrc, sell_annual_om)')
         .order('created_at', { ascending: false })
 
     assertNoError(error, 'Failed to load sales orders')
@@ -108,7 +129,7 @@ export async function fetchSalesOrders(): Promise<SalesOrder[]> {
 export async function fetchSalesOrderById(id: string): Promise<SalesOrder | null> {
     const { data, error } = await supabase
         .from('sales_orders')
-        .select('*, customers(name)')
+        .select('*, customers(name), sales_order_items(sell_mrc, sell_otc, sell_nrc, sell_annual_om)')
         .eq('id', id)
         .single()
 

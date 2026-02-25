@@ -211,6 +211,12 @@ export interface SalesOrder {
     terminated_at: string | null
     termination_reason: string | null
     renewal_history: SalesRenewalSnapshot[] | null
+    // Aggregated from items (computed on fetch)
+    item_count?: number
+    total_mrc?: number | null
+    total_otc?: number | null
+    total_nrc?: number | null
+    total_annual_om?: number | null
     created_at: string
     updated_at: string
 }
