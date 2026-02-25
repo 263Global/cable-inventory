@@ -8,6 +8,8 @@ export async function allocateCircuits(
     salesOrderItemId: string,
     circuitIds: string[],
     orderStatus: string,
+    interfaceOverrides?: Record<string, string>,  // circuitId → newTypeId
+    salesOrderId?: string,
 ): Promise<void> {
     if (circuitIds.length === 0) return
 
@@ -24,6 +26,42 @@ export async function allocateCircuits(
         .update({ status: circuitStatus, updated_at: new Date().toISOString() })
         .in('id', circuitIds)
     assertNoError(updateError, 'Failed to update circuit statuses after allocation')
+
+    // Apply interface type overrides and log changes
+    if (interfaceOverrides && Object.keys(interfaceOverrides).length > 0) {
+        for (const [circuitId, newTypeId] of Object.entries(interfaceOverrides)) {
+            if (!circuitIds.includes(circuitId)) continue
+
+            // Fetch current type before updating
+            const { data: circuit, error: fetchErr } = await supabase
+                .from('inventory_circuits')
+                .select('current_interface_type_id')
+                .eq('id', circuitId)
+                .single()
+            assertNoError(fetchErr, 'Failed to fetch circuit for interface change')
+
+            const oldTypeId = circuit?.current_interface_type_id
+            if (!oldTypeId || oldTypeId === newTypeId) continue
+
+            // Update the circuit's current interface type
+            const { error: typeErr } = await supabase
+                .from('inventory_circuits')
+                .update({ current_interface_type_id: newTypeId, updated_at: new Date().toISOString() })
+                .eq('id', circuitId)
+            assertNoError(typeErr, 'Failed to update circuit interface type')
+
+            // Write change log
+            const { error: logErr } = await supabase
+                .from('interface_change_log')
+                .insert({
+                    circuit_id: circuitId,
+                    sales_order_id: salesOrderId ?? null,
+                    old_type_id: oldTypeId,
+                    new_type_id: newTypeId,
+                })
+            assertNoError(logErr, 'Failed to log interface change')
+        }
+    }
 }
 
 /** Deallocate all circuits from a sales order item */

@@ -28,15 +28,19 @@ function mapResourceOption(resource: SalesFormResource) {
             ? `${resource.landing_a_name} → ${resource.landing_z_name}`
             : resource.route_description || ''
 
-    const avail = resource.total_capacity
-        ? `${resource.total_capacity - (resource.used_capacity ?? 0)}G avail / ${resource.total_capacity}G`
-        : ''
+    const totalCap = resource.total_capacity ?? 0
+    const usedCap = resource.used_capacity ?? 0
+    const availCap = totalCap - usedCap
+    const avail = totalCap ? `${availCap}G avail / ${totalCap}G` : ''
+    const noCapacity = totalCap > 0 && availCap <= 0
 
     const sublabel = [route, avail].filter(Boolean).join(' | ')
     return {
         value: resource.id,
         label: `${resource.resource_id} | ${resource.cable_system_name || resource.type} ${resource.spec || ''}`,
         sublabel: sublabel || undefined,
+        disabled: noCapacity,
+        _availCap: availCap, // used for sorting only
     }
 }
 
@@ -78,7 +82,12 @@ export function SalesItemBasics({
                     <SearchableSelect
                         options={resources
                             .filter((resource) => isResourceTypeMatched(item.type, resource.type))
-                            .map(mapResourceOption)}
+                            .map(mapResourceOption)
+                            .sort((a, b) => {
+                                if (a.disabled && !b.disabled) return 1
+                                if (!a.disabled && b.disabled) return -1
+                                return 0
+                            })}
                         value={item.inventory_resource_id}
                         onChange={(value) => onUpdateItemResource(item.ui_id, value)}
                         placeholder="Select resource..."

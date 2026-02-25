@@ -80,10 +80,29 @@ export function useSalesFormActions({
                     .filter((circuit) => selected.includes(circuit.id))
                     .reduce((sum, circuit) => sum + circuit.capacity, 0)
 
-                return { ...item, selectedCircuitIds: selected, capacity: totalCap.toString() }
+                // Remove override when circuit deselected
+                const overrides = { ...item.circuitInterfaceOverrides }
+                if (!selected.includes(circuitId)) delete overrides[circuitId]
+
+                return { ...item, selectedCircuitIds: selected, capacity: totalCap.toString(), circuitInterfaceOverrides: overrides }
             }),
         )
     }, [circuitsByResource, setItems])
+
+    const updateCircuitInterface = useCallback((uiId: string, circuitId: string, newTypeId: string) => {
+        setItems((prev) =>
+            prev.map((item) => {
+                if (item.ui_id !== uiId) return item
+                const overrides = { ...item.circuitInterfaceOverrides }
+                if (newTypeId) {
+                    overrides[circuitId] = newTypeId
+                } else {
+                    delete overrides[circuitId]
+                }
+                return { ...item, circuitInterfaceOverrides: overrides }
+            }),
+        )
+    }, [setItems])
 
     const updateItem = useCallback((uiId: string, field: keyof ItemDraft, value: string) => {
         setItems((prev) =>
@@ -206,7 +225,10 @@ export function useSalesFormActions({
                         await deallocateCircuits(itemId)
                     }
                     if (item.selectedCircuitIds.length > 0) {
-                        await allocateCircuits(itemId, item.selectedCircuitIds, status)
+                        const overrides = Object.keys(item.circuitInterfaceOverrides).length > 0
+                            ? item.circuitInterfaceOverrides
+                            : undefined
+                        await allocateCircuits(itemId, item.selectedCircuitIds, status, overrides, salesOrderId)
                     }
                 }
             }
@@ -238,6 +260,7 @@ export function useSalesFormActions({
         addItem,
         removeItem,
         toggleCircuit,
+        updateCircuitInterface,
         updateItem,
         updateItemResource,
         handleSave,

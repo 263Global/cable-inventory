@@ -2,6 +2,22 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.0] - 2025-02-25
+
+### Improved — Sales Circuit Selector
+- **Status Labels** — Circuit status now shows "Reserved" (blue) or "Allocated" (amber) instead of generic "In use", matching Inventory detail page colors
+- **Hide Allocated** — Other orders' Allocated circuits are hidden from selector; own circuits still visible when editing
+- **0G Resource Grey-out** — Resources with zero available capacity are greyed out, disabled, and sorted to the bottom of the dropdown
+- **SearchableSelect** — Added per-option `disabled` support (greyed out, unclickable)
+
+### Added — Interface Type Change from Sales Form
+- **Circuit Interface Override** — Selected circuits show an interface type dropdown; changing it updates `inventory_circuits.current_interface_type_id` on save
+- **Change Log** — New `interface_change_log` table records old type, new type, sales order, and timestamp for every interface change
+- **Migration** — `024_interface_change_log.sql` with RLS policies
+
+### Updated — Backlog
+- Marked Interface Change Log as done; added performance optimization items (Sales save speed, page load prefetch)
+
 ## [2.8.0] - 2026-02-25
 
 ### Added — O&M Adjustments
