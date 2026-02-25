@@ -115,19 +115,23 @@ export function InventoryPageTable({
                 </table>
             </div>
 
-            <div className="md:hidden divide-y divide-border-subtle/50">
+            <div className="md:hidden space-y-3 p-3">
                 {filteredData.map((item) => {
                     const pct = item.total_capacity
                         ? Math.round(((item.used_capacity ?? 0) / item.total_capacity) * 100)
                         : 0
+                    const route = (item.country_a || item.country_z)
+                        ? `${item.country_a || '—'} → ${item.country_z || '—'}`
+                        : null
 
                     return (
                         <div
                             key={item.id}
                             onClick={() => onOpenDetail(item.id)}
-                            className="px-4 py-3 hover:bg-surface-hover/50 cursor-pointer transition-colors active:bg-surface-hover"
+                            className="bg-background rounded-xl border border-border-subtle p-4 hover:border-primary/30 cursor-pointer transition-colors active:bg-surface-hover"
                         >
-                            <div className="flex items-center justify-between mb-1">
+                            {/* Row 1: ID + badges */}
+                            <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-semibold font-mono text-primary">{item.resource_id}</span>
                                 <div className="flex items-center gap-1.5">
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${resourceTypeBadgeClass[item.type]}`}>
@@ -139,13 +143,30 @@ export function InventoryPageTable({
                                 </div>
                             </div>
 
-                            <p className="text-xs text-text-muted mb-1.5">
+                            {/* Row 2: Cable system + spec */}
+                            <p className="text-xs text-text-muted mb-1">
                                 {item.cable_system_name || '—'}
-                                {item.route_description ? ` · ${item.route_description}` : ''}
+                                {item.spec ? ` · ${item.spec}` : ''}
                             </p>
 
+                            {/* Row 3: Route */}
+                            {route && (
+                                <p className="text-xs text-text-dim mb-1">{route}</p>
+                            )}
+                            {item.route_description && (
+                                <p className="text-xs text-text-dim mb-1">{item.route_description}</p>
+                            )}
+
+                            {/* Row 4: Detail chips */}
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-dim mt-2 mb-2">
+                                {item.supplier_name && <span>Supplier: {item.supplier_name}</span>}
+                                <span>{item.acquisition_type}</span>
+                                {item.start_date && <span>{item.start_date} ~ {item.end_date ?? '—'}</span>}
+                            </div>
+
+                            {/* Row 5: Capacity bar */}
                             {(item.total_capacity ?? 0) > 0 && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 mt-1">
                                     <div className="flex-1 h-1.5 bg-border-subtle rounded-full overflow-hidden">
                                         <div
                                             className={`h-full rounded-full ${pct >= 90 ? 'bg-red-400' : pct >= 50 ? 'bg-amber-400' : 'bg-emerald-400'}`}

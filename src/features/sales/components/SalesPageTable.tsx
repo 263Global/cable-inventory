@@ -91,24 +91,39 @@ export function SalesPageTable({
                 </table>
             </div>
 
-            <div className="md:hidden divide-y divide-border-subtle/50">
+            <div className="md:hidden space-y-3 p-3">
                 {filteredOrders.map((order) => (
                     <div
                         key={order.id}
                         onClick={() => onOpenDetail(order.id)}
-                        className="px-4 py-3 hover:bg-surface-hover/50 cursor-pointer transition-colors active:bg-surface-hover"
+                        className="bg-background rounded-xl border border-border-subtle p-4 hover:border-primary/30 cursor-pointer transition-colors active:bg-surface-hover"
                     >
-                        <div className="flex items-center justify-between mb-1.5">
+                        {/* Row 1: Order ID + status */}
+                        <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-semibold font-mono text-primary">{order.order_id}</span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[order.status]}`}>
                                 {order.status}
                             </span>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-text-muted">
-                            <span>{order.customer_name || '—'}</span>
-                            <span>{new Date(order.created_at).toLocaleDateString()}</span>
+
+                        {/* Row 2: Customer */}
+                        <p className="text-sm text-text mb-1">{order.customer_name || '—'}</p>
+
+                        {/* Row 3: Internal ref */}
+                        {order.internal_ref && (
+                            <p className="text-xs text-text-dim mb-1">Ref: {order.internal_ref}</p>
+                        )}
+
+                        {/* Row 4: Dates */}
+                        <div className="flex items-center justify-between text-xs text-text-dim mt-2">
+                            <span>Created: {new Date(order.created_at).toLocaleDateString()}</span>
+                            <span>Updated: {new Date(order.updated_at).toLocaleDateString()}</span>
                         </div>
-                        {order.internal_ref && <p className="text-xs text-text-dim mt-1">Ref: {order.internal_ref}</p>}
+
+                        {/* Row 5: Notes */}
+                        {order.notes && (
+                            <p className="text-xs text-text-dim mt-1.5 line-clamp-2">{order.notes}</p>
+                        )}
                     </div>
                 ))}
             </div>
