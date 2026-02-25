@@ -2,6 +2,22 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.7.0] - 2026-02-25
+
+### Improved — Mobile Card Views
+- **Visual Separation** — Inventory & Sales mobile cards now use `space-y-3` gaps with `rounded-xl border` instead of connected `divide-y` layout
+- **Inventory Cards** — Added supplier, acquisition type, spec, route (Country A → Z), route description, and contract dates
+- **Sales Cards** — Added prominent customer name, internal ref, created/updated dates, and truncated notes
+
+### Added — Sales Revenue Summary
+- **Detail Page** — "Revenue Summary" section in Order Information card shows aggregated Total MRC, Total OTC, Total NRC, and Total Annual O&M across all line items
+- **List Page** — 4 new Revenue columns (Total MRC / OTC / NRC / Annual O&M) available via Column Picker (`defaultVisible: false`)
+- **Data Layer** — `fetchSalesOrders` and `fetchSalesOrderById` now join `sales_order_items` price fields; frontend reduce in `mapSalesOrderRow` computes totals
+- **Type Extension** — `SalesOrder` type extended with `item_count`, `total_mrc`, `total_otc`, `total_nrc`, `total_annual_om`
+
+### Changed
+- **Backlog Cleanup** — Removed 2 completed items (Circuit 精确关联, 自动状态转换), marked item-level terminate/renew as done, added Cross-Connect/Other cost fields to backlog
+
 ## [2.6.0] - 2026-02-25
 
 ### Added — Light / Dark Theme Switching
