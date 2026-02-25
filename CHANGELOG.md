@@ -2,6 +2,21 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.8.0] - 2026-02-25
+
+### Added — O&M Adjustments
+- **`om_adjustments` Table** — New database table for tracking O&M waivers, prepayments, and discounts at base or batch level
+- **O&M Schedule Card** — Detail page shows grouped adjustments (Base → Batch 1 → Batch 2...) with type badges (Waived / Prepaid / Discounted)
+- **CRUD Modal** — Add, edit, and delete adjustments with start/end dates, type, amount, and notes
+- **Smart Visibility** — Card only appears for IRU / Base+Batch resources; hidden for simple Lease resources
+
+### Added — Grouped Handover Dropdown & Unified Locations
+- **SearchableSelect Groups** — Dropdown options grouped by type with sticky headers
+- **Inventory Form** — Terrestrial shows Landing Station in Handover dropdown; Capacity hides them
+- **Unified Locations Tab** — Merged Landing Stations + Handover Locations into single "Locations" tab in Reference Data
+- **Type Filter Pills** — All / DC / LS / PoP / IX filter on Locations tab
+- **Connected Cables Column** — Landing Station rows show associated cable names
+
 ## [2.7.0] - 2026-02-25
 
 ### Improved — Mobile Card Views
