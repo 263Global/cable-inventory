@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/useAuth'
 import { Loader2 } from 'lucide-react'
 import { Toaster } from 'sonner'
@@ -65,13 +66,20 @@ function ProtectedRoutes() {
   )
 }
 
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  return <Toaster theme={resolvedTheme} position="bottom-right" richColors closeButton />
+}
+
 function App() {
   return (
     <BrowserRouter basename="/cable-inventory">
-      <AuthProvider>
-        <ProtectedRoutes />
-        <Toaster theme="dark" position="bottom-right" richColors closeButton />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ProtectedRoutes />
+          <ThemedToaster />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   )
 }

@@ -3,8 +3,43 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  /* Design System: Dark OLED + Green Accent */
+/* ─── Light Mode (default) ─── */
+:root {
+  --color-background: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F1F5F9;
+  --color-border: #CBD5E1;
+  --color-border-subtle: #E2E8F0;
+
+  --color-primary: #15803D;
+  --color-primary-hover: #166534;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-destructive: #DC2626;
+  --color-destructive-hover: #B91C1C;
+
+  --color-warning: #B45309;
+  --color-info: #2563EB;
+
+  --color-text: #0F172A;
+  --color-text-muted: #475569;
+  --color-text-dim: #64748B;
+
+  --color-status-available: #15803D;
+  --color-status-partial: #B45309;
+  --color-status-full: #DC2626;
+  --color-status-expired: #6B7280;
+
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+/* ─── Dark Mode (OLED) ─── */
+.dark {
   --color-background: #020617;
   --color-surface: #0F172A;
   --color-surface-hover: #1E293B;
@@ -29,15 +64,41 @@
   --color-status-partial: #F59E0B;
   --color-status-full: #EF4444;
   --color-status-expired: #6B7280;
+}
 
-  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+@theme {
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-foreground: var(--color-primary-foreground);
+
+  --color-destructive: var(--color-destructive);
+  --color-destructive-hover: var(--color-destructive-hover);
+
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-dim: var(--color-text-dim);
+
+  --color-status-available: var(--color-status-available);
+  --color-status-partial: var(--color-status-partial);
+  --color-status-full: var(--color-status-full);
+  --color-status-expired: var(--color-status-expired);
+
+  --font-sans: var(--font-sans);
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 }
-
 
 /* Base styles */
 body {

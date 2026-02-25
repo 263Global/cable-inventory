@@ -60,10 +60,10 @@ export function DashboardPage() {
 
             {/* Expired orders alert */}
             {expiredUnreleased.length > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
+                <div className="bg-amber-500/10 border border-amber-500/30 dark:border-amber-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div className="flex-1">
-                        <p className="text-sm font-medium text-amber-400">
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
                             {expiredUnreleased.length} 个已到期订单资源未释放
                         </p>
                         <p className="text-xs text-text-muted mt-1">请确认是否续约，如不续约请终止以释放电路和容量。</p>
@@ -71,7 +71,7 @@ export function DashboardPage() {
                             {expiredUnreleased.map(o => (
                                 <button key={o.id}
                                     onClick={() => navigate(`/sales/${o.id}`)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 dark:border-amber-500/20 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
                                 >
                                     {o.order_id}{o.customer_name ? ` — ${o.customer_name}` : ''}
                                     <ExternalLink className="h-3 w-3" />

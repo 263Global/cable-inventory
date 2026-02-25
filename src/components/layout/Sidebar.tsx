@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
     Package,
     FileText,
@@ -12,6 +13,9 @@ import {
     Cable,
     Menu,
     X,
+    Sun,
+    Moon,
+    Monitor,
 } from 'lucide-react'
 
 const navItems = [
@@ -23,10 +27,26 @@ const navItems = [
     { path: '/reference-data', label: 'Reference Data', icon: Database },
 ]
 
+const themeOptions = [
+    { value: 'light' as const, icon: Sun, label: 'Light' },
+    { value: 'dark' as const, icon: Moon, label: 'Dark' },
+    { value: 'system' as const, icon: Monitor, label: 'System' },
+]
+
 export function Sidebar() {
     const location = useLocation()
     const { user, signOut } = useAuth()
+    const { theme, setTheme } = useTheme()
     const [mobileOpen, setMobileOpen] = useState(false)
+
+    const cycleTheme = () => {
+        const order = ['light', 'dark', 'system'] as const
+        const idx = order.indexOf(theme)
+        setTheme(order[(idx + 1) % 3])
+    }
+
+    const currentThemeOption = themeOptions.find(t => t.value === theme)!
+    const ThemeIcon = currentThemeOption.icon
 
     const sidebarContent = (
         <>
@@ -65,6 +85,14 @@ export function Sidebar() {
                         <p className="text-xs text-text-dim truncate">{user.email}</p>
                     </div>
                 )}
+                <button
+                    onClick={cycleTheme}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover w-full transition-colors cursor-pointer"
+                    title={`Theme: ${currentThemeOption.label}`}
+                >
+                    <ThemeIcon className="h-5 w-5 shrink-0" />
+                    {currentThemeOption.label}
+                </button>
                 <button
                     onClick={signOut}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover w-full transition-colors cursor-pointer"

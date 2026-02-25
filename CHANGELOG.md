@@ -2,6 +2,26 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.6.0] - 2026-02-25
+
+### Added — Light / Dark Theme Switching
+
+- **Dual CSS Palette** — `:root` (light) + `.dark` (dark) variable system in `index.css`; all existing components inherit theme automatically via CSS custom properties
+- **ThemeContext** — New `ThemeProvider` + `useTheme()` hook (`src/contexts/ThemeContext.tsx`)
+  - Three modes: Light, Dark, System (follows OS `prefers-color-scheme`)
+  - Persisted to `localStorage` key `cable-track-theme`
+  - Listens to system preference changes in real-time
+- **Sidebar Toggle** — Sun/Moon/Monitor button cycles Light → Dark → System
+- **Flash Prevention** — Inline `<script>` in `index.html` applies `.dark` class before first paint
+- **Sonner Integration** — Toast notifications now match active theme dynamically
+
+### Changed
+- Light mode colors tuned for **WCAG AA** contrast compliance:
+  - `text-dim`: `#94A3B8` → `#64748B` (4.6:1 ratio)
+  - `primary`: `#16A34A` → `#15803D` (4.8:1 ratio)
+  - `warning`: `#D97706` → `#B45309` (4.8:1 ratio)
+- Dark mode palette unchanged (original OLED black preserved)
+
 ## [2.5.0] - 2026-02-24
 
 ### Refactored — Page-Level Decomposition (Phase 2)
