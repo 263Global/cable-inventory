@@ -7,6 +7,7 @@ import {
 } from '@/features/inventory/components/InventoryLifecycleModals'
 import { InventoryBatchCard } from '@/features/inventory/components/InventoryBatchCard'
 import { InventoryCapacityCircuitsCard } from '@/features/inventory/components/InventoryCapacityCircuitsCard'
+import { OmScheduleCard } from '@/features/inventory/components/OmScheduleCard'
 import {
     ContractFinancialsCard,
     LinkedSalesCard,
@@ -214,6 +215,7 @@ export function InventoryDetailPage() {
 
                 <LinkedSalesCard linkedSales={linkedSales} totalCapacity={resource.total_capacity} />
                 <ContractFinancialsCard resource={resource} isBatchMode={isBatchMode} isIRU={isIRU} isLease={isLease} />
+                <OmScheduleCard resourceId={resource.id} batches={batches} isBatchMode={isBatchMode} isIRU={isIRU} />
             </div>
 
             <TerminationInfoCard resource={resource} />
