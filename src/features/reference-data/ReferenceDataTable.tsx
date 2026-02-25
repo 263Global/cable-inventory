@@ -26,19 +26,24 @@ interface ReferenceDataTableProps<T extends { id: string }> {
     searchKey?: keyof T
     emptyMessage?: string
     fetchFn?: () => Promise<T[]>
+    filterKey?: keyof T
+    filterOptions?: string[]
 }
 
-export function ReferenceDataTable<T extends { id: string; [key: string]: unknown }>({
+export function ReferenceDataTable<T extends { id: string;[key: string]: unknown }>({
     table,
     columns,
     fields,
     searchKey = 'name' as keyof T,
     emptyMessage = 'No records found',
     fetchFn,
+    filterKey,
+    filterOptions,
 }: ReferenceDataTableProps<T>) {
     const [data, setData] = useState<T[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [activeFilter, setActiveFilter] = useState<string | null>(null)
     const [page, setPage] = useState(1)
     const [showModal, setShowModal] = useState(false)
     const [editingItem, setEditingItem] = useState<T | null>(null)
@@ -64,7 +69,9 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
         loadData()
     }, [loadData])
 
-    const filteredData = data.filter((item) => matchesReferenceSearch(item, search, searchKey))
+    const filteredData = data
+        .filter((item) => !activeFilter || !filterKey || String(item[filterKey]) === activeFilter)
+        .filter((item) => matchesReferenceSearch(item, search, searchKey))
 
     const PAGE_SIZE = 15
     const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE))
@@ -147,6 +154,21 @@ export function ReferenceDataTable<T extends { id: string; [key: string]: unknow
                     <Plus className="h-4 w-4" /> Add New
                 </button>
             </div>
+
+            {filterOptions && filterOptions.length > 0 && (
+                <div className="flex gap-1.5 mb-4 flex-wrap">
+                    <button
+                        onClick={() => { setActiveFilter(null); setPage(1) }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${!activeFilter ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}
+                    >All</button>
+                    {filterOptions.map((opt) => (
+                        <button key={opt}
+                            onClick={() => { setActiveFilter(activeFilter === opt ? null : opt); setPage(1) }}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${activeFilter === opt ? 'bg-primary text-primary-foreground' : 'bg-surface-hover text-text-muted hover:text-text'}`}
+                        >{opt}</button>
+                    ))}
+                </div>
+            )}
 
             <div className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
                 {loading ? (

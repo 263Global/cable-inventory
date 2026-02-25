@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Database, Cable } from 'lucide-react'
-import { fetchLandingStationsWithCables } from '@/lib/reference-api'
+import { fetchAllLocations } from '@/lib/reference-api'
 import { ReferenceDataTable, type ReferenceColumn, type ReferenceFieldDef } from '@/features/reference-data/ReferenceDataTable'
 
-type AnyRecord = { id: string; [key: string]: unknown }
+type AnyRecord = { id: string;[key: string]: unknown }
 
 interface TabConfig {
     table: string
@@ -11,6 +11,8 @@ interface TabConfig {
     fields: ReferenceFieldDef[]
     emptyMessage: string
     fetchFn?: () => Promise<AnyRecord[]>
+    filterKey?: string
+    filterOptions?: string[]
 }
 
 const cableSystemsConfig: TabConfig = {
@@ -37,34 +39,7 @@ const cableSystemsConfig: TabConfig = {
     emptyMessage: 'No cable systems found.',
 }
 
-const landingStationsConfig: TabConfig = {
-    table: 'landing_stations',
-    columns: [
-        { key: 'name', label: 'Station Name' },
-        { key: 'country', label: 'Country' },
-        {
-            key: 'cable_names', label: 'Connected Cables', render: (item: AnyRecord) => {
-                const cables = (item.cable_names as string[]) || []
-                if (cables.length === 0) return <span className="text-text-dim">—</span>
-                return (
-                    <div className="flex items-center gap-1 flex-wrap">
-                        <Cable className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="text-xs">
-                            {cables.length <= 3 ? cables.join(', ') : `${cables.slice(0, 3).join(', ')} +${cables.length - 3} more`}
-                        </span>
-                    </div>
-                )
-            },
-        },
-    ],
-    fields: [
-        { key: 'name', label: 'Station Name', required: true, placeholder: 'e.g. Tuas, Singapore' },
-        { key: 'country', label: 'Country', required: true, placeholder: 'e.g. Singapore' },
-        { key: 'notes', label: 'Notes', placeholder: 'Optional notes...' },
-    ],
-    emptyMessage: 'No landing stations.',
-    fetchFn: fetchLandingStationsWithCables as () => Promise<AnyRecord[]>,
-}
+
 
 const regionColors: Record<string, string> = {
     'Asia': 'bg-red-500/15 text-red-400',
@@ -101,16 +76,47 @@ const countriesConfig: TabConfig = {
     emptyMessage: 'No countries found.',
 }
 
-const handoverLocationsConfig: TabConfig = {
+const locationsConfig: TabConfig = {
     table: 'handover_locations',
     columns: [
         { key: 'name', label: 'Location Name' },
         { key: 'country', label: 'Country' },
         { key: 'city', label: 'City' },
         {
-            key: 'type', label: 'Type', render: (item: AnyRecord) => (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">{String(item.type)}</span>
-            ),
+            key: 'type', label: 'Type', render: (item: AnyRecord) => {
+                const typeColors: Record<string, string> = {
+                    'Data Center': 'bg-info/15 text-info',
+                    'Landing Station': 'bg-primary/15 text-primary',
+                    'PoP': 'bg-purple-500/15 text-purple-400',
+                    'Exchange': 'bg-amber-500/15 text-amber-400',
+                }
+                const typeAbbrev: Record<string, string> = {
+                    'Data Center': 'DC',
+                    'Landing Station': 'LS',
+                    'Exchange': 'IX',
+                    'PoP': 'PoP',
+                }
+                const t = String(item.type)
+                return (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[t] ?? 'bg-surface-hover text-text-muted'}`}>
+                        {typeAbbrev[t] ?? t}
+                    </span>
+                )
+            },
+        },
+        {
+            key: 'cable_names', label: 'Connected Cables', render: (item: AnyRecord) => {
+                const cables = (item.cable_names as string[]) || []
+                if (cables.length === 0) return <span className="text-text-dim">—</span>
+                return (
+                    <div className="flex items-center gap-1 flex-wrap">
+                        <Cable className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="text-xs">
+                            {cables.length <= 3 ? cables.join(', ') : `${cables.slice(0, 3).join(', ')} +${cables.length - 3} more`}
+                        </span>
+                    </div>
+                )
+            },
         },
     ],
     fields: [
@@ -118,10 +124,13 @@ const handoverLocationsConfig: TabConfig = {
         { key: 'country', label: 'Country', required: true, placeholder: 'e.g. Singapore' },
         { key: 'city', label: 'City', placeholder: 'e.g. Singapore' },
         { key: 'address', label: 'Address', placeholder: 'Physical address' },
-        { key: 'type', label: 'Type', type: 'select', options: ['PoP', 'Data Center', 'Exchange', 'Other'] },
+        { key: 'type', label: 'Type', type: 'select', options: ['PoP', 'Data Center', 'Exchange', 'Landing Station', 'Other'] },
         { key: 'notes', label: 'Notes', placeholder: 'Optional notes...' },
     ],
-    emptyMessage: 'No handover locations.',
+    emptyMessage: 'No locations found.',
+    fetchFn: fetchAllLocations as () => Promise<AnyRecord[]>,
+    filterKey: 'type',
+    filterOptions: ['Data Center', 'Landing Station', 'PoP', 'Exchange'],
 }
 
 const interfaceTypesConfig: TabConfig = {
@@ -139,9 +148,8 @@ const interfaceTypesConfig: TabConfig = {
 
 const tabs: Array<{ id: string; label: string; config: TabConfig }> = [
     { id: 'cable_systems', label: 'Cable Systems', config: cableSystemsConfig },
-    { id: 'landing_stations', label: 'Landing Stations', config: landingStationsConfig },
     { id: 'countries', label: 'Countries', config: countriesConfig },
-    { id: 'handover_locations', label: 'Handover Locations', config: handoverLocationsConfig },
+    { id: 'locations', label: 'Locations', config: locationsConfig },
     { id: 'interface_types', label: 'Interface Types', config: interfaceTypesConfig },
 ]
 
@@ -171,6 +179,8 @@ export function ReferenceDataPage() {
                 fields={activeConfig.fields}
                 emptyMessage={activeConfig.emptyMessage}
                 fetchFn={activeConfig.fetchFn}
+                filterKey={activeConfig.filterKey}
+                filterOptions={activeConfig.filterOptions}
             />
         </div>
     )

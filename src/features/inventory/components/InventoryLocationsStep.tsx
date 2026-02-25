@@ -25,6 +25,12 @@ export function InventoryLocationsStep({
     handoverLocations,
     onUpdateForm,
 }: InventoryLocationsStepProps) {
+    // Non-Terrestrial types already have a dedicated Landing Station field,
+    // so hide landing stations from the Handover dropdown to avoid redundancy
+    const filteredHandovers = form.type === 'Terrestrial'
+        ? handoverLocations
+        : handoverLocations.filter((h) => h.type !== 'Landing Station')
+
     return (
         <div className="space-y-5">
             <div className="grid grid-cols-2 gap-6">
@@ -57,10 +63,11 @@ export function InventoryLocationsStep({
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
                         <SearchableSelect
-                            options={handoverLocations.map((handover) => ({
+                            options={filteredHandovers.map((handover) => ({
                                 value: handover.id,
                                 label: handover.name,
-                                sublabel: `${handover.city || ''}, ${handover.country} · ${handover.type}`,
+                                sublabel: `${handover.city || ''}, ${handover.country}`,
+                                group: handover.type || 'Other',
                             }))}
                             value={form.handover_location_a_id}
                             onChange={(value) => onUpdateForm('handover_location_a_id', value)}
@@ -98,10 +105,11 @@ export function InventoryLocationsStep({
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1.5">Handover Location</label>
                         <SearchableSelect
-                            options={handoverLocations.map((handover) => ({
+                            options={filteredHandovers.map((handover) => ({
                                 value: handover.id,
                                 label: handover.name,
-                                sublabel: `${handover.city || ''}, ${handover.country} · ${handover.type}`,
+                                sublabel: `${handover.city || ''}, ${handover.country}`,
+                                group: handover.type || 'Other',
                             }))}
                             value={form.handover_location_z_id}
                             onChange={(value) => onUpdateForm('handover_location_z_id', value)}
