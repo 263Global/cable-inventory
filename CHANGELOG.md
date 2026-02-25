@@ -2,6 +2,20 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.1] - 2026-02-25
+
+### Fixed — Sales Allocation Consistency
+- **Atomic Circuit Allocation** — Replaced serial frontend requests (link circuits → update status → apply interface overrides) with a single Supabase RPC transaction (`allocate_circuits_with_overrides`), eliminating partial-failure risk
+- **Migration** — `025_atomic_allocate_circuits.sql`: PL/pgSQL function with `FOR UPDATE` row locking, auto-dedup via `DISTINCT unnest`, and status mapping (`Pre-sold/Active` → Allocated, else → Reserved)
+
+### Refactored — Sales Form State Logic
+- **Pure Functions Extracted** — New `sales-form-state.ts` module with `applyResourceChangeState` and `applyItemTypeStateRules`, replacing inline state manipulation in `useSalesFormActions` and `circuits.ts`
+- **Simplified `circuits.ts`** — Removed ~55 lines of manual INSERT/UPDATE logic, now delegates to RPC
+
+### Added — Tests
+- `sales-form-state.test.ts` — Unit tests for resource-change and type-change state transitions
+- `atomic-allocation.test.ts` — Regression tests verifying RPC entrypoint and migration file integrity
+
 ## [2.9.0] - 2025-02-25
 
 ### Improved — Sales Circuit Selector

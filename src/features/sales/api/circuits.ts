@@ -13,55 +13,14 @@ export async function allocateCircuits(
 ): Promise<void> {
     if (circuitIds.length === 0) return
 
-    const rows = circuitIds.map((cid) => ({
-        sales_order_item_id: salesOrderItemId,
-        inventory_circuit_id: cid,
-    }))
-    const { error } = await supabase.from('sales_item_circuits').insert(rows)
+    const { error } = await supabase.rpc('allocate_circuits_with_overrides', {
+        p_sales_order_item_id: salesOrderItemId,
+        p_circuit_ids: circuitIds,
+        p_order_status: orderStatus,
+        p_interface_overrides: interfaceOverrides ?? {},
+        p_sales_order_id: salesOrderId ?? null,
+    })
     assertNoError(error, 'Failed to allocate circuits')
-
-    const circuitStatus = ['Pre-sold', 'Active'].includes(orderStatus) ? 'Allocated' : 'Reserved'
-    const { error: updateError } = await supabase
-        .from('inventory_circuits')
-        .update({ status: circuitStatus, updated_at: new Date().toISOString() })
-        .in('id', circuitIds)
-    assertNoError(updateError, 'Failed to update circuit statuses after allocation')
-
-    // Apply interface type overrides and log changes
-    if (interfaceOverrides && Object.keys(interfaceOverrides).length > 0) {
-        for (const [circuitId, newTypeId] of Object.entries(interfaceOverrides)) {
-            if (!circuitIds.includes(circuitId)) continue
-
-            // Fetch current type before updating
-            const { data: circuit, error: fetchErr } = await supabase
-                .from('inventory_circuits')
-                .select('current_interface_type_id')
-                .eq('id', circuitId)
-                .single()
-            assertNoError(fetchErr, 'Failed to fetch circuit for interface change')
-
-            const oldTypeId = circuit?.current_interface_type_id
-            if (!oldTypeId || oldTypeId === newTypeId) continue
-
-            // Update the circuit's current interface type
-            const { error: typeErr } = await supabase
-                .from('inventory_circuits')
-                .update({ current_interface_type_id: newTypeId, updated_at: new Date().toISOString() })
-                .eq('id', circuitId)
-            assertNoError(typeErr, 'Failed to update circuit interface type')
-
-            // Write change log
-            const { error: logErr } = await supabase
-                .from('interface_change_log')
-                .insert({
-                    circuit_id: circuitId,
-                    sales_order_id: salesOrderId ?? null,
-                    old_type_id: oldTypeId,
-                    new_type_id: newTypeId,
-                })
-            assertNoError(logErr, 'Failed to log interface change')
-        }
-    }
 }
 
 /** Deallocate all circuits from a sales order item */

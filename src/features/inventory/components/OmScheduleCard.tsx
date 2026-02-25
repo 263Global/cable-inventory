@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Calendar, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import {
     type OmAdjustment,
@@ -59,7 +60,10 @@ export function OmScheduleCard({ resourceId, batches, isBatchMode, isIRU }: OmSc
             setLoading(true)
             const data = await fetchOmAdjustments(resourceId)
             setAdjustments(data)
-        } catch { /* ignore */ } finally {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to load O&M adjustments'
+            toast.error(msg)
+        } finally {
             setLoading(false)
         }
     }, [resourceId])
@@ -128,7 +132,10 @@ export function OmScheduleCard({ resourceId, batches, isBatchMode, isIRU }: OmSc
             await deleteOmAdjustment(deleteId)
             setDeleteId(null)
             load()
-        } catch { /* ignore */ } finally {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to delete adjustment'
+            toast.error(msg)
+        } finally {
             setDeleting(false)
         }
     }

@@ -21,6 +21,7 @@ import {
     type ItemDraft,
 } from '@/features/sales/form-helpers'
 import { SALES_FIELD_CONFIG } from '@/features/sales/sales-form-config'
+import { applyItemTypeStateRules, applyResourceChangeState } from './sales-form-state'
 import type { SalesStatus } from '@/types'
 
 interface UseSalesFormActionsParams {
@@ -122,29 +123,7 @@ export function useSalesFormActions({
                 }
 
                 if (field === 'type') {
-                    const cfg = SALES_FIELD_CONFIG[value] ?? SALES_FIELD_CONFIG['Other']
-                    if (!cfg.resource) {
-                        updated.inventory_resource_id = ''
-                        updated.selectedCircuitIds = []
-                        updated.existingCircuitIds = []
-                    }
-                    if (!cfg.capacity) {
-                        updated.capacity = ''
-                        updated.spec = ''
-                    }
-                    if (!cfg.disposal) {
-                        updated.disposal_type = value === 'Cross-Connect' ? 'Lease Out' : 'IRU Out'
-                    }
-                    if (!cfg.term) {
-                        updated.term_months = ''
-                        updated.end_date = ''
-                    }
-                    if (!cfg.mrc) {
-                        updated.sell_mrc = ''
-                        updated.sell_otc = ''
-                        updated.sell_om_rate = ''
-                        updated.sell_annual_om = ''
-                    }
+                    return applyItemTypeStateRules(updated, value, SALES_FIELD_CONFIG)
                 }
 
                 return updated
@@ -157,14 +136,7 @@ export function useSalesFormActions({
         setItems((prev) =>
             prev.map((item) =>
                 item.ui_id === uiId
-                    ? {
-                        ...item,
-                        inventory_resource_id: resourceId,
-                        spec: resource?.spec || item.spec,
-                        selectedCircuitIds: [],
-                        existingCircuitIds: [],
-                        capacity: '',
-                    }
+                    ? applyResourceChangeState(item, resourceId, resource?.spec)
                     : item,
             ),
         )

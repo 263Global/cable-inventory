@@ -13,6 +13,7 @@
   "include": [
     "tests/unit/**/*.test.ts",
     "src/features/reference-data/search.ts",
-    "src/features/inventory/batchField.ts"
+    "src/features/inventory/batchField.ts",
+    "src/features/sales/sales-form-state.ts"
   ]
 }
