@@ -28,9 +28,11 @@ export function SalesFormPage() {
         customers,
         resources,
         circuitsByResource,
+        interfaceTypes,
         addItem,
         removeItem,
         toggleCircuit,
+        updateCircuitInterface,
         updateItem,
         updateItemResource,
         handleSave,
@@ -87,12 +89,14 @@ export function SalesFormPage() {
                     items={items}
                     resources={resources}
                     circuitsByResource={circuitsByResource}
+                    interfaceTypes={interfaceTypes}
                     saving={saving}
                     isEdit={isEdit}
                     onRemoveItem={removeItem}
                     onUpdateItem={updateItem}
                     onUpdateItemResource={updateItemResource}
                     onToggleCircuit={toggleCircuit}
+                    onUpdateCircuitInterface={updateCircuitInterface}
                     onAddItem={addItem}
                     onBack={() => setStep(1)}
                     onSave={handleSave}

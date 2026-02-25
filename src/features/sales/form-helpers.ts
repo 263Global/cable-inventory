@@ -21,6 +21,7 @@ export interface ItemDraft {
     status: SalesStatus
     selectedCircuitIds: string[]
     existingCircuitIds: string[]
+    circuitInterfaceOverrides: Record<string, string> // circuitId → newTypeId
 }
 
 export interface ItemPayload extends OrderItemWritePayload {
@@ -52,6 +53,7 @@ export function createEmptyItemDraft(): ItemDraft {
         status: 'Draft',
         selectedCircuitIds: [],
         existingCircuitIds: [],
+        circuitInterfaceOverrides: {},
     }
 }
 
@@ -77,6 +79,7 @@ export function mapSalesOrderItemToDraft(item: SalesOrderItem): ItemDraft {
         status: item.status,
         selectedCircuitIds: circuitIds,
         existingCircuitIds: circuitIds,
+        circuitInterfaceOverrides: {},
     }
 }
 

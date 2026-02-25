@@ -1,5 +1,6 @@
 import { ArrowLeft, Loader2, Package, Plus, Save } from 'lucide-react'
 import type { AvailableCircuit, SalesFormResource } from '@/features/sales/form-api'
+import type { SalesFormInterfaceType } from '@/features/sales/useSalesFormData'
 import type { ItemDraft } from '@/features/sales/form-helpers'
 import { SalesLineItemCard } from '@/features/sales/components/line-items/SalesLineItemCard'
 
@@ -7,12 +8,14 @@ interface SalesFormLineItemsStepProps {
     items: ItemDraft[]
     resources: SalesFormResource[]
     circuitsByResource: Record<string, AvailableCircuit[]>
+    interfaceTypes: SalesFormInterfaceType[]
     saving: boolean
     isEdit: boolean
     onRemoveItem: (uiId: string) => void
     onUpdateItem: (uiId: string, field: keyof ItemDraft, value: string) => void
     onUpdateItemResource: (uiId: string, resourceId: string) => void
     onToggleCircuit: (uiId: string, circuitId: string) => void
+    onUpdateCircuitInterface: (uiId: string, circuitId: string, newTypeId: string) => void
     onAddItem: () => void
     onBack: () => void
     onSave: () => void
@@ -22,12 +25,14 @@ export function SalesFormLineItemsStep({
     items,
     resources,
     circuitsByResource,
+    interfaceTypes,
     saving,
     isEdit,
     onRemoveItem,
     onUpdateItem,
     onUpdateItemResource,
     onToggleCircuit,
+    onUpdateCircuitInterface,
     onAddItem,
     onBack,
     onSave,
@@ -48,10 +53,12 @@ export function SalesFormLineItemsStep({
                     index={index}
                     resources={resources}
                     circuitsByResource={circuitsByResource}
+                    interfaceTypes={interfaceTypes}
                     onRemoveItem={onRemoveItem}
                     onUpdateItem={onUpdateItem}
                     onUpdateItemResource={onUpdateItemResource}
                     onToggleCircuit={onToggleCircuit}
+                    onUpdateCircuitInterface={onUpdateCircuitInterface}
                 />
             ))}
 

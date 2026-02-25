@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import type { AvailableCircuit, SalesFormResource } from '@/features/sales/form-api'
+import type { SalesFormInterfaceType } from '@/features/sales/useSalesFormData'
 import type { ItemDraft } from '@/features/sales/form-helpers'
 import { SALES_FIELD_CONFIG } from '@/features/sales/sales-form-config'
 import { SalesItemBasics } from '@/features/sales/components/line-items/SalesItemBasics'
@@ -11,10 +12,12 @@ interface SalesLineItemCardProps {
     index: number
     resources: SalesFormResource[]
     circuitsByResource: Record<string, AvailableCircuit[]>
+    interfaceTypes: SalesFormInterfaceType[]
     onRemoveItem: (uiId: string) => void
     onUpdateItem: (uiId: string, field: keyof ItemDraft, value: string) => void
     onUpdateItemResource: (uiId: string, resourceId: string) => void
     onToggleCircuit: (uiId: string, circuitId: string) => void
+    onUpdateCircuitInterface: (uiId: string, circuitId: string, newTypeId: string) => void
 }
 
 export function SalesLineItemCard({
@@ -22,10 +25,12 @@ export function SalesLineItemCard({
     index,
     resources,
     circuitsByResource,
+    interfaceTypes,
     onRemoveItem,
     onUpdateItem,
     onUpdateItemResource,
     onToggleCircuit,
+    onUpdateCircuitInterface,
 }: SalesLineItemCardProps) {
     const shouldShowCircuits = SALES_FIELD_CONFIG[item.type]?.circuits && item.inventory_resource_id
     const circuits = shouldShowCircuits ? (circuitsByResource[item.inventory_resource_id] ?? []) : []
@@ -53,7 +58,9 @@ export function SalesLineItemCard({
                 <SalesItemCircuitSelector
                     item={item}
                     circuits={circuits}
+                    interfaceTypes={interfaceTypes}
                     onToggleCircuit={onToggleCircuit}
+                    onUpdateCircuitInterface={onUpdateCircuitInterface}
                 />
             )}
 

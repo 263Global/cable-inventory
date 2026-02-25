@@ -6,6 +6,7 @@ interface Option {
     label: string
     sublabel?: string
     group?: string
+    disabled?: boolean
 }
 
 interface SearchableSelectProps {
@@ -67,8 +68,13 @@ export function SearchableSelect({
         <button
             type="button"
             key={opt.value}
-            onClick={() => { onChange(opt.value); setOpen(false); setSearch('') }}
-            className={`w-full px-3 py-2 text-left text-sm hover:bg-surface-hover transition-colors cursor-pointer ${opt.value === value ? 'bg-primary/10 text-primary' : 'text-text'
+            disabled={opt.disabled}
+            onClick={() => { if (!opt.disabled) { onChange(opt.value); setOpen(false); setSearch('') } }}
+            className={`w-full px-3 py-2 text-left text-sm transition-colors ${opt.disabled
+                    ? 'opacity-50 cursor-not-allowed text-text-dim'
+                    : opt.value === value
+                        ? 'bg-primary/10 text-primary cursor-pointer'
+                        : 'text-text hover:bg-surface-hover cursor-pointer'
                 }`}
         >
             <div>{opt.label}</div>

@@ -11,6 +11,12 @@ import {
 } from '@/features/sales/form-api'
 import { mapSalesOrderItemToDraft, type ItemDraft } from '@/features/sales/form-helpers'
 import type { SalesStatus } from '@/types'
+import { fetchInterfaceTypes } from '@/lib/reference-api'
+
+export interface SalesFormInterfaceType {
+    id: string
+    name: string
+}
 
 interface UseSalesFormDataParams {
     id: string | undefined
@@ -32,6 +38,7 @@ export function useSalesFormData({
     const [customers, setCustomers] = useState<SalesFormCustomer[]>([])
     const [resources, setResources] = useState<SalesFormResource[]>([])
     const [circuitsByResource, setCircuitsByResource] = useState<Record<string, AvailableCircuit[]>>({})
+    const [interfaceTypes, setInterfaceTypes] = useState<SalesFormInterfaceType[]>([])
 
     const circuitsByResourceRef = useRef<Record<string, AvailableCircuit[]>>({})
     useEffect(() => {
@@ -50,9 +57,13 @@ export function useSalesFormData({
 
     useEffect(() => {
         (async () => {
-            const { customers: loadedCustomers, resources: loadedResources } = await fetchSalesFormReferences()
+            const [{ customers: loadedCustomers, resources: loadedResources }, ifTypes] = await Promise.all([
+                fetchSalesFormReferences(),
+                fetchInterfaceTypes(),
+            ])
             setCustomers(loadedCustomers)
             setResources(loadedResources)
+            setInterfaceTypes(ifTypes.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name })))
         })().catch((error) => {
             console.error(error)
             toast.error(error instanceof Error ? error.message : 'Failed to load reference data')
@@ -63,36 +74,36 @@ export function useSalesFormData({
         let cancelled = false
         if (!isEdit || !id) return
 
-        ;(async () => {
-            const order = await fetchSalesOrderById(id)
-            if (!order) {
-                navigate('/sales')
-                return
-            }
-            if (cancelled) return
+            ; (async () => {
+                const order = await fetchSalesOrderById(id)
+                if (!order) {
+                    navigate('/sales')
+                    return
+                }
+                if (cancelled) return
 
-            setOrderId(order.order_id)
-            setInternalRef(order.internal_ref ?? '')
-            setCustomerId(order.customer_id ?? '')
-            setStatus(order.status)
-            setNotes(order.notes ?? '')
+                setOrderId(order.order_id)
+                setInternalRef(order.internal_ref ?? '')
+                setCustomerId(order.customer_id ?? '')
+                setStatus(order.status)
+                setNotes(order.notes ?? '')
 
-            const existingItems = await fetchOrderItems(id)
-            if (cancelled) return
-            setItems(existingItems.map(mapSalesOrderItemToDraft))
+                const existingItems = await fetchOrderItems(id)
+                if (cancelled) return
+                setItems(existingItems.map(mapSalesOrderItemToDraft))
 
-            const resourceIds = [
-                ...new Set(
-                    existingItems
-                        .filter((item) => item.inventory_resource_id)
-                        .map((item) => item.inventory_resource_id!),
-                ),
-            ]
-            await Promise.all(resourceIds.map((resourceId) => loadCircuitsForResource(resourceId)))
-        })().catch((error) => {
-            console.error(error)
-            toast.error(error instanceof Error ? error.message : 'Failed to load order')
-        })
+                const resourceIds = [
+                    ...new Set(
+                        existingItems
+                            .filter((item) => item.inventory_resource_id)
+                            .map((item) => item.inventory_resource_id!),
+                    ),
+                ]
+                await Promise.all(resourceIds.map((resourceId) => loadCircuitsForResource(resourceId)))
+            })().catch((error) => {
+                console.error(error)
+                toast.error(error instanceof Error ? error.message : 'Failed to load order')
+            })
 
         return () => {
             cancelled = true
@@ -115,6 +126,7 @@ export function useSalesFormData({
         customers,
         resources,
         circuitsByResource,
+        interfaceTypes,
         loadCircuitsForResource,
     }
 }
