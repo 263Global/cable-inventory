@@ -64,9 +64,9 @@ export function DashboardPage() {
                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div className="flex-1">
                         <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            {expiredUnreleased.length} 个已到期订单资源未释放
+                            {expiredUnreleased.length} expired orders still have unreleased resources
                         </p>
-                        <p className="text-xs text-text-muted mt-1">请确认是否续约，如不续约请终止以释放电路和容量。</p>
+                        <p className="text-xs text-text-muted mt-1">Review these orders and terminate non-renewed contracts to release capacity and circuits.</p>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {expiredUnreleased.map(o => (
                                 <button key={o.id}
@@ -106,7 +106,12 @@ export function DashboardPage() {
                                 {top10.map((r) => {
                                     const pct = r.total_capacity > 0 ? Math.round((r.used_capacity / r.total_capacity) * 100) : 0
                                     return (
-                                        <div key={r.resource_id} className="group cursor-pointer" onClick={() => navigate('/inventory')}>
+                                        <button
+                                            key={r.resource_id}
+                                            type="button"
+                                            onClick={() => navigate('/inventory')}
+                                            className="group w-full text-left cursor-pointer"
+                                        >
                                             <div className="flex items-center justify-between text-sm mb-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`font-mono font-medium ${resourceTypeTextClass[r.type as keyof typeof resourceTypeTextClass] ?? 'text-text'}`}>{r.resource_id}</span>
@@ -118,9 +123,10 @@ export function DashboardPage() {
                                                 <div
                                                     className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-status-full' : 'bg-status-partial'}`}
                                                     style={{ width: `${Math.min(pct, 100)}%` }}
+                                                    aria-label={`${r.resource_id} utilization ${pct}%`}
                                                 />
                                             </div>
-                                        </div>
+                                        </button>
                                     )
                                 })}
                                 {active.length > 10 && (
@@ -128,7 +134,7 @@ export function DashboardPage() {
                                         onClick={() => navigate('/inventory')}
                                         className="w-full text-center text-xs text-primary hover:text-primary/80 py-2 cursor-pointer transition-colors"
                                     >
-                                        查看全部 {active.length} 个资源 →
+                                        View all {active.length} resources →
                                     </button>
                                 )}
                             </div>
@@ -166,7 +172,7 @@ export function DashboardPage() {
                         return (
                             <div>
                                 {/* Stacked bar */}
-                                <div className="w-full h-4 bg-surface-hover rounded-full overflow-hidden flex">
+                                <div className="w-full h-4 bg-surface-hover rounded-full overflow-hidden flex" aria-label="Sales pipeline distribution">
                                     {pipeline.map((p) => {
                                         const pct = (p.count / total) * 100
                                         return (
@@ -209,14 +215,15 @@ export function DashboardPage() {
                         <span className="text-xs text-text-dim ml-auto">Next 90 days</span>
                     </div>
                     {expiring.length === 0 ? (
-                        <p className="text-sm text-text-dim text-center py-6">No contracts expiring soon 🎉</p>
+                        <p className="text-sm text-text-dim text-center py-6">No contracts expiring soon</p>
                     ) : (
                         <div className="space-y-2">
                             {expiring.map((item) => (
-                                <div
+                                <button
                                     key={`${item.sales_order_id}-${item.resource_id ?? 'na'}-${item.end_date}`}
+                                    type="button"
                                     onClick={() => navigate(`/sales/${item.sales_order_id}`)}
-                                    className="flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-warning/30 cursor-pointer transition-colors"
+                                    className="w-full text-left flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-warning/30 cursor-pointer transition-colors"
                                 >
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2">
@@ -230,10 +237,10 @@ export function DashboardPage() {
                                     <div className="text-right shrink-0 ml-3">
                                         <div className="text-sm font-medium">{new Date(item.end_date).toLocaleDateString()}</div>
                                         <div className={`text-xs font-medium ${item.days_remaining <= 30 ? 'text-destructive' : item.days_remaining <= 60 ? 'text-warning' : 'text-text-muted'}`}>
-                                            {item.days_remaining}d remaining
+                                            {item.days_remaining} days remaining
                                         </div>
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}
@@ -250,10 +257,11 @@ export function DashboardPage() {
                     ) : (
                         <div className="space-y-2">
                             {recent.map((order) => (
-                                <div
+                                <button
                                     key={order.id}
+                                    type="button"
                                     onClick={() => navigate(`/sales/${order.id}`)}
-                                    className="flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-primary/30 cursor-pointer transition-colors"
+                                    className="w-full text-left flex items-center justify-between p-3 bg-background rounded-lg border border-border-subtle hover:border-primary/30 cursor-pointer transition-colors"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         <ExternalLink className="h-3.5 w-3.5 text-text-dim shrink-0" />
@@ -270,7 +278,7 @@ export function DashboardPage() {
                                     <span className="text-xs text-text-dim shrink-0 ml-3">
                                         {new Date(order.updated_at).toLocaleDateString()}
                                     </span>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}

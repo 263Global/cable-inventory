@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { getBatchFieldDisplayValue, shouldSaveBatchField } from '@/features/inventory/batchField'
 
 interface BatchFieldProps {
@@ -10,14 +10,16 @@ interface BatchFieldProps {
 }
 
 export function BatchField({ label, value, onSave, type = 'text', disabled = false }: BatchFieldProps) {
+    const fieldId = useId()
     const [local, setLocal] = useState(String(value ?? ''))
     const [isEditing, setIsEditing] = useState(false)
     const displayValue = getBatchFieldDisplayValue(isEditing, local, value)
 
     return (
         <div>
-            {label && <label className="block text-xs text-text-dim mb-1">{label}</label>}
+            {label && <label htmlFor={fieldId} className="block text-xs text-text-dim mb-1">{label}</label>}
             <input
+                id={fieldId}
                 type={type}
                 value={displayValue}
                 onFocus={() => {

@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react'
+import { useId, useRef } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface ConfirmDialogProps {
     open: boolean
@@ -21,17 +22,15 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
     const dialogRef = useRef<HTMLDivElement>(null)
     const confirmBtnRef = useRef<HTMLButtonElement>(null)
+    const titleId = useId()
+    const descriptionId = useId()
 
-    // Focus trap and ESC to close
-    useEffect(() => {
-        if (!open) return
-        confirmBtnRef.current?.focus()
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === 'Escape') onCancel()
-        }
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [open, onCancel])
+    useFocusTrap({
+        active: open,
+        containerRef: dialogRef,
+        onEscape: onCancel,
+        initialFocusRef: confirmBtnRef,
+    })
 
     if (!open) return null
 
@@ -39,10 +38,14 @@ export function ConfirmDialog({
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-            {/* Dialog */}
-            <div ref={dialogRef}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                aria-describedby={descriptionId}
+                tabIndex={-1}
                 className="relative bg-surface border border-border-subtle rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in fade-in zoom-in-95 duration-200"
             >
                 <div className="flex items-start gap-4">
@@ -50,8 +53,8 @@ export function ConfirmDialog({
                         <AlertTriangle className={`h-5 w-5 ${isDanger ? 'text-destructive' : 'text-warning'}`} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-text mb-1">{title}</h3>
-                        <p className="text-sm text-text-muted leading-relaxed">{message}</p>
+                        <h3 id={titleId} className="text-lg font-semibold text-text mb-1">{title}</h3>
+                        <p id={descriptionId} className="text-sm text-text-muted leading-relaxed">{message}</p>
                     </div>
                 </div>
                 <div className="flex items-center justify-end gap-3 mt-6">

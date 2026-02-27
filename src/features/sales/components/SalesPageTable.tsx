@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { FileText, Loader2, Trash2 } from 'lucide-react'
 import { salesStatusBadgeClass } from '@/lib/status-styles'
 import type { SalesColumnDef } from '@/features/sales/sales-page-config'
@@ -29,6 +29,17 @@ export function SalesPageTable({
     ) => {
         event.stopPropagation()
         onRequestDelete(order)
+    }
+
+    const handleRowKeyDown = (
+        event: KeyboardEvent<HTMLElement>,
+        orderId: string,
+    ) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onOpenDetail(orderId)
+        }
     }
 
     if (loading) {
@@ -69,6 +80,9 @@ export function SalesPageTable({
                             <tr
                                 key={order.id}
                                 onClick={() => onOpenDetail(order.id)}
+                                onKeyDown={(event) => handleRowKeyDown(event, order.id)}
+                                tabIndex={0}
+                                role="button"
                                 className="hover:bg-surface-hover/50 cursor-pointer transition-colors"
                             >
                                 {activeColumns.map((column) => (
@@ -81,6 +95,7 @@ export function SalesPageTable({
                                         onClick={(event) => handleDeleteClick(event, order)}
                                         className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
                                         title="Delete"
+                                        aria-label={`Delete ${order.order_id}`}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
@@ -96,6 +111,9 @@ export function SalesPageTable({
                     <div
                         key={order.id}
                         onClick={() => onOpenDetail(order.id)}
+                        onKeyDown={(event) => handleRowKeyDown(event, order.id)}
+                        tabIndex={0}
+                        role="button"
                         className="bg-background rounded-xl border border-border-subtle p-4 hover:border-primary/30 cursor-pointer transition-colors active:bg-surface-hover"
                     >
                         {/* Row 1: Order ID + status */}

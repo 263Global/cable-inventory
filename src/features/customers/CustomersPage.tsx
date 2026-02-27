@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Users, Search, Plus, Pencil, Trash2, X, Loader2, Mail } from 'lucide-react'
+import { useState, useEffect, useCallback, useId } from 'react'
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Modal } from '@/components/ui/Modal'
 import {
     createCustomer,
     deleteCustomer,
@@ -148,35 +149,31 @@ export function CustomersPage() {
                 </div>
             </div>
 
-            {/* Add/Edit Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-surface rounded-xl border border-border-subtle w-full max-w-md mx-4 shadow-2xl">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-                            <h3 className="text-lg font-semibold">{editingItem ? 'Edit Customer' : 'Add Customer'}</h3>
-                            <button onClick={() => setShowModal(false)} className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text cursor-pointer"><X className="h-5 w-5" /></button>
-                        </div>
-                        <div className="px-6 py-4 space-y-4">
-                            <Field label="Short Name *" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} placeholder="e.g. Telstra" />
-                            <Field label="Full Name" value={formData.full_name} onChange={(v) => setFormData({ ...formData, full_name: v })} placeholder="e.g. Telstra Corporation Limited" />
-                            <Field label="Contact Name" value={formData.contact_name} onChange={(v) => setFormData({ ...formData, contact_name: v })} placeholder="John Doe" />
-                            <Field label="Contact Email" value={formData.contact_email} onChange={(v) => setFormData({ ...formData, contact_email: v })} placeholder="john@example.com" type="email" />
-                            <Field label="Phone" value={formData.phone} onChange={(v) => setFormData({ ...formData, phone: v })} placeholder="+65 1234 5678" />
-                            <Field label="Country" value={formData.country} onChange={(v) => setFormData({ ...formData, country: v })} placeholder="e.g. Australia" />
-                            <Field label="Notes" value={formData.notes} onChange={(v) => setFormData({ ...formData, notes: v })} placeholder="Optional notes..." />
-                            {error && <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>}
-                        </div>
-                        <div className="px-6 py-4 border-t border-border-subtle flex justify-end gap-3">
-                            <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">Cancel</button>
-                            <button onClick={handleSave} disabled={saving}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {editingItem ? 'Save' : 'Create'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal
+                open={showModal}
+                title={editingItem ? 'Edit Customer' : 'Add Customer'}
+                onClose={() => setShowModal(false)}
+                closeLabel="Close customer modal"
+                footer={
+                    <>
+                        <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">Cancel</button>
+                        <button onClick={handleSave} disabled={saving}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {editingItem ? 'Save' : 'Create'}
+                        </button>
+                    </>
+                }
+            >
+                <Field label="Short Name *" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} placeholder="e.g. Telstra" />
+                <Field label="Full Name" value={formData.full_name} onChange={(v) => setFormData({ ...formData, full_name: v })} placeholder="e.g. Telstra Corporation Limited" />
+                <Field label="Contact Name" value={formData.contact_name} onChange={(v) => setFormData({ ...formData, contact_name: v })} placeholder="John Doe" />
+                <Field label="Contact Email" value={formData.contact_email} onChange={(v) => setFormData({ ...formData, contact_email: v })} placeholder="john@example.com" type="email" />
+                <Field label="Phone" value={formData.phone} onChange={(v) => setFormData({ ...formData, phone: v })} placeholder="+65 1234 5678" />
+                <Field label="Country" value={formData.country} onChange={(v) => setFormData({ ...formData, country: v })} placeholder="e.g. Australia" />
+                <Field label="Notes" value={formData.notes} onChange={(v) => setFormData({ ...formData, notes: v })} placeholder="Optional notes..." />
+                {error && <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>}
+            </Modal>
 
             {/* Delete Confirmation */}
             <ConfirmDialog
@@ -210,10 +207,12 @@ export function CustomersPage() {
 function Field({ label, value, onChange, placeholder, type = 'text' }: {
     label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
 }) {
+    const fieldId = useId()
+
     return (
         <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">{label}</label>
-            <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+            <label htmlFor={fieldId} className="block text-sm font-medium text-text-muted mb-1.5">{label}</label>
+            <input id={fieldId} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
                 className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim" />
         </div>
     )
