@@ -2,6 +2,26 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.2] - 2026-02-27
+
+### Added — Reusable Modal Accessibility Foundation
+- **`useFocusTrap` Hook** — New shared focus-trap utility in `src/hooks/useFocusTrap.ts` with Tab loop, Escape handling, focus restore, and body scroll lock
+- **`Modal` Wrapper** — New reusable modal component in `src/components/ui/Modal.tsx` with consistent dialog semantics (`role="dialog"`, `aria-modal`, title linkage) and shared close/backdrop behavior
+
+### Improved — Keyboard Navigation & Accessibility
+- **`SearchableSelect` Arrow Navigation** — Full `ArrowUp` / `ArrowDown` option traversal, active option tracking, Enter-to-select, Escape-to-close, and active option auto-scroll into view
+- **Combobox Semantics** — Added `aria-activedescendant` and stronger listbox option states for custom select interactions
+- **Clickable Rows/Cards** — Dashboard, Inventory table/card, and Sales table/card interactions now support keyboard activation (`Enter` / `Space`) via focusable row/card targets
+- **Form Labeling** — Added explicit `label htmlFor` + `id` linking across multiple forms and reusable field components (`InventoryFormField`, `BatchField`, Sales order step, CRM and Reference Data modal fields)
+
+### Refactored — Modal Implementations
+- **Shared Pattern Adoption** — Customers, Suppliers, and Reference Data create/edit modals migrated to the shared `Modal` wrapper to remove duplicated overlay/dialog accessibility code
+- **Sales Lifecycle Modals** — `SalesModalFrame` now uses shared `useFocusTrap` behavior for consistent keyboard and focus handling
+
+### Improved — Mobile Usability
+- **Responsive Controls** — Inventory and Sales list page control bars now wrap cleanly on smaller screens
+- **Form Layout Resilience** — Sales order info step and inventory location sections improved for narrow viewports; step headers in Sales/Inventory forms now support horizontal overflow instead of clipping
+
 ## [2.9.1] - 2026-02-25
 
 ### Fixed — Sales Allocation Consistency

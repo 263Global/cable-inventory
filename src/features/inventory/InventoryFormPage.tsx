@@ -62,7 +62,7 @@ export function InventoryFormPage() {
                 </h1>
             </div>
 
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-8 overflow-x-auto pb-1">
                 {steps.map((s, i) => (
                     <div key={s} className="flex items-center gap-2">
                         <div

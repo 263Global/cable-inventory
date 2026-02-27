@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 interface InventoryFormFieldProps {
     label: string
     value: string
@@ -13,10 +15,13 @@ export function InventoryFormField({
     placeholder,
     type = 'text',
 }: InventoryFormFieldProps) {
+    const fieldId = useId()
+
     return (
         <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">{label}</label>
+            <label htmlFor={fieldId} className="block text-xs font-medium text-text-muted mb-1">{label}</label>
             <input
+                id={fieldId}
                 type={type}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}

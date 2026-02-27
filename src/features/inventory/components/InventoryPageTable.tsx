@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { Loader2, Package, Trash2 } from 'lucide-react'
 import type { ColumnDef } from '@/features/inventory/inventory-page-config'
 import type { InventoryResource } from '@/types'
@@ -68,6 +68,17 @@ export function InventoryPageTable({
         await onRequestDelete(item)
     }
 
+    const handleRowKeyDown = (
+        event: KeyboardEvent<HTMLElement>,
+        resourceId: string,
+    ) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onOpenDetail(resourceId)
+        }
+    }
+
     return (
         <div className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
             <div className="hidden md:block overflow-x-auto">
@@ -91,6 +102,9 @@ export function InventoryPageTable({
                             <tr
                                 key={item.id}
                                 onClick={() => onOpenDetail(item.id)}
+                                onKeyDown={(event) => handleRowKeyDown(event, item.id)}
+                                tabIndex={0}
+                                role="button"
                                 className="hover:bg-surface-hover transition-colors cursor-pointer"
                             >
                                 {activeColumns.map((column) => (
@@ -105,6 +119,7 @@ export function InventoryPageTable({
                                         }}
                                         className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
                                         title="Delete"
+                                        aria-label={`Delete ${item.resource_id}`}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
@@ -128,6 +143,9 @@ export function InventoryPageTable({
                         <div
                             key={item.id}
                             onClick={() => onOpenDetail(item.id)}
+                            onKeyDown={(event) => handleRowKeyDown(event, item.id)}
+                            tabIndex={0}
+                            role="button"
                             className="bg-background rounded-xl border border-border-subtle p-4 hover:border-primary/30 cursor-pointer transition-colors active:bg-surface-hover"
                         >
                             {/* Row 1: ID + badges */}

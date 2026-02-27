@@ -29,12 +29,18 @@ export function SalesFormOrderInfoStep({
     onNotesChange,
     onNext,
 }: SalesFormOrderInfoStepProps) {
+    const customerFieldId = 'sales-order-customer'
+    const statusFieldId = 'sales-order-status'
+    const internalRefFieldId = 'sales-order-internal-ref'
+    const notesFieldId = 'sales-order-notes'
+
     return (
         <div className="bg-surface rounded-xl border border-border-subtle p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-text-muted mb-1">Customer *</label>
+                    <label htmlFor={customerFieldId} className="block text-sm font-medium text-text-muted mb-1">Customer *</label>
                     <SearchableSelect
+                        id={customerFieldId}
                         options={customers.map((customer) => ({ value: customer.id, label: customer.name }))}
                         value={customerId}
                         onChange={onCustomerChange}
@@ -42,8 +48,9 @@ export function SalesFormOrderInfoStep({
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-text-muted mb-1">Status</label>
+                    <label htmlFor={statusFieldId} className="block text-sm font-medium text-text-muted mb-1">Status</label>
                     <select
+                        id={statusFieldId}
                         value={status}
                         onChange={(e) => onStatusChange(e.target.value as SalesStatus)}
                         className="w-full px-3 py-2 bg-background border border-border-subtle rounded-lg text-sm text-text focus:ring-1 focus:ring-primary focus:outline-none"
@@ -53,8 +60,9 @@ export function SalesFormOrderInfoStep({
                 </div>
             </div>
             <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Internal Ref (optional)</label>
+                <label htmlFor={internalRefFieldId} className="block text-sm font-medium text-text-muted mb-1">Internal Ref (optional)</label>
                 <input
+                    id={internalRefFieldId}
                     type="text"
                     value={internalRef}
                     onChange={(e) => onInternalRefChange(e.target.value)}
@@ -63,8 +71,9 @@ export function SalesFormOrderInfoStep({
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Notes</label>
+                <label htmlFor={notesFieldId} className="block text-sm font-medium text-text-muted mb-1">Notes</label>
                 <textarea
+                    id={notesFieldId}
                     value={notes}
                     onChange={(e) => onNotesChange(e.target.value)}
                     rows={3}

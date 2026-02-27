@@ -67,8 +67,8 @@ export function InventoryPageControls({
     onResetColumns,
 }: InventoryPageControlsProps) {
     return (
-        <div className="flex items-center gap-3 mb-4">
-            <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
                 <input
                     type="text"

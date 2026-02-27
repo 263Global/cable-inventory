@@ -49,7 +49,7 @@ export function SalesFormPage() {
                 {orderId && <span className="font-mono text-primary text-sm">{orderId}</span>}
             </div>
 
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-8 overflow-x-auto pb-1">
                 {stepLabels.map((label, index) => {
                     const stepNumber = index + 1
                     const active = step === stepNumber

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
-import { Database, Search, Plus, Pencil, Trash2, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Database, Search, Plus, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchAll, insertRecord, updateRecord, deleteRecord } from '@/lib/api'
 import { matchesReferenceSearch } from '@/features/reference-data/search'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Modal } from '@/components/ui/Modal'
 
 export interface ReferenceColumn<T> {
     key: keyof T | string
@@ -227,52 +228,51 @@ export function ReferenceDataTable<T extends { id: string;[key: string]: unknown
                 </div>
             </div>
 
-            {showModal && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <div className="bg-surface rounded-xl border border-border-subtle w-full max-w-md mx-4 shadow-2xl">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-                            <h3 className="text-lg font-semibold">{editingItem ? 'Edit Record' : 'Add New Record'}</h3>
-                            <button onClick={() => setShowModal(false)} className="p-1 rounded-md hover:bg-surface-hover text-text-dim hover:text-text cursor-pointer"><X className="h-5 w-5" /></button>
-                        </div>
-                        <div className="px-6 py-4 space-y-4">
-                            {fields.map((field) => (
-                                <div key={field.key}>
-                                    <label className="block text-sm font-medium text-text-muted mb-1.5">
-                                        {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
-                                    </label>
-                                    {field.type === 'select' ? (
-                                        <select
-                                            value={String(formData[field.key] ?? '')}
-                                            onChange={(event) => setFormData({ ...formData, [field.key]: event.target.value })}
-                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                        >
-                                            <option value="">Select...</option>
-                                            {field.options?.map((option) => (<option key={option} value={option}>{option}</option>))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type={field.type === 'number' ? 'number' : 'text'}
-                                            value={String(formData[field.key] ?? '')}
-                                            onChange={(event) => setFormData({ ...formData, [field.key]: field.type === 'number' ? Number(event.target.value) : event.target.value })}
-                                            placeholder={field.placeholder}
-                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
-                                        />
-                                    )}
-                                </div>
-                            ))}
-                            {error && <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>}
-                        </div>
-                        <div className="px-6 py-4 border-t border-border-subtle flex justify-end gap-3">
-                            <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">Cancel</button>
-                            <button onClick={handleSave} disabled={saving}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {editingItem ? 'Save Changes' : 'Create'}
-                            </button>
-                        </div>
+            <Modal
+                open={showModal}
+                title={editingItem ? 'Edit Record' : 'Add New Record'}
+                onClose={() => setShowModal(false)}
+                closeLabel="Close record modal"
+                footer={
+                    <>
+                        <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer">Cancel</button>
+                        <button onClick={handleSave} disabled={saving}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {editingItem ? 'Save Changes' : 'Create'}
+                        </button>
+                    </>
+                }
+            >
+                {fields.map((field) => (
+                    <div key={field.key}>
+                        <label htmlFor={`${table}-${field.key}`} className="block text-sm font-medium text-text-muted mb-1.5">
+                            {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
+                        </label>
+                        {field.type === 'select' ? (
+                            <select
+                                id={`${table}-${field.key}`}
+                                value={String(formData[field.key] ?? '')}
+                                onChange={(event) => setFormData({ ...formData, [field.key]: event.target.value })}
+                                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            >
+                                <option value="">Select...</option>
+                                {field.options?.map((option) => (<option key={option} value={option}>{option}</option>))}
+                            </select>
+                        ) : (
+                            <input
+                                id={`${table}-${field.key}`}
+                                type={field.type === 'number' ? 'number' : 'text'}
+                                value={String(formData[field.key] ?? '')}
+                                onChange={(event) => setFormData({ ...formData, [field.key]: field.type === 'number' ? Number(event.target.value) : event.target.value })}
+                                placeholder={field.placeholder}
+                                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-text-dim"
+                            />
+                        )}
                     </div>
-                </div>
-            )}
+                ))}
+                {error && <div className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">{error}</div>}
+            </Modal>
 
             <ConfirmDialog
                 open={!!pendingDeleteId}

@@ -33,7 +33,7 @@ export function InventoryLocationsStep({
 
     return (
         <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-primary border-b border-border-subtle pb-2">A-End</h3>
                     {form.type !== 'Terrestrial' && (
