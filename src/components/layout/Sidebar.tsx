@@ -16,6 +16,7 @@ import {
     Sun,
     Moon,
     Monitor,
+    KeyRound,
 } from 'lucide-react'
 
 const navItems = [
@@ -85,6 +86,17 @@ export function Sidebar() {
                         <p className="text-xs text-text-dim truncate">{user.email}</p>
                     </div>
                 )}
+                <Link
+                    to="/change-password"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full transition-colors cursor-pointer ${location.pathname === '/change-password'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-text-muted hover:text-text hover:bg-surface-hover'
+                        }`}
+                >
+                    <KeyRound className="h-5 w-5 shrink-0" />
+                    Change Password
+                </Link>
                 <button
                     onClick={cycleTheme}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-text hover:bg-surface-hover w-full transition-colors cursor-pointer"

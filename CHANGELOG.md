@@ -2,6 +2,14 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.3] - 2026-03-20
+
+### Added — In-App Password Change
+- **Authenticated Password Update Page** — Added a protected `Change Password` screen for signed-in users with new password + confirmation fields
+- **Sidebar Access** — Added a "Change Password" entry in the signed-in user section of the sidebar for direct access after login
+- **Supabase Auth Integration** — Auth context now exposes a password update action backed by `supabase.auth.updateUser()`
+- **Form Validation & Feedback** — Added minimum-length validation, password confirmation checks, and success/error toast feedback for the password change flow
+
 ## [2.9.2] - 2026-02-27
 
 ### Added — Reusable Modal Accessibility Foundation

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 import { AuthContext } from '@/contexts/auth-context'
+import { assertNoError } from '@/lib/supabase-utils'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
@@ -33,12 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error as Error | null }
     }
 
+    const changePassword = async (newPassword: string) => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword })
+        assertNoError(error, 'Failed to change password')
+    }
+
     const signOut = async () => {
         await supabase.auth.signOut()
     }
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ user, session, loading, signIn, changePassword, signOut }}>
             {children}
         </AuthContext.Provider>
     )

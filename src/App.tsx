@@ -8,6 +8,7 @@ import { Toaster } from 'sonner'
 
 const Layout = lazy(() => import('@/components/layout/Layout').then((m) => ({ default: m.Layout })))
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const ChangePasswordPage = lazy(() => import('@/features/auth/ChangePasswordPage').then((m) => ({ default: m.ChangePasswordPage })))
 const InventoryPage = lazy(() => import('@/features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const InventoryFormPage = lazy(() => import('@/features/inventory/InventoryFormPage').then((m) => ({ default: m.InventoryFormPage })))
 const InventoryDetailPage = lazy(() => import('@/features/inventory/InventoryDetailPage').then((m) => ({ default: m.InventoryDetailPage })))
@@ -46,6 +47,7 @@ function ProtectedRoutes() {
     <Suspense fallback={<AppLoader />}>
       <Routes>
         <Route element={<Layout />}>
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/inventory/new" element={<InventoryFormPage />} />
           <Route path="/inventory/:id/edit" element={<InventoryFormPage />} />
           <Route path="/inventory/:id" element={<InventoryDetailPage />} />
