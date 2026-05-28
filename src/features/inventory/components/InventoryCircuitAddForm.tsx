@@ -29,6 +29,15 @@ export function InventoryCircuitAddForm({
     onCancelAddCircuit,
     onAddCircuit,
 }: InventoryCircuitAddFormProps) {
+    const quantity = Number(newCircuit.quantity)
+    const capacity = Number(newCircuit.capacity)
+    const requestedCapacity = Number.isFinite(quantity) && Number.isFinite(capacity) && quantity > 0 && capacity > 0
+        ? quantity * capacity
+        : 0
+    const addButtonLabel = Number.isInteger(quantity) && quantity > 1
+        ? `Add ${quantity} Circuits`
+        : 'Add'
+
     const handoverOptionValues = useMemo(
         () => new Set(handoverLocationOptions.map((option) => option.value)),
         [handoverLocationOptions],
@@ -53,14 +62,28 @@ export function InventoryCircuitAddForm({
 
     return (
         <div className="mb-4 p-3 bg-background rounded-lg border border-border-subtle space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)] gap-3">
                 <div>
                     <label className="block text-xs text-text-dim mb-1">Capacity (G)</label>
                     <input
                         type="number"
+                        min="1"
+                        step="1"
                         value={newCircuit.capacity}
                         onChange={(event) => onSetNewCircuit((prev) => ({ ...prev, capacity: event.target.value }))}
                         placeholder="100"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs text-text-dim mb-1">Quantity</label>
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={newCircuit.quantity}
+                        onChange={(event) => onSetNewCircuit((prev) => ({ ...prev, quantity: event.target.value }))}
+                        placeholder="1"
                         className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                 </div>
@@ -77,7 +100,7 @@ export function InventoryCircuitAddForm({
             </div>
 
             {batches.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-xs text-text-dim mb-1">Batch</label>
                         <select
@@ -100,7 +123,7 @@ export function InventoryCircuitAddForm({
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                     <label className="block text-xs text-text-dim mb-1">Handover A (optional)</label>
                     <SearchableSelect
@@ -121,20 +144,25 @@ export function InventoryCircuitAddForm({
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-                <button
-                    onClick={onCancelAddCircuit}
-                    className="px-4 py-2 bg-surface border border-border-subtle rounded-lg text-sm font-medium text-text-muted hover:bg-surface-hover transition-colors cursor-pointer"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={onAddCircuit}
-                    disabled={savingCircuit}
-                    className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                >
-                    {savingCircuit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                </button>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs text-text-dim">
+                    {requestedCapacity > 0 ? `${quantity} x ${capacity}G = ${requestedCapacity}G total` : ''}
+                </div>
+                <div className="flex justify-end gap-2">
+                    <button
+                        onClick={onCancelAddCircuit}
+                        className="px-4 py-2 bg-surface border border-border-subtle rounded-lg text-sm font-medium text-text-muted hover:bg-surface-hover transition-colors cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onAddCircuit}
+                        disabled={savingCircuit}
+                        className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    >
+                        {savingCircuit ? <Loader2 className="h-4 w-4 animate-spin" /> : addButtonLabel}
+                    </button>
+                </div>
             </div>
         </div>
     )

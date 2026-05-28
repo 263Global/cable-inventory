@@ -14,6 +14,7 @@ export interface NewBatchForm {
 
 export interface NewCircuitForm {
     capacity: string
+    quantity: string
     interface_type_id: string
     handover_a_id: string
     handover_z_id: string

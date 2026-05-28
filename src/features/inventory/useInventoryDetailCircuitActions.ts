@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { createCircuit, deleteCircuit, updateCircuit } from '@/lib/reference-api'
+import { createCircuits, deleteCircuit, updateCircuit } from '@/lib/reference-api'
 import type {
     InventoryBatch,
     InventoryCircuit,
@@ -9,7 +9,7 @@ import type {
 import type { HandoverLocationOption, NewCircuitForm } from '@/features/inventory/inventory-detail-types'
 
 function createEmptyCircuitForm(): NewCircuitForm {
-    return { capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' }
+    return { capacity: '', quantity: '1', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' }
 }
 
 function getErrorMessage(error: unknown): string {
@@ -63,9 +63,27 @@ export function useInventoryDetailCircuitActions({
     const [savingCircuit, setSavingCircuit] = useState(false)
 
     const handleAddCircuit = async () => {
-        if (!id || !newCircuit.capacity || !newCircuit.interface_type_id) return
+        if (!id) return
 
         const cap = Number(newCircuit.capacity)
+        const quantity = Number(newCircuit.quantity)
+
+        if (!newCircuit.capacity || !Number.isFinite(cap) || cap <= 0) {
+            toast.error('Enter a valid circuit capacity')
+            return
+        }
+
+        if (!newCircuit.quantity || !Number.isInteger(quantity) || quantity <= 0) {
+            toast.error('Enter a valid circuit quantity')
+            return
+        }
+
+        if (!newCircuit.interface_type_id) {
+            toast.error('Select an interface type')
+            return
+        }
+
+        const requestedCapacity = cap * quantity
 
         if (newCircuit.batch_id) {
             const batch = batches.find((item) => item.id === newCircuit.batch_id)
@@ -73,16 +91,20 @@ export function useInventoryDetailCircuitActions({
                 const usedCapacity = circuits
                     .filter((item) => item.batch_id === newCircuit.batch_id)
                     .reduce((sum, item) => sum + item.capacity, 0)
-                if (usedCapacity + cap > batch.capacity) {
-                    toast.error(`Exceeds batch capacity: ${usedCapacity}G used + ${cap}G = ${usedCapacity + cap}G > ${batch.capacity}G`)
+                const remainingCapacity = batch.capacity - usedCapacity
+                if (requestedCapacity > remainingCapacity) {
+                    const maxQuantity = Math.max(0, Math.floor(remainingCapacity / cap))
+                    toast.error(`B${batch.batch_number} only has ${remainingCapacity}G remaining; max ${maxQuantity} circuit${maxQuantity === 1 ? '' : 's'} at ${cap}G`)
                     return
                 }
             }
         }
 
         const totalCircuits = circuits.reduce((sum, item) => sum + item.capacity, 0)
-        if (resource?.total_capacity && totalCircuits + cap > resource.total_capacity) {
-            toast.error(`Exceeds total capacity: ${totalCircuits}G used + ${cap}G = ${totalCircuits + cap}G > ${resource.total_capacity}G`)
+        if (resource?.total_capacity && totalCircuits + requestedCapacity > resource.total_capacity) {
+            const remainingCapacity = resource.total_capacity - totalCircuits
+            const maxQuantity = Math.max(0, Math.floor(remainingCapacity / cap))
+            toast.error(`Resource only has ${remainingCapacity}G remaining; max ${maxQuantity} circuit${maxQuantity === 1 ? '' : 's'} at ${cap}G`)
             return
         }
 
@@ -101,28 +123,31 @@ export function useInventoryDetailCircuitActions({
                     ? Math.max(...circuits.map((item) => item.circuit_number)) + 1
                     : 1
 
-            await createCircuit({
-                inventory_resource_id: id,
-                circuit_number: nextNum,
-                capacity: cap,
-                original_interface_type_id: newCircuit.interface_type_id,
-                current_interface_type_id: newCircuit.interface_type_id,
-                ...(newCircuit.batch_id ? { batch_id: newCircuit.batch_id } : {}),
-                ...(newCircuit.batch_id
-                    ? {
-                        status:
-                            batches.find((item) => item.id === newCircuit.batch_id)?.status === 'Active'
-                                ? 'Available'
-                                : 'Planned',
-                    }
-                    : {}),
-                ...locationAFields,
-                ...locationZFields,
-            })
+            const batchStatus = newCircuit.batch_id
+                ? batches.find((item) => item.id === newCircuit.batch_id)?.status
+                : null
+
+            await createCircuits(
+                Array.from({ length: quantity }, (_, index) => ({
+                    inventory_resource_id: id,
+                    circuit_number: nextNum + index,
+                    capacity: cap,
+                    original_interface_type_id: newCircuit.interface_type_id,
+                    current_interface_type_id: newCircuit.interface_type_id,
+                    ...(newCircuit.batch_id ? { batch_id: newCircuit.batch_id } : {}),
+                    ...(newCircuit.batch_id
+                        ? {
+                            status: batchStatus === 'Active' ? 'Available' : 'Planned',
+                        }
+                        : {}),
+                    ...locationAFields,
+                    ...locationZFields,
+                })),
+            )
             setNewCircuit(createEmptyCircuitForm())
             setShowAddCircuit(false)
             await loadCircuits()
-            toast.success('Circuit added')
+            toast.success(quantity === 1 ? 'Circuit added' : `${quantity} circuits added`)
         } catch (error) {
             console.error(error)
             toast.error(`Failed to add circuit: ${getErrorMessage(error)}`)

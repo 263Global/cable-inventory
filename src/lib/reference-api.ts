@@ -265,6 +265,15 @@ export async function createCircuit(circuit: CircuitCreatePayload) {
     return data as InventoryCircuit
 }
 
+export async function createCircuits(circuits: CircuitCreatePayload[]) {
+    const { data, error } = await supabase
+        .from('inventory_circuits')
+        .insert(circuits)
+        .select()
+    if (error) throw error
+    return (data ?? []) as InventoryCircuit[]
+}
+
 export async function updateCircuit(id: string, updates: CircuitUpdatePayload) {
     const { data, error } = await supabase
         .from('inventory_circuits')

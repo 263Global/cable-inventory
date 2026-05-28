@@ -2,6 +2,11 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.5] - 2026-05-28
+
+### Added — Bulk Circuit Creation
+- **Quantity-Based Circuit Adds** — Inventory users can now add multiple circuits with the same capacity, interface, batch, and endpoint settings in one action, with capacity validation based on the full requested quantity
+
 ## [2.9.4] - 2026-05-28
 
 ### Fixed — Circuit Endpoint Saving
