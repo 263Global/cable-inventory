@@ -189,6 +189,8 @@ export async function deleteSalesOrder(id: string): Promise<void> {
         .from('sales_orders')
         .delete()
         .eq('id', id)
+        .select('id')
+        .single()
     assertNoError(error, 'Failed to delete sales order')
 
     await Promise.all([...affectedResourceIds].map(recalcInventoryCapacity))

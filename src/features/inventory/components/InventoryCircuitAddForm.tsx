@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { Loader2 } from 'lucide-react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import type {
@@ -29,6 +29,28 @@ export function InventoryCircuitAddForm({
     onCancelAddCircuit,
     onAddCircuit,
 }: InventoryCircuitAddFormProps) {
+    const handoverOptionValues = useMemo(
+        () => new Set(handoverLocationOptions.map((option) => option.value)),
+        [handoverLocationOptions],
+    )
+
+    useEffect(() => {
+        onSetNewCircuit((prev) => {
+            const handoverAId = prev.handover_a_id && !handoverOptionValues.has(prev.handover_a_id)
+                ? ''
+                : prev.handover_a_id
+            const handoverZId = prev.handover_z_id && !handoverOptionValues.has(prev.handover_z_id)
+                ? ''
+                : prev.handover_z_id
+
+            if (handoverAId === prev.handover_a_id && handoverZId === prev.handover_z_id) {
+                return prev
+            }
+
+            return { ...prev, handover_a_id: handoverAId, handover_z_id: handoverZId }
+        })
+    }, [handoverOptionValues, onSetNewCircuit])
+
     return (
         <div className="mb-4 p-3 bg-background rounded-lg border border-border-subtle space-y-3">
             <div className="grid grid-cols-2 gap-3">

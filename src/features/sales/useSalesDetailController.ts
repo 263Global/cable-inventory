@@ -27,6 +27,14 @@ interface DeleteTarget {
     label: string
 }
 
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message
+    if (error && typeof error === 'object' && 'message' in error) {
+        return String((error as { message?: unknown }).message)
+    }
+    return 'Unknown error'
+}
+
 export function useSalesDetailController(id: string | undefined, navigate: NavigateFunction) {
     const [order, setOrder] = useState<SalesOrder | null>(null)
     const [items, setItems] = useState<SalesOrderItem[]>([])
@@ -97,7 +105,7 @@ export function useSalesDetailController(id: string | undefined, navigate: Navig
             load()
         } catch (err) {
             console.error(err)
-            toast.error('Failed to delete')
+            toast.error(`Failed to delete: ${getErrorMessage(err)}`)
         } finally {
             setDeleting(false)
             setDeleteTarget(null)

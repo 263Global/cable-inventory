@@ -230,6 +230,8 @@ export interface CircuitCreatePayload {
     capacity: number
     original_interface_type_id: string
     current_interface_type_id: string
+    landing_station_a_id?: string | null
+    landing_station_z_id?: string | null
     handover_location_a_id?: string | null
     handover_location_z_id?: string | null
     batch_id?: string
@@ -243,6 +245,8 @@ export type CircuitUpdatePayload = Partial<
         | 'capacity'
         | 'current_interface_type_id'
         | 'original_interface_type_id'
+        | 'landing_station_a_id'
+        | 'landing_station_z_id'
         | 'handover_location_a_id'
         | 'handover_location_z_id'
         | 'batch_id'
