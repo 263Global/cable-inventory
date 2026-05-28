@@ -6,10 +6,39 @@ import type {
     InventoryCircuit,
     InventoryResource,
 } from '@/types'
-import type { NewCircuitForm } from '@/features/inventory/inventory-detail-types'
+import type { HandoverLocationOption, NewCircuitForm } from '@/features/inventory/inventory-detail-types'
 
 function createEmptyCircuitForm(): NewCircuitForm {
     return { capacity: '', interface_type_id: '', handover_a_id: '', handover_z_id: '', batch_id: '' }
+}
+
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message
+    if (error && typeof error === 'object' && 'message' in error) {
+        return String((error as { message?: unknown }).message)
+    }
+    return 'Unknown error'
+}
+
+function getCircuitLocationFields(
+    side: 'a' | 'z',
+    locationId: string,
+    locations: HandoverLocationOption[],
+) {
+    if (!locationId) return {}
+
+    const location = locations.find((item) => item.id === locationId)
+    if (!location) return null
+
+    if (location.type === 'Landing Station') {
+        return side === 'a'
+            ? { landing_station_a_id: locationId, handover_location_a_id: null }
+            : { landing_station_z_id: locationId, handover_location_z_id: null }
+    }
+
+    return side === 'a'
+        ? { handover_location_a_id: locationId, landing_station_a_id: null }
+        : { handover_location_z_id: locationId, landing_station_z_id: null }
 }
 
 interface UseInventoryDetailCircuitActionsParams {
@@ -17,6 +46,7 @@ interface UseInventoryDetailCircuitActionsParams {
     resource: InventoryResource | null
     circuits: InventoryCircuit[]
     batches: InventoryBatch[]
+    handoverLocations: HandoverLocationOption[]
     loadCircuits: () => Promise<void>
 }
 
@@ -25,6 +55,7 @@ export function useInventoryDetailCircuitActions({
     resource,
     circuits,
     batches,
+    handoverLocations,
     loadCircuits,
 }: UseInventoryDetailCircuitActionsParams) {
     const [showAddCircuit, setShowAddCircuit] = useState(false)
@@ -57,6 +88,14 @@ export function useInventoryDetailCircuitActions({
 
         setSavingCircuit(true)
         try {
+            const locationAFields = getCircuitLocationFields('a', newCircuit.handover_a_id, handoverLocations)
+            const locationZFields = getCircuitLocationFields('z', newCircuit.handover_z_id, handoverLocations)
+
+            if (locationAFields === null || locationZFields === null) {
+                toast.error('Selected circuit location is no longer available')
+                return
+            }
+
             const nextNum =
                 circuits.length > 0
                     ? Math.max(...circuits.map((item) => item.circuit_number)) + 1
@@ -77,8 +116,8 @@ export function useInventoryDetailCircuitActions({
                                 : 'Planned',
                     }
                     : {}),
-                handover_location_a_id: newCircuit.handover_a_id || null,
-                handover_location_z_id: newCircuit.handover_z_id || null,
+                ...locationAFields,
+                ...locationZFields,
             })
             setNewCircuit(createEmptyCircuitForm())
             setShowAddCircuit(false)
@@ -86,7 +125,7 @@ export function useInventoryDetailCircuitActions({
             toast.success('Circuit added')
         } catch (error) {
             console.error(error)
-            toast.error('Failed to add circuit')
+            toast.error(`Failed to add circuit: ${getErrorMessage(error)}`)
         } finally {
             setSavingCircuit(false)
         }

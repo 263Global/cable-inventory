@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import type { InventoryBatch, InventoryCircuit, InventoryResource } from '@/types'
 import type { PendingDeleteItem } from '@/features/inventory/inventory-detail-controller-types'
+import type { HandoverLocationOption } from '@/features/inventory/inventory-detail-types'
 import { useInventoryDetailBatchActions } from '@/features/inventory/useInventoryDetailBatchActions'
 import { useInventoryDetailCircuitActions } from '@/features/inventory/useInventoryDetailCircuitActions'
 
@@ -10,6 +11,7 @@ interface UseInventoryDetailBatchCircuitParams {
     resource: InventoryResource | null
     circuits: InventoryCircuit[]
     batches: InventoryBatch[]
+    handoverLocations: HandoverLocationOption[]
     loadCircuits: () => Promise<void>
     loadBatches: () => Promise<void>
 }
@@ -19,6 +21,7 @@ export function useInventoryDetailBatchCircuit({
     resource,
     circuits,
     batches,
+    handoverLocations,
     loadCircuits,
     loadBatches,
 }: UseInventoryDetailBatchCircuitParams) {
@@ -30,6 +33,7 @@ export function useInventoryDetailBatchCircuit({
         resource,
         circuits,
         batches,
+        handoverLocations,
         loadCircuits,
     })
 

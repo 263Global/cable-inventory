@@ -12,6 +12,14 @@ import {
 } from '@/features/sales/sales-page-config'
 import type { SalesOrder, SalesStatus } from '@/types'
 
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message
+    if (error && typeof error === 'object' && 'message' in error) {
+        return String((error as { message?: unknown }).message)
+    }
+    return 'Unknown error'
+}
+
 export function useSalesPageController() {
     const [orders, setOrders] = useState<SalesOrder[]>([])
     const [loading, setLoading] = useState(true)
@@ -95,7 +103,7 @@ export function useSalesPageController() {
             await loadOrders()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to delete')
+            toast.error(`Failed to delete: ${getErrorMessage(error)}`)
         } finally {
             setDeleting(false)
             setDeleteTarget(null)

@@ -135,6 +135,8 @@ export interface InventoryCircuit {
     current_interface_type_id: string | null
     original_type?: { name: string } | null // joined
     current_type?: { name: string } | null // joined
+    landing_station_a_id: string | null
+    landing_station_z_id: string | null
     handover_location_a_id: string | null
     handover_location_z_id: string | null
     batch_id: string | null

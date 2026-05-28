@@ -2,6 +2,19 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.9.4] - 2026-05-28
+
+### Fixed — Circuit Endpoint Saving
+- **Mixed Circuit Endpoints** — Inventory circuits can now save A/Z endpoints as either landing stations or handover locations, so combinations like landing station → data center work correctly
+- **Batch Circuit Creation** — Adding a circuit with a selected batch no longer fails when one side is a landing station and the other side is a facility/PoP
+- **Circuit Display** — Inventory and Sales screens now resolve circuit endpoint labels from both landing-station and handover-location references
+- **Clearer Error Feedback** — Circuit and sales-order delete failures now surface the underlying Supabase error message instead of a generic failure toast
+
+### Changed — Supabase Schema & Permissions
+- **Migration `026_inventory_circuit_mixed_locations.sql`** — Added `landing_station_a_id` and `landing_station_z_id` to `inventory_circuits` with indexes and foreign keys to `landing_stations`
+- **Migration `027_sales_orders_team_permissions.sql`** — Updated `sales_orders` RLS so authenticated team users can insert, update, and delete shared sales orders, not only orders they personally created
+- **Delete Verification** — Sales-order deletion now requires Supabase to return the deleted row, making silent RLS no-op deletes visible as errors
+
 ## [2.9.3] - 2026-03-20
 
 ### Added — In-App Password Change

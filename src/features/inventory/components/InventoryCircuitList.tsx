@@ -40,11 +40,13 @@ export function InventoryCircuitList({
                 const origName = (circuit.original_type as { name: string } | null)?.name ?? '—'
                 const currName = (circuit.current_type as { name: string } | null)?.name ?? '—'
                 const wasConverted = circuit.original_interface_type_id !== circuit.current_interface_type_id
-                const hLocA = circuit.handover_location_a_id
-                    ? handoverLocationMap.get(circuit.handover_location_a_id)
+                const locationAId = circuit.handover_location_a_id ?? circuit.landing_station_a_id
+                const locationZId = circuit.handover_location_z_id ?? circuit.landing_station_z_id
+                const hLocA = locationAId
+                    ? handoverLocationMap.get(locationAId)
                     : null
-                const hLocZ = circuit.handover_location_z_id
-                    ? handoverLocationMap.get(circuit.handover_location_z_id)
+                const hLocZ = locationZId
+                    ? handoverLocationMap.get(locationZId)
                     : null
                 const batchInfo = circuit.batch_id ? batchMap.get(circuit.batch_id) : null
 

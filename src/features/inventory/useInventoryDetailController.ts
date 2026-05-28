@@ -23,6 +23,7 @@ export function useInventoryDetailController(id: string | undefined) {
         resource,
         circuits,
         batches,
+        handoverLocations,
         loadCircuits,
         loadBatches,
     })

@@ -58,6 +58,8 @@ interface RawCircuitRow {
     capacity: number
     status: string
     current_type: JoinNameValue
+    landing_station_a: JoinNameValue
+    landing_station_z: JoinNameValue
     handover_a: JoinNameValue
     handover_z: JoinNameValue
 }
@@ -113,6 +115,8 @@ export async function fetchAvailableCircuitsForResource(resourceId: string): Pro
         .from('inventory_circuits')
         .select(`id, circuit_number, capacity, status,
             current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name),
+            landing_station_a:landing_stations!inventory_circuits_landing_station_a_id_fkey(name),
+            landing_station_z:landing_stations!inventory_circuits_landing_station_z_id_fkey(name),
             handover_a:handover_locations!inventory_circuits_handover_location_a_id_fkey(name),
             handover_z:handover_locations!inventory_circuits_handover_location_z_id_fkey(name)`)
         .eq('inventory_resource_id', resourceId)
@@ -126,7 +130,7 @@ export async function fetchAvailableCircuitsForResource(resourceId: string): Pro
         capacity: circuit.capacity as number,
         interface_type: getJoinName(circuit.current_type) ?? '—',
         status: circuit.status as string,
-        handover_a: getJoinName(circuit.handover_a),
-        handover_z: getJoinName(circuit.handover_z),
+        handover_a: getJoinName(circuit.handover_a) ?? getJoinName(circuit.landing_station_a),
+        handover_z: getJoinName(circuit.handover_z) ?? getJoinName(circuit.landing_station_z),
     }))
 }
