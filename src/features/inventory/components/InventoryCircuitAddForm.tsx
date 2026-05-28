@@ -71,6 +71,7 @@ export function InventoryCircuitAddForm({
                         value={newCircuit.interface_type_id}
                         onChange={(value) => onSetNewCircuit((prev) => ({ ...prev, interface_type_id: value }))}
                         placeholder="Select type..."
+                        clearable={false}
                     />
                 </div>
             </div>

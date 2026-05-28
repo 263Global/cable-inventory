@@ -60,6 +60,7 @@ export function SearchableSelect({
     )
 
     const selected = options.find((o) => o.value === value)
+    const showClearButton = clearable && value && !disabled
 
     const hasGroups = options.some((o) => o.group)
 
@@ -226,22 +227,6 @@ export function SearchableSelect({
 
     return (
         <div ref={ref} className="relative">
-            {clearable && value && !disabled && (
-                <button
-                    type="button"
-                    onClick={(event) => {
-                        event.stopPropagation()
-                        onChange('')
-                        setSearch('')
-                        setActiveValue(null)
-                    }}
-                    className="absolute right-9 top-1/2 -translate-y-1/2 z-10 p-0.5 hover:bg-surface-hover rounded cursor-pointer"
-                    aria-label="Clear selection"
-                >
-                    <X className="h-3 w-3 text-text-dim" />
-                </button>
-            )}
-
             <button
                 id={inputId}
                 ref={triggerRef}
@@ -254,14 +239,32 @@ export function SearchableSelect({
                 aria-haspopup="listbox"
                 aria-controls={open ? listboxId : undefined}
                 aria-activedescendant={open ? activeOptionId : undefined}
-                className={`w-full flex items-center justify-between px-3 py-2.5 pr-10 bg-background border border-border rounded-lg text-sm text-left transition-colors cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary focus:ring-2 focus:ring-primary'
+                className={`w-full flex items-center px-3 py-2.5 ${showClearButton ? 'pr-24' : 'pr-12'} bg-background border border-border rounded-lg text-sm text-left transition-colors cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary focus:ring-2 focus:ring-primary'
                     }`}
             >
-                <span className={selected ? 'text-text' : 'text-text-dim'}>
+                <span className={`min-w-0 flex-1 truncate ${selected ? 'text-text' : 'text-text-dim'}`}>
                     {loading ? 'Loading...' : selected ? selected.label : placeholder}
                 </span>
-                <ChevronDown className={`h-4 w-4 text-text-dim transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
+
+            <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center gap-4">
+                {showClearButton && (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation()
+                            onChange('')
+                            setSearch('')
+                            setActiveValue(null)
+                        }}
+                        className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded hover:bg-surface-hover cursor-pointer"
+                        aria-label="Clear selection"
+                    >
+                        <X className="h-3.5 w-3.5 text-text-dim" />
+                    </button>
+                )}
+                <ChevronDown className={`h-4 w-4 text-text-dim transition-transform ${open ? 'rotate-180' : ''}`} />
+            </div>
 
             {open && (
                 <div

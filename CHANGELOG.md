@@ -9,6 +9,7 @@ All notable changes to CableTrack will be documented in this file.
 - **Batch Circuit Creation** — Adding a circuit with a selected batch no longer fails when one side is a landing station and the other side is a facility/PoP
 - **Circuit Display** — Inventory and Sales screens now resolve circuit endpoint labels from both landing-station and handover-location references
 - **Circuit Row Actions** — Removed the unnecessary clear icon from required circuit interface dropdowns and increased spacing to the delete button with a larger stable delete target
+- **Circuit Add Form Controls** — Removed the unnecessary clear icon from the required add-circuit interface dropdown and spaced clear/dropdown icons consistently for searchable selects
 - **Clearer Error Feedback** — Circuit and sales-order delete failures now surface the underlying Supabase error message instead of a generic failure toast
 
 ### Changed — Supabase Schema & Permissions
