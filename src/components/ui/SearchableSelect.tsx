@@ -17,6 +17,7 @@ interface SearchableSelectProps {
     placeholder?: string
     disabled?: boolean
     loading?: boolean
+    clearable?: boolean
 }
 
 export function SearchableSelect({
@@ -27,6 +28,7 @@ export function SearchableSelect({
     placeholder = 'Select...',
     disabled = false,
     loading = false,
+    clearable = true,
 }: SearchableSelectProps) {
     const generatedId = useId()
     const inputId = id ?? generatedId
@@ -224,7 +226,7 @@ export function SearchableSelect({
 
     return (
         <div ref={ref} className="relative">
-            {value && !disabled && (
+            {clearable && value && !disabled && (
                 <button
                     type="button"
                     onClick={(event) => {

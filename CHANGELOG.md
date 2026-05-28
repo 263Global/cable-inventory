@@ -8,7 +8,7 @@ All notable changes to CableTrack will be documented in this file.
 - **Mixed Circuit Endpoints** — Inventory circuits can now save A/Z endpoints as either landing stations or handover locations, so combinations like landing station → data center work correctly
 - **Batch Circuit Creation** — Adding a circuit with a selected batch no longer fails when one side is a landing station and the other side is a facility/PoP
 - **Circuit Display** — Inventory and Sales screens now resolve circuit endpoint labels from both landing-station and handover-location references
-- **Circuit Row Actions** — Increased spacing between the circuit interface dropdown and delete button, with a larger stable delete target
+- **Circuit Row Actions** — Removed the unnecessary clear icon from required circuit interface dropdowns and increased spacing to the delete button with a larger stable delete target
 - **Clearer Error Feedback** — Circuit and sales-order delete failures now surface the underlying Supabase error message instead of a generic failure toast
 
 ### Changed — Supabase Schema & Permissions
