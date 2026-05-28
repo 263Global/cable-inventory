@@ -78,8 +78,8 @@ export function InventoryCircuitList({
                                 </div>
                             )}
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-28">
+                        <div className="flex shrink-0 items-center gap-3">
+                            <div className="w-32">
                                 <SearchableSelect
                                     options={interfaceTypeOptions}
                                     value={circuit.current_interface_type_id ?? ''}
@@ -89,7 +89,9 @@ export function InventoryCircuitList({
                             </div>
                             <button
                                 onClick={() => onDeleteCircuit(circuit.id)}
-                                className="p-1.5 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
+                                className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
+                                title="Delete circuit"
+                                aria-label={`Delete circuit #${circuit.circuit_number}`}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </button>
