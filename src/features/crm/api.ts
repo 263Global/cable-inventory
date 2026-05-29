@@ -37,7 +37,9 @@ export async function createCustomer(payload: {
     country: string | null
     notes: string | null
 }): Promise<void> {
-    const { error } = await supabase.from('customers').insert(payload)
+    // Legacy `short_name` column is still NOT NULL; keep it in sync with `name`.
+    const row = { ...payload, short_name: payload.name.slice(0, 50) }
+    const { error } = await supabase.from('customers').insert(row)
     assertNoError(error, 'Failed to create customer')
 }
 
@@ -55,7 +57,7 @@ export async function updateCustomer(
 ): Promise<void> {
     const { error } = await supabase
         .from('customers')
-        .update({ ...payload, updated_at: new Date().toISOString() })
+        .update({ ...payload, short_name: payload.name.slice(0, 50), updated_at: new Date().toISOString() })
         .eq('id', id)
     assertNoError(error, 'Failed to update customer')
 }
