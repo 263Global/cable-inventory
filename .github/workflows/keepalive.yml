@@ -1,0 +1,50 @@
+# Supabase 免费层保活
+# 背景：免费层项目 7 天无数据库活动会被自动暂停（暂停超 90 天永久删除）。
+# 注意：/auth/v1/health 这类健康检查不算"活动"，必须真实查询一次数据库。
+# 2026-06 事故：本地 Mac cron ping health 端点 → 不算活动 + 网络被墙 + 电脑睡眠，项目被暂停 5 天。
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: '23 1,13 * * *' # UTC，即北京时间每天 09:23 / 21:23
+  workflow_dispatch: {} # 允许手动触发，方便测试
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase database (real query, counts as activity)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          CODE=$(curl -s -m 30 -o /tmp/resp -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/cable_systems?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP $CODE"
+          cat /tmp/resp; echo
+          # 200/206 = 查询成功；540 = 项目已被暂停；其他 = 配置或网络问题
+          if [ "$CODE" != "200" ] && [ "$CODE" != "206" ]; then
+            echo "::error::Supabase keepalive failed with HTTP $CODE (540 = project paused, go restore it at https://supabase.com/dashboard)"
+            exit 1
+          fi
+
+      # GitHub 会在仓库 60 天无 commit 后自动停用定时任务。
+      # 若仓库闲置超过 50 天，打一个空 commit 重置计时器，保证本任务自身不被停。
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prevent scheduled workflow suspension
+        run: |
+          LAST=$(git log -1 --format=%ct)
+          DAYS=$(( ( $(date +%s) - LAST ) / 86400 ))
+          echo "Last commit: ${DAYS} days ago"
+          if [ "$DAYS" -ge 50 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive empty commit (prevent scheduled workflow suspension)"
+            git push
+          fi
