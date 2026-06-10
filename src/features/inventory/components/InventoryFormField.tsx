@@ -23,6 +23,7 @@ export function InventoryFormField({
             <input
                 id={fieldId}
                 type={type}
+                step={type === 'number' ? 'any' : undefined}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
                 placeholder={placeholder}

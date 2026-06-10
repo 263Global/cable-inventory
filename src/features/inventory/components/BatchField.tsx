@@ -21,6 +21,7 @@ export function BatchField({ label, value, onSave, type = 'text', disabled = fal
             <input
                 id={fieldId}
                 type={type}
+                step={type === 'number' ? 'any' : undefined}
                 value={displayValue}
                 onFocus={() => {
                     setIsEditing(true)
