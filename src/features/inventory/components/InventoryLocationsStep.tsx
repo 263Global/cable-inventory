@@ -25,11 +25,9 @@ export function InventoryLocationsStep({
     handoverLocations,
     onUpdateForm,
 }: InventoryLocationsStepProps) {
-    // Non-Terrestrial types already have a dedicated Landing Station field,
-    // so hide landing stations from the Handover dropdown to avoid redundancy
-    const filteredHandovers = form.type === 'Terrestrial'
-        ? handoverLocations
-        : handoverLocations.filter((h) => h.type !== 'Landing Station')
+    // Delivery often happens at the landing station, not just at a data center,
+    // so include landing stations in the Handover dropdown for all resource types.
+    const filteredHandovers = handoverLocations
 
     return (
         <div className="space-y-5">
