@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard, Database, HardDrive, FileText, AlertTriangle,
@@ -9,6 +9,7 @@ import { useDashboardData } from '@/features/dashboard/useDashboardData'
 
 export function DashboardPage() {
     const navigate = useNavigate()
+    const [showFull, setShowFull] = useState(false)
     const { loading, kpi, resources, pipeline, expiring, recent, expiredUnreleased } = useDashboardData()
 
     if (loading) {
@@ -93,17 +94,20 @@ export function DashboardPage() {
                     {resources.length === 0 ? (
                         <p className="text-sm text-text-dim text-center py-6">No resources yet</p>
                     ) : (() => {
-                        const active = resources
-                            .filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
-                            .sort((a, b) => {
-                                const pctA = a.total_capacity > 0 ? a.used_capacity / a.total_capacity : 0
-                                const pctB = b.total_capacity > 0 ? b.used_capacity / b.total_capacity : 0
-                                return pctB - pctA
-                            })
-                        const top10 = active.slice(0, 10)
+                        const active = resources.filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
+                        const isFull = (r: typeof active[number]) => r.total_capacity > 0 && r.used_capacity >= r.total_capacity
+                        // Sellable first: most free capacity on top; fully used ones are collapsed below
+                        const open = active
+                            .filter(r => !isFull(r))
+                            .sort((a, b) => (b.total_capacity - b.used_capacity) - (a.total_capacity - a.used_capacity))
+                        const full = active.filter(isFull)
+                        const shown = [...open.slice(0, 10), ...(showFull ? full : [])]
                         return (
                             <div className="space-y-3">
-                                {top10.map((r) => {
+                                {open.length === 0 && !showFull && (
+                                    <p className="text-sm text-text-dim text-center py-2">No available capacity</p>
+                                )}
+                                {shown.map((r) => {
                                     const pct = r.total_capacity > 0 ? Math.round((r.used_capacity / r.total_capacity) * 100) : 0
                                     return (
                                         <button
@@ -129,7 +133,16 @@ export function DashboardPage() {
                                         </button>
                                     )
                                 })}
-                                {active.length > 10 && (
+                                {full.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFull(v => !v)}
+                                        className="w-full text-center text-xs text-text-dim hover:text-text-muted py-1 cursor-pointer transition-colors"
+                                    >
+                                        {showFull ? 'Hide' : 'Show'} {full.length} fully used
+                                    </button>
+                                )}
+                                {open.length > 10 && (
                                     <button
                                         onClick={() => navigate('/inventory')}
                                         className="w-full text-center text-xs text-primary hover:text-primary/80 py-2 cursor-pointer transition-colors"
