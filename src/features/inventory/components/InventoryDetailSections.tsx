@@ -175,7 +175,15 @@ export function ContractFinancialsCard({
                     <InfoRow label={isBatchMode ? 'Base Term' : 'Term'} value={resource.term_months ? `${resource.term_months} months` : null} />
                 </div>
                 <InfoRow label="Start Date" value={resource.start_date} />
-                <InfoRow label="End Date" value={resource.end_date} />
+                <div>
+                    <p className="text-xs text-text-dim">End Date</p>
+                    <p className="text-sm font-medium mt-0.5">
+                        {resource.end_date ?? '—'}
+                        {resource.end_date && resource.notes?.includes('推算:') && (
+                            <span className="ml-1.5 text-xs font-normal text-status-partial" title={resource.notes}>推算</span>
+                        )}
+                    </p>
+                </div>
             </div>
 
             {(isIRU || isBatchMode) && (

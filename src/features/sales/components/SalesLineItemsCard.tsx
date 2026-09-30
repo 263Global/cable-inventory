@@ -88,6 +88,9 @@ export function SalesLineItemsCard({
                                                 <>
                                                     {item.start_date} → {item.end_date || '—'}
                                                     {item.term_months && <span className="text-text-dim ml-1">({item.term_months}mo)</span>}
+                                                    {item.end_date && item.description?.includes('推算:') && (
+                                                        <span className="ml-1.5 text-xs text-status-partial" title={item.description}>推算</span>
+                                                    )}
                                                 </>
                                             ) : '—'}
                                         </p>

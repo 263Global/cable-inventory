@@ -179,7 +179,12 @@ export function InventoryPageTable({
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-dim mt-2 mb-2">
                                 {item.supplier_name && <span>Supplier: {item.supplier_name}</span>}
                                 <span>{item.acquisition_type}</span>
-                                {item.start_date && <span>{item.start_date} ~ {item.end_date ?? '—'}</span>}
+                                {item.start_date && (
+                                    <span>
+                                        {item.start_date} ~ {item.end_date ?? '—'}
+                                        {item.end_date && item.notes?.includes('推算:') && <span className="ml-1 text-status-partial">推算</span>}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Row 5: Capacity bar */}
