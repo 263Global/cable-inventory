@@ -30,7 +30,7 @@ export async function cancelSalesOrder(
 
     const { error: itemUpdateError } = await supabase
         .from('sales_order_items')
-        .update({ status: 'Cancelled', updated_at: now })
+        .update({ status: 'Cancelled', contract_state: 'terminated', updated_at: now })
         .eq('sales_order_id', id)
     assertNoError(itemUpdateError, 'Failed to update sales order items during cancellation')
 
@@ -55,6 +55,7 @@ export async function terminateSalesOrder(
             .from('sales_order_items')
             .update({
                 status: 'Terminated',
+                contract_state: 'terminated',
                 terminated_at: terminatedAt,
                 termination_fee: item.terminationFee || 0,
                 updated_at: now,
@@ -159,6 +160,11 @@ export async function renewSalesOrder(
                 sell_mrc: renewal.mrc,
                 sell_nrc: renewal.nrc,
                 status: new Date(renewal.startDate) <= new Date() ? 'Active' : 'Pre-sold',
+                // 续签 → 回到合同期内，清空滚动/通知信息
+                contract_state: 'in_term',
+                rolling_since: null,
+                notice_given_at: null,
+                notice_by: null,
                 updated_at: now,
             })
             .eq('id', renewal.itemId)

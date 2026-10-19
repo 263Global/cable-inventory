@@ -187,6 +187,7 @@ export function InventoryDetailPage() {
 
                 {totalCap > 0 && (
                     <InventoryCapacityCircuitsCard
+                        linkedSales={linkedSales}
                         totalCap={totalCap}
                         usedCap={usedCap}
                         isBatchMode={isBatchMode}

@@ -1,4 +1,5 @@
 import { todayDateOnly } from '@/lib/contract-utils'
+import { addDays } from '@/lib/contract-state'
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 import type { SalesOrder, SalesStatus } from '@/types'
@@ -6,6 +7,14 @@ import { recalcForOrder, recalcInventoryCapacity } from './capacity'
 import { deallocateCircuits, syncCircuitStatuses } from './circuits'
 
 type MaybeRelation<T> = T | T[] | null
+
+interface RollingSyncRow {
+    id: string
+    end_date: string | null
+    status: string | null
+    terminated_at: string | null
+    contract_state: string | null
+}
 
 interface OrderStatusSyncRow {
     id: string
@@ -87,28 +96,25 @@ export async function syncOrderStatuses(): Promise<number> {
         transitioned++
     }
 
-    const { data: activeOrders, error: activeError } = await supabase
-        .from('sales_orders')
-        .select('id, sales_order_items(end_date)')
-        .eq('status', 'Active')
-    assertNoError(activeError, 'Failed to load Active orders for status sync')
+    // 滚动续期口径（migration 028）：合同期满未续签不再自动转 Expired、不释放端口，
+    // 而是把订单行标记为 rolling（软占用），rolling_since = 原结束日次日。
+    const { data: dueItems, error: dueError } = await supabase
+        .from('sales_order_items')
+        .select('id, end_date, status, terminated_at, contract_state, sales_orders!inner(status)')
+        .lt('end_date', today)
+        .is('terminated_at', null)
+        .or('contract_state.is.null,contract_state.eq.in_term')
+        .in('sales_orders.status', ['Pre-sold', 'Active', 'Expired'])
+    assertNoError(dueError, 'Failed to load items due for rolling renewal')
 
-    const activeRows = (activeOrders ?? []) as OrderStatusSyncRow[]
-    for (const order of activeRows) {
-        const items = relationToArray(order.sales_order_items)
-        if (!items || items.length === 0) continue
-
-        const allExpired = items.every((item) => item.end_date && item.end_date < today)
-        if (!allExpired) continue
-
+    const dueRows = (dueItems ?? []) as RollingSyncRow[]
+    for (const item of dueRows) {
+        if (!item.end_date || item.status === 'Terminated' || item.status === 'Cancelled') continue
         const { error } = await supabase
-            .from('sales_orders')
-            .update({ status: 'Expired', updated_at: new Date().toISOString() })
-            .eq('id', order.id)
-        assertNoError(error, 'Failed to transition order to Expired')
-
-        await syncCircuitStatuses(order.id, 'Expired')
-        await recalcForOrder(order.id)
+            .from('sales_order_items')
+            .update({ contract_state: 'rolling', rolling_since: addDays(item.end_date, 1) })
+            .eq('id', item.id)
+        assertNoError(error, 'Failed to mark item as rolling')
         transitioned++
     }
 

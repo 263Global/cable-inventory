@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
+import type { ContractState, NoticeBy } from '@/lib/contract-state'
 import type { SalesOrderItem } from '@/types'
 import { recalcInventoryCapacity } from './capacity'
 import { deallocateCircuits } from './circuits'
@@ -90,6 +91,34 @@ export async function updateOrderItem(id: string, payload: OrderItemWritePayload
         .eq('id', id)
 
     assertNoError(error, 'Failed to update sales order item')
+}
+
+export interface ContractStatePatch {
+    contract_state: ContractState
+    rolling_since?: string | null
+    notice_period_days?: number | null
+    notice_given_at?: string | null
+    notice_by?: NoticeBy | null
+}
+
+/** 手动修改订单行合同状态（滚动续期 / 已通知 / 终止 / 合同期内），走现有 RLS */
+export async function updateItemContractState(id: string, patch: ContractStatePatch): Promise<void> {
+    const payload: ContractStatePatch = { ...patch }
+    if (patch.contract_state === 'in_term') {
+        payload.rolling_since = null
+        payload.notice_given_at = null
+        payload.notice_by = null
+    }
+    if (patch.contract_state === 'rolling') {
+        payload.notice_given_at = null
+        payload.notice_by = null
+    }
+    const { error } = await supabase
+        .from('sales_order_items')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', id)
+
+    assertNoError(error, 'Failed to update contract state')
 }
 
 export async function deleteOrderItem(id: string): Promise<void> {

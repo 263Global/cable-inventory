@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 import { pickRelation, type LinkedSalesItemRow } from '@/features/inventory/api/shared'
+import { deriveContractState, type ContractState, type DerivedContractState } from '@/lib/contract-state'
 
 export interface LinkedSalesItem {
     id: string
@@ -11,16 +12,33 @@ export interface LinkedSalesItem {
     disposal_type: string | null
     status: string
     order_status: string
+    end_date: string | null
+    sell_mrc: number | null
+    /** 有效合同状态（滚动续期 / 软占用，migration 028） */
+    contract: DerivedContractState
+    circuit_ids: string[]
+    circuit_numbers: number[]
+}
+
+interface LinkedSalesContractRow extends LinkedSalesItemRow {
+    end_date: string | null
+    sell_mrc: number | null
+    terminated_at: string | null
+    contract_state: ContractState | null
+    rolling_since: string | null
+    notice_period_days: number | null
+    notice_given_at: string | null
+    sales_item_circuits: { inventory_circuit_id: string; inventory_circuits: { circuit_number: number } | { circuit_number: number }[] | null }[] | null
 }
 
 export async function fetchLinkedSalesItems(resourceId: string): Promise<LinkedSalesItem[]> {
     const { data, error } = await supabase
         .from('sales_order_items')
-        .select('id, sales_order_id, capacity, disposal_type, status, sales_orders(order_id, status, customers(name))')
+        .select('id, sales_order_id, capacity, disposal_type, status, end_date, sell_mrc, terminated_at, contract_state, rolling_since, notice_period_days, notice_given_at, sales_orders(order_id, status, customers(name)), sales_item_circuits(inventory_circuit_id, inventory_circuits(circuit_number))')
         .eq('inventory_resource_id', resourceId)
     assertNoError(error, 'Failed to load linked sales items')
 
-    const rows = (data ?? []) as LinkedSalesItemRow[]
+    const rows = (data ?? []) as unknown as LinkedSalesContractRow[]
     return rows.map((row) => {
         const salesOrder = pickRelation(row.sales_orders)
         const customer = pickRelation(salesOrder?.customers)
@@ -33,6 +51,14 @@ export async function fetchLinkedSalesItems(resourceId: string): Promise<LinkedS
             disposal_type: row.disposal_type,
             status: row.status,
             order_status: salesOrder?.status ?? '',
+            end_date: row.end_date,
+            sell_mrc: row.sell_mrc,
+            contract: deriveContractState(row, salesOrder?.status),
+            circuit_ids: (row.sales_item_circuits ?? []).map((link) => link.inventory_circuit_id),
+            circuit_numbers: (row.sales_item_circuits ?? [])
+                .map((link) => pickRelation(link.inventory_circuits)?.circuit_number)
+                .filter((n): n is number => typeof n === 'number')
+                .sort((a, b) => a - b),
         }
     })
 }

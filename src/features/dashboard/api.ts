@@ -1,4 +1,10 @@
 import { formatDateOnly } from '@/lib/contract-utils'
+import {
+    committedRecurringRevenue,
+    deriveContractState,
+    localToday,
+    type ContractState,
+} from '@/lib/contract-state'
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
 import type { SalesStatus } from '@/types'
@@ -9,7 +15,32 @@ import type {
     PipelineItem,
     RecentOrder,
     ResourceRow,
+    RevenueSummary,
+    RollingContract,
 } from './types'
+
+type MaybeRelation<T> = T | T[] | null
+
+function pickOne<T>(value: MaybeRelation<T> | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null
+    return value ?? null
+}
+
+interface ContractItemRow {
+    id: string
+    capacity: number | null
+    sell_mrc: number | null
+    end_date: string | null
+    status: string | null
+    terminated_at: string | null
+    contract_state: ContractState | null
+    rolling_since: string | null
+    notice_period_days: number | null
+    notice_given_at: string | null
+    inventory_resource_id: string | null
+    sales_orders: MaybeRelation<{ id: string; order_id: string; status: string; customers: MaybeRelation<{ name: string }> }>
+    inventory_resources: MaybeRelation<{ resource_id: string }>
+}
 
 const pipelineOrder: SalesStatus[] = ['Draft', 'Pre-sold', 'Active', 'Expired', 'Terminated', 'Cancelled']
 
@@ -22,9 +53,54 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
     const { data: resourcesRaw, error: resourcesError } = await supabase
         .from('inventory_resources')
-        .select('resource_id, type, total_capacity, used_capacity, status, cable_system:cable_systems(name)')
+        .select('id, resource_id, type, total_capacity, used_capacity, status, cable_system:cable_systems(name)')
         .order('resource_id')
     assertNoError(resourcesError, 'Failed to load dashboard resources')
+
+    // 合同状态（滚动续期 / 软占用，migration 028）
+    const { data: itemsRaw, error: itemsError } = await supabase
+        .from('sales_order_items')
+        .select('id, capacity, sell_mrc, end_date, status, terminated_at, contract_state, rolling_since, notice_period_days, notice_given_at, inventory_resource_id, sales_orders!inner(id, order_id, status, customers(name)), inventory_resources(resource_id)')
+    assertNoError(itemsError, 'Failed to load contract states')
+
+    const contractToday = localToday()
+    const hardByResource = new Map<string, number>()
+    const softByResource = new Map<string, number>()
+    const rolling: RollingContract[] = []
+    const revenue: RevenueSummary = { inTermMrc: 0, rollingMrc: 0, committed12m: 0, naive12m: 0 }
+
+    for (const item of (itemsRaw ?? []) as unknown as ContractItemRow[]) {
+        const order = pickOne(item.sales_orders)
+        const derived = deriveContractState(item, order?.status, contractToday)
+        const capacity = Number(item.capacity) || 0
+        const mrc = Number(item.sell_mrc) || 0
+        if (item.inventory_resource_id && derived.occupancy !== 'none') {
+            const target = derived.occupancy === 'hard' ? hardByResource : softByResource
+            target.set(item.inventory_resource_id, (target.get(item.inventory_resource_id) ?? 0) + capacity)
+        }
+        if (derived.occupancy === 'none') continue
+        revenue.committed12m += committedRecurringRevenue(mrc, derived, item.end_date, contractToday)
+        if (derived.occupancy === 'hard') {
+            revenue.inTermMrc += mrc
+            revenue.naive12m += committedRecurringRevenue(mrc, derived, item.end_date, contractToday)
+        } else {
+            revenue.rollingMrc += mrc
+            revenue.naive12m += mrc * 12
+            rolling.push({
+                sales_order_item_id: item.id,
+                sales_order_id: order?.id ?? '',
+                order_id: order?.order_id ?? '',
+                customer_name: pickOne(order?.customers)?.name ?? null,
+                resource_id: pickOne(item.inventory_resources)?.resource_id ?? null,
+                capacity,
+                sell_mrc: item.sell_mrc,
+                end_date: item.end_date,
+                contract: derived,
+            })
+        }
+    }
+    rolling.sort((a, b) => (a.contract.earliestExitDate ?? '').localeCompare(b.contract.earliestExitDate ?? '')
+        || a.order_id.localeCompare(b.order_id))
 
     const resources: ResourceRow[] = (resourcesRaw ?? []).map((resource: Record<string, unknown>) => ({
         resource_id: resource.resource_id as string,
@@ -32,11 +108,15 @@ export async function fetchDashboardData(): Promise<DashboardData> {
         cable_system_name: (resource.cable_system as { name: string } | null)?.name ?? null,
         total_capacity: Number(resource.total_capacity ?? 0),
         used_capacity: Number(resource.used_capacity ?? 0),
+        hard_capacity: hardByResource.get(resource.id as string) ?? 0,
+        soft_capacity: softByResource.get(resource.id as string) ?? 0,
         status: resource.status as string,
     }))
 
     const totalCapacity = resources.reduce((sum, resource) => sum + resource.total_capacity, 0)
     const usedCapacity = resources.reduce((sum, resource) => sum + resource.used_capacity, 0)
+    const hardCapacity = resources.reduce((sum, resource) => sum + resource.hard_capacity, 0)
+    const softCapacity = resources.reduce((sum, resource) => sum + resource.soft_capacity, 0)
 
     const { data: ordersRaw, error: ordersError } = await supabase
         .from('sales_orders')
@@ -108,11 +188,16 @@ export async function fetchDashboardData(): Promise<DashboardData> {
             usedCapacity,
             activeOrders: allOrders.filter((order) => order.status === 'Active').length,
             expiringSoon: expiring.length,
+            hardCapacity,
+            softCapacity,
+            rollingCount: rolling.length,
         },
         resources,
         pipeline,
         expiring,
         recent: allOrders.slice(0, 10),
         expiredUnreleased,
+        rolling,
+        revenue,
     }
 }

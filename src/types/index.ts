@@ -1,3 +1,4 @@
+import type { ContractState, NoticeBy } from '@/lib/contract-state'
 // ============================================
 // Reference Data Types
 // ============================================
@@ -250,6 +251,12 @@ export interface SalesOrderItem {
     // Per-item termination
     terminated_at?: string | null
     termination_fee?: number | null
+    // Rolling contract / soft occupancy (migration 028)
+    contract_state?: ContractState | null
+    rolling_since?: string | null
+    notice_period_days?: number | null
+    notice_given_at?: string | null
+    notice_by?: NoticeBy | null
     created_at: string
     updated_at: string
 }

@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
     CancelOrderModal,
+    ContractStateModal,
     ReleaseResourcesModal,
     RenewOrderModal,
     TerminateOrderModal,
@@ -16,6 +17,7 @@ import {
     SalesTerminationInfoCard,
 } from '@/features/sales/components/SalesDetailSections'
 import { useSalesDetailController } from '@/features/sales/useSalesDetailController'
+import { deriveContractState } from '@/lib/contract-state'
 
 export function SalesDetailPage() {
     const { id } = useParams<{ id: string }>()
@@ -23,6 +25,10 @@ export function SalesDetailPage() {
     const {
         order,
         items,
+        contractTarget,
+        contractSaving,
+        setContractTarget,
+        handleContractSave,
         loading,
         deleteTarget,
         deleting,
@@ -94,6 +100,8 @@ export function SalesDetailPage() {
 
             <SalesLineItemsCard
                 items={items}
+                orderStatus={order.status}
+                onEditContract={setContractTarget}
                 onDeleteItem={(item) => {
                     setDeleteTarget({ type: 'item', id: item.id, label: `${item.type} item` })
                 }}
@@ -162,6 +170,14 @@ export function SalesDetailPage() {
                         ),
                     )
                 }}
+            />
+
+            <ContractStateModal
+                item={contractTarget}
+                currentState={contractTarget ? deriveContractState(contractTarget, order.status).state : null}
+                loading={contractSaving}
+                onClose={() => setContractTarget(null)}
+                onConfirm={handleContractSave}
             />
 
             <RenewOrderModal

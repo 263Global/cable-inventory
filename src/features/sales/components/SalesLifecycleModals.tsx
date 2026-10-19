@@ -1,4 +1,5 @@
 export { CancelOrderModal } from '@/features/sales/components/lifecycle/CancelOrderModal'
 export { TerminateOrderModal } from '@/features/sales/components/lifecycle/TerminateOrderModal'
 export { ReleaseResourcesModal } from '@/features/sales/components/lifecycle/ReleaseResourcesModal'
+export { ContractStateModal } from '@/features/sales/components/lifecycle/ContractStateModal'
 export { RenewOrderModal } from '@/features/sales/components/lifecycle/RenewOrderModal'

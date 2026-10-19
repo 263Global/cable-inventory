@@ -1,5 +1,7 @@
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
+import type { LinkedSalesItem } from '@/features/inventory/api'
 import type { InventoryCircuit } from '@/types'
 import type {
     BatchRecord,
@@ -18,6 +20,8 @@ interface InventoryCircuitListProps {
     interfaceTypeOptions: Array<{ value: string; label: string }>
     handoverLocationMap: Map<string, HandoverLocationOption>
     batchMap: Map<string, BatchRecord>
+    /** 端口 id → 占用它的订单行（含合同状态） */
+    circuitSales?: Map<string, LinkedSalesItem>
     onChangeInterfaceType: (circuitId: string, typeId: string) => void
     onDeleteCircuit: (circuitId: string) => void
 }
@@ -27,6 +31,7 @@ export function InventoryCircuitList({
     interfaceTypeOptions,
     handoverLocationMap,
     batchMap,
+    circuitSales,
     onChangeInterfaceType,
     onDeleteCircuit,
 }: InventoryCircuitListProps) {
@@ -49,6 +54,7 @@ export function InventoryCircuitList({
                     ? handoverLocationMap.get(locationZId)
                     : null
                 const batchInfo = circuit.batch_id ? batchMap.get(circuit.batch_id) : null
+                const sale = circuitSales?.get(circuit.id)
 
                 return (
                     <div key={circuit.id} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border-subtle">
@@ -61,6 +67,12 @@ export function InventoryCircuitList({
                                 <span className={`text-xs font-medium ${circuitStatusColors[circuit.status] ?? 'text-text-dim'}`}>● {circuit.status}</span>
                                 {batchInfo && (
                                     <span className="px-1.5 py-0.5 rounded bg-surface-hover text-[10px] font-medium text-text-dim">B{batchInfo.batch_number}</span>
+                                )}
+                                {sale && (
+                                    <>
+                                        <span className="text-xs text-text-muted truncate">{sale.order_id} · {sale.customer_name ?? '—'}</span>
+                                        <ContractStateBadge derived={sale.contract} compact />
+                                    </>
                                 )}
                             </div>
                             <div className="flex items-center gap-1 mt-0.5">

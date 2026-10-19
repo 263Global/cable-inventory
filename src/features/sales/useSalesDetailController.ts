@@ -10,6 +10,8 @@ import {
     fetchSalesOrderById,
     renewSalesOrder,
     terminateSalesOrder,
+    updateItemContractState,
+    type ContractStatePatch,
 } from '@/features/sales/api'
 import type { SalesOrder, SalesOrderItem } from '@/types'
 import {
@@ -53,6 +55,8 @@ export function useSalesDetailController(id: string | undefined, navigate: Navig
     const [terminateItems, setTerminateItems] = useState<TerminateItemDraft[]>([])
     const [renewItems, setRenewItems] = useState<RenewItemDraft[]>([])
     const [releaseItems, setReleaseItems] = useState<ReleaseItemDraft[]>([])
+    const [contractTarget, setContractTarget] = useState<SalesOrderItem | null>(null)
+    const [contractSaving, setContractSaving] = useState(false)
 
     const load = useCallback(async () => {
         if (!id) return
@@ -238,9 +242,29 @@ export function useSalesDetailController(id: string | undefined, navigate: Navig
         }
     }
 
+    const handleContractSave = async (patch: ContractStatePatch) => {
+        if (!contractTarget) return
+        setContractSaving(true)
+        try {
+            await updateItemContractState(contractTarget.id, patch)
+            toast.success('合同状态已更新')
+            setContractTarget(null)
+            load()
+        } catch (err) {
+            console.error(err)
+            toast.error(`更新合同状态失败：${getErrorMessage(err)}`)
+        } finally {
+            setContractSaving(false)
+        }
+    }
+
     return {
         order,
         items,
+        contractTarget,
+        contractSaving,
+        setContractTarget,
+        handleContractSave,
         loading,
         deleteTarget,
         deleting,

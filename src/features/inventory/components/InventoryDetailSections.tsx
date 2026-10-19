@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import type { InventoryRenewalSnapshot, InventoryResource } from '@/types'
 import type { LinkedSalesItem } from '@/features/inventory/api'
+import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
 import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass } from '@/lib/status-styles'
 
@@ -98,23 +99,32 @@ export function LinkedSalesCard({
             </div>
 
             {totalCapacity && (() => {
-                const activeUsed = linkedSales
-                    .filter((s) => s.order_status === 'Active' || s.order_status === 'Pre-sold')
+                const hardUsed = linkedSales
+                    .filter((s) => s.contract.occupancy === 'hard')
+                    .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
+                const softUsed = linkedSales
+                    .filter((s) => s.contract.occupancy === 'soft')
                     .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
                 const draftUsed = linkedSales
                     .filter((s) => s.order_status === 'Draft')
                     .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
-                const activePct = Math.min((activeUsed / totalCapacity) * 100, 100)
-                const draftPct = Math.min((draftUsed / totalCapacity) * 100, 100 - activePct)
+                const hardPct = Math.min((hardUsed / totalCapacity) * 100, 100)
+                const softPct = Math.min((softUsed / totalCapacity) * 100, 100 - hardPct)
+                const draftPct = Math.min((draftUsed / totalCapacity) * 100, 100 - hardPct - softPct)
                 return (
                     <div className="mb-4">
-                        <div className="flex justify-between text-xs text-text-dim mb-1">
-                            <span>Allocated: {activeUsed}G / {totalCapacity}G</span>
+                        <div className="flex flex-wrap justify-between gap-2 text-xs text-text-dim mb-1">
+                            <span className="flex flex-wrap items-center gap-3">
+                                <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-partial" />硬占用 {hardUsed}G</span>
+                                <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-500" />软占用·滚动 {softUsed}G</span>
+                                <span>/ {totalCapacity}G</span>
+                            </span>
                             {draftUsed > 0 && <span className="text-gray-500">+ {draftUsed}G draft</span>}
                         </div>
                         <div className="h-2 bg-background rounded-full overflow-hidden">
                             <div className="h-full flex">
-                                <div className="bg-status-partial h-full" style={{ width: `${activePct}%` }} />
+                                <div className="bg-status-partial h-full" style={{ width: `${hardPct}%` }} />
+                                <div className="bg-sky-500 h-full" style={{ width: `${softPct}%` }} />
                                 <div className="bg-gray-600 h-full" style={{ width: `${draftPct}%` }} />
                             </div>
                         </div>
@@ -136,8 +146,14 @@ export function LinkedSalesCard({
                             {sale.disposal_type && (
                                 <span className="text-xs text-text-dim bg-surface-hover px-2 py-0.5 rounded">{sale.disposal_type}</span>
                             )}
+                            {sale.circuit_numbers.length > 0 ? (
+                                <span className="text-xs font-mono text-text-dim">端口 {sale.circuit_numbers.map((n) => `#${n}`).join(' ')}</span>
+                            ) : (
+                                <span className="text-xs text-text-dim">未绑端口</span>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
+                            <ContractStateBadge derived={sale.contract} compact />
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[sale.order_status as keyof typeof salesStatusBadgeClass] ?? ''}`}>
                                 {sale.order_status}
                             </span>

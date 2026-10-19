@@ -1,17 +1,23 @@
 import { Link } from 'react-router-dom'
-import { Ban, ExternalLink, Package, Trash2 } from 'lucide-react'
+import { Ban, ExternalLink, Package, Repeat, Trash2 } from 'lucide-react'
+import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
+import { deriveContractState } from '@/lib/contract-state'
 import { salesStatusBadgeClass } from '@/lib/status-styles'
 import { formatCurrency } from '@/lib/utils'
-import type { SalesOrderItem } from '@/types'
+import type { SalesOrderItem, SalesStatus } from '@/types'
 
 interface SalesLineItemsCardProps {
     items: SalesOrderItem[]
+    orderStatus: SalesStatus
     onDeleteItem: (item: SalesOrderItem) => void
+    onEditContract: (item: SalesOrderItem) => void
 }
 
 export function SalesLineItemsCard({
     items,
+    orderStatus,
     onDeleteItem,
+    onEditContract,
 }: SalesLineItemsCardProps) {
     return (
         <div className="bg-surface rounded-xl border border-border-subtle p-6">
@@ -28,6 +34,7 @@ export function SalesLineItemsCard({
                 <div className="space-y-3">
                     {items.map((item) => {
                         const isIRU = item.disposal_type === 'IRU Out' || item.disposal_type === 'Swap Out'
+                        const contract = deriveContractState(item, orderStatus)
                         return (
                             <div key={item.id} className="bg-background rounded-lg border border-border-subtle p-4">
                                 <div className="flex items-start justify-between">
@@ -43,13 +50,25 @@ export function SalesLineItemsCard({
                                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${salesStatusBadgeClass[item.status]}`}>
                                             {item.status}
                                         </span>
+                                        <ContractStateBadge derived={contract} />
                                     </div>
+                                    <div className="flex items-center gap-1">
+                                    {contract.state !== 'terminated' && (
+                                        <button
+                                            onClick={() => onEditContract(item)}
+                                            title="修改合同状态（滚动续期 / 已通知撤租）"
+                                            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-text-dim hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                                        >
+                                            <Repeat className="h-3.5 w-3.5" /> 合同状态
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => onDeleteItem(item)}
                                         className="p-1 rounded-md hover:bg-destructive/10 text-text-dim hover:text-destructive transition-colors cursor-pointer"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
                                     </button>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">

@@ -4,6 +4,7 @@ import { InventoryCapacitySummary } from '@/features/inventory/components/Invent
 import { InventoryCircuitAddForm } from '@/features/inventory/components/InventoryCircuitAddForm'
 import { InventoryCircuitList } from '@/features/inventory/components/InventoryCircuitList'
 import type { InventoryCircuit } from '@/types'
+import type { LinkedSalesItem } from '@/features/inventory/api'
 import type {
     BatchRecord,
     HandoverLocationOption,
@@ -23,6 +24,7 @@ interface InventoryCapacityCircuitsCardProps {
     pctAvailable: number
     pctPlanned: number
     circuits: InventoryCircuit[]
+    linkedSales?: LinkedSalesItem[]
     batches: BatchRecord[]
     interfaceTypes: InterfaceTypeOption[]
     handoverLocations: HandoverLocationOption[]
@@ -49,6 +51,7 @@ export function InventoryCapacityCircuitsCard({
     pctAvailable,
     pctPlanned,
     circuits,
+    linkedSales = [],
     batches,
     interfaceTypes,
     handoverLocations,
@@ -150,6 +153,7 @@ export function InventoryCapacityCircuitsCard({
 
                 <InventoryCircuitList
                     circuits={circuits}
+                    circuitSales={new Map(linkedSales.flatMap((sale) => sale.circuit_ids.map((cid) => [cid, sale] as const)))}
                     interfaceTypeOptions={interfaceTypeOptions}
                     handoverLocationMap={handoverLocationMap}
                     batchMap={batchMap}

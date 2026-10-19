@@ -2,15 +2,17 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard, Database, HardDrive, FileText, AlertTriangle,
-    TrendingUp, Clock, ExternalLink, Loader2,
+    TrendingUp, Clock, ExternalLink, Loader2, Repeat, DollarSign,
 } from 'lucide-react'
+import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
+import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass, resourceTypeTextClass } from '@/lib/status-styles'
 import { useDashboardData } from '@/features/dashboard/useDashboardData'
 
 export function DashboardPage() {
     const navigate = useNavigate()
     const [showFull, setShowFull] = useState(false)
-    const { loading, kpi, resources, pipeline, expiring, recent, expiredUnreleased } = useDashboardData()
+    const { loading, kpi, resources, pipeline, expiring, recent, expiredUnreleased, rolling, revenue } = useDashboardData()
 
     if (loading) {
         return (
@@ -20,7 +22,9 @@ export function DashboardPage() {
         )
     }
 
-    const utilizationPct = kpi.totalCapacity > 0 ? Math.round((kpi.usedCapacity / kpi.totalCapacity) * 100) : 0
+    const utilizationPct = kpi.totalCapacity > 0 ? Math.round(((kpi.hardCapacity + kpi.softCapacity) / kpi.totalCapacity) * 100) : 0
+    const hardPctAll = kpi.totalCapacity > 0 ? Math.round((kpi.hardCapacity / kpi.totalCapacity) * 100) : 0
+    const softPctAll = kpi.totalCapacity > 0 ? Math.round((kpi.softCapacity / kpi.totalCapacity) * 100) : 0
 
     return (
         <div>
@@ -31,7 +35,7 @@ export function DashboardPage() {
             </div>
 
             {/* Row 1: KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <KPICard
                     icon={<Database className="h-5 w-5" />}
                     label="Total Resources"
@@ -42,7 +46,7 @@ export function DashboardPage() {
                     icon={<HardDrive className="h-5 w-5" />}
                     label="Total Capacity"
                     value={`${kpi.totalCapacity}G`}
-                    sub={`${utilizationPct}% utilized`}
+                    sub={`${utilizationPct}% 占用 · 硬 ${hardPctAll}% / 软 ${softPctAll}%`}
                     color="text-info"
                 />
                 <KPICard
@@ -57,6 +61,13 @@ export function DashboardPage() {
                     value={kpi.expiringSoon}
                     color={kpi.expiringSoon > 0 ? 'text-warning' : 'text-text-dim'}
                 />
+                <KPICard
+                    icon={<Repeat className="h-5 w-5" />}
+                    label="滚动合同 · 软占用"
+                    value={kpi.rollingCount}
+                    sub={`${kpi.softCapacity}G 可随时被退`}
+                    color={kpi.rollingCount > 0 ? 'text-sky-600 dark:text-sky-400' : 'text-text-dim'}
+                />
             </div>
 
             {/* Expired orders alert */}
@@ -65,9 +76,9 @@ export function DashboardPage() {
                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div className="flex-1">
                         <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            {expiredUnreleased.length} expired orders still have unreleased resources
+                            {expiredUnreleased.length} 张订单合同期满未续签，已进入滚动续期（软占用）
                         </p>
-                        <p className="text-xs text-text-muted mt-1">Review these orders and terminate non-renewed contracts to release capacity and circuits.</p>
+                        <p className="text-xs text-text-muted mt-1">资源仍在用，任一方提前通知即可撤租。客户确认撤租后，请在订单上标记"已通知"或走 Terminate 释放端口。</p>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {expiredUnreleased.map(o => (
                                 <button key={o.id}
@@ -87,19 +98,24 @@ export function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                 {/* Capacity by Resource */}
                 <div className="bg-surface rounded-xl border border-border-subtle p-5">
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
                         <TrendingUp className="h-4 w-4 text-primary" />
                         <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Capacity by Resource</h2>
+                        <span className="ml-auto flex items-center gap-3 text-xs text-text-dim">
+                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-partial" />硬占用</span>
+                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-500" />软占用·滚动</span>
+                        </span>
                     </div>
                     {resources.length === 0 ? (
                         <p className="text-sm text-text-dim text-center py-6">No resources yet</p>
                     ) : (() => {
                         const active = resources.filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
-                        const isFull = (r: typeof active[number]) => r.total_capacity > 0 && r.used_capacity >= r.total_capacity
+                        const occupied = (r: typeof active[number]) => r.hard_capacity + r.soft_capacity
+                        const isFull = (r: typeof active[number]) => r.total_capacity > 0 && occupied(r) >= r.total_capacity
                         // Sellable first: most free capacity on top; fully used ones are collapsed below
                         const open = active
                             .filter(r => !isFull(r))
-                            .sort((a, b) => (b.total_capacity - b.used_capacity) - (a.total_capacity - a.used_capacity))
+                            .sort((a, b) => (b.total_capacity - occupied(b)) - (a.total_capacity - occupied(a)))
                         const full = active.filter(isFull)
                         const shown = [...open.slice(0, 10), ...(showFull ? full : [])]
                         return (
@@ -108,7 +124,10 @@ export function DashboardPage() {
                                     <p className="text-sm text-text-dim text-center py-2">No available capacity</p>
                                 )}
                                 {shown.map((r) => {
-                                    const pct = r.total_capacity > 0 ? Math.round((r.used_capacity / r.total_capacity) * 100) : 0
+                                    const used = occupied(r)
+                                    const pct = r.total_capacity > 0 ? Math.round((used / r.total_capacity) * 100) : 0
+                                    const hardPct = r.total_capacity > 0 ? Math.min((r.hard_capacity / r.total_capacity) * 100, 100) : 0
+                                    const softPct = r.total_capacity > 0 ? Math.min((r.soft_capacity / r.total_capacity) * 100, 100 - hardPct) : 0
                                     return (
                                         <button
                                             key={r.resource_id}
@@ -121,14 +140,21 @@ export function DashboardPage() {
                                                     <span className={`font-mono font-medium ${resourceTypeTextClass[r.type as keyof typeof resourceTypeTextClass] ?? 'text-text'}`}>{r.resource_id}</span>
                                                     <span className="text-text-dim text-xs">{r.cable_system_name || r.type}</span>
                                                 </div>
-                                                <span className="text-text-muted text-xs">{r.used_capacity}G / {r.total_capacity}G ({pct}%)</span>
+                                                <span className="text-text-muted text-xs">
+                                                    {r.soft_capacity > 0
+                                                        ? <>{r.hard_capacity}G 硬 + <span className="text-sky-600 dark:text-sky-400">{r.soft_capacity}G 软</span></>
+                                                        : `${used}G`} / {r.total_capacity}G ({pct}%)
+                                                </span>
                                             </div>
-                                            <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden">
+                                            <div
+                                                className="w-full h-2 bg-surface-hover rounded-full overflow-hidden flex"
+                                                aria-label={`${r.resource_id} utilization ${pct}% (hard ${r.hard_capacity}G, soft ${r.soft_capacity}G)`}
+                                            >
                                                 <div
-                                                    className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-status-full' : 'bg-status-partial'}`}
-                                                    style={{ width: `${Math.min(pct, 100)}%` }}
-                                                    aria-label={`${r.resource_id} utilization ${pct}%`}
+                                                    className={`h-full transition-all ${pct >= 100 && r.soft_capacity === 0 ? 'bg-status-full' : 'bg-status-partial'}`}
+                                                    style={{ width: `${hardPct}%` }}
                                                 />
+                                                <div className="h-full bg-sky-500 transition-all" style={{ width: `${softPct}%` }} />
                                             </div>
                                         </button>
                                     )
@@ -215,6 +241,87 @@ export function DashboardPage() {
                             </div>
                         )
                     })()}
+                </div>
+            </div>
+
+            {/* Row 2b: Rolling contracts (soft occupancy) + Recurring revenue */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div className="bg-surface rounded-xl border border-border-subtle p-5 lg:col-span-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <Repeat className="h-4 w-4 text-sky-500" />
+                        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">滚动合同 · 软占用</h2>
+                        <span className="text-xs text-text-dim ml-auto">{rolling.length} 条 · {kpi.softCapacity}G</span>
+                    </div>
+                    <p className="text-xs text-text-dim mb-3">合同期满未续签，自动顺延为开口合同；任一方提前通知即可撤租。</p>
+                    {rolling.length === 0 ? (
+                        <p className="text-sm text-text-dim text-center py-6">暂无滚动合同</p>
+                    ) : (
+                        <div className="overflow-x-auto -mx-1">
+                            <table className="w-full text-sm min-w-[560px]">
+                                <thead>
+                                    <tr className="text-xs text-text-dim text-left border-b border-border-subtle">
+                                        <th className="py-2 px-1 font-medium">订单</th>
+                                        <th className="py-2 px-1 font-medium">客户</th>
+                                        <th className="py-2 px-1 font-medium text-right">容量</th>
+                                        <th className="py-2 px-1 font-medium text-right">MRC</th>
+                                        <th className="py-2 px-1 font-medium">滚动起始</th>
+                                        <th className="py-2 px-1 font-medium">最早可退出</th>
+                                        <th className="py-2 px-1 font-medium">状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rolling.map((row) => (
+                                        <tr
+                                            key={row.sales_order_item_id}
+                                            onClick={() => navigate(`/sales/${row.sales_order_id}`)}
+                                            className="border-b border-border-subtle/60 last:border-0 hover:bg-surface-hover cursor-pointer"
+                                        >
+                                            <td className="py-2 px-1">
+                                                <span className="font-mono text-primary">{row.order_id}</span>
+                                                {row.resource_id && <span className="block text-xs text-text-dim font-mono">{row.resource_id}</span>}
+                                            </td>
+                                            <td className="py-2 px-1 text-text-muted">{row.customer_name ?? '—'}</td>
+                                            <td className="py-2 px-1 text-right">{row.capacity}G</td>
+                                            <td className="py-2 px-1 text-right">{row.sell_mrc != null ? formatCurrency(row.sell_mrc) : '—'}</td>
+                                            <td className="py-2 px-1 text-text-muted">{row.contract.rollingSince ?? '—'}</td>
+                                            <td className="py-2 px-1">{row.contract.earliestExitDate ?? '—'}</td>
+                                            <td className="py-2 px-1"><ContractStateBadge derived={row.contract} compact /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-surface rounded-xl border border-border-subtle p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">经常性收入（MRC）</h2>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-xs text-text-dim">合同期内 MRC / 月</p>
+                            <p className="text-lg font-semibold">{formatCurrency(revenue.inTermMrc)}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-text-dim">滚动合同 MRC / 月 <span className="text-sky-600 dark:text-sky-400">（只计未来 1 个月）</span></p>
+                            <p className="text-lg font-semibold text-sky-600 dark:text-sky-400">{formatCurrency(revenue.rollingMrc)}</p>
+                        </div>
+                        <div className="pt-3 border-t border-border-subtle">
+                            <p className="text-xs text-text-dim">未来 12 个月确定收入</p>
+                            <p className="text-xl font-bold">{formatCurrency(revenue.committed12m)}</p>
+                            {revenue.naive12m > revenue.committed12m && (
+                                <p className="text-xs text-text-dim mt-1">
+                                    若滚动合同全年续用，可再多 {formatCurrency(revenue.naive12m - revenue.committed12m)}（不计入确定收入）
+                                </p>
+                            )}
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-text-dim">
+                            口径：合同期内按剩余月数计（封顶 12 个月）；滚动合同客户随时可退，只计 1 个月；已通知按到退出日折算。
+                            MRC 按订单原币直接加总、未换汇；IRU 一次性收入（OTC/NRC）不计入。
+                        </p>
+                    </div>
                 </div>
             </div>
 
