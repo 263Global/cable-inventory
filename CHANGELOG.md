@@ -2,6 +2,24 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.10.0] - 2026-10-19
+
+### Added — Rolling Contracts & Soft Occupancy
+- **Rolling Renewal Policy** — Customer contracts past their end date without renewal now roll over into open-ended contracts (either side can exit with notice, default 30 days) instead of expiring; resources stay occupied
+- **Contract State on Line Items** — New per-item contract state (`in_term` / `rolling` / `notice_given` / `terminated`) with rolling start date, notice period, notice date and notice party; earliest exit date is derived live, never stored
+- **Dashboard** — Capacity split into hard (in-term) and soft (rolling / notice given) occupancy, per resource and in total; new "滚动合同" KPI and list (customer, capacity, MRC, rolling since, earliest exit); new recurring revenue card where rolling contracts count for one month only
+- **Resource Detail** — Allocated circuits and linked sales show contract state badges; linked sales bar split into hard/soft occupancy with bound circuit numbers
+- **Sales Detail** — Contract state badge per line item and a "合同状态" dialog to mark items as rolling or notice given (formal termination still goes through Terminate)
+
+### Changed — Order Status Sync
+- **No Auto-Expiry Release** — The automatic status sync no longer moves past-end Active orders to Expired and releases their circuits; it marks the line items as `rolling` instead
+- **Lifecycle Flows** — Terminate / cancel set `contract_state = terminated`; renew resets to `in_term` and clears rolling/notice fields
+- **Expired Order Copy** — Expired-order banner and dashboard alert now describe the rolling-renewal state
+
+### Changed — Supabase Schema
+- **Migration `028_rolling_contracts.sql`** — Additive only: nullable `contract_state`, `rolling_since`, `notice_period_days`, `notice_given_at`, `notice_by` on `sales_order_items`, backfill of existing rows, and view `sales_item_contract_status` (`security_invoker`)
+- **Rollback** — `supabase/rollbacks/028_rolling_contracts_down.sql` drops only the new view and columns
+
 ## [2.9.5] - 2026-05-28
 
 ### Added — Bulk Circuit Creation

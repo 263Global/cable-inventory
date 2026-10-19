@@ -86,7 +86,7 @@ test('monthsUntil rounds up partial months and ignores past dates', () => {
 
 test('committed revenue: rolling = 1 month, in-term capped at horizon', () => {
     const rolling = deriveContractState({ end_date: '2026-09-15' }, 'Expired', TODAY)
-    assert.equal(committedRecurringRevenue(14300, rolling, '2026-09-15', TODAY), 14300)
+    assert.equal(committedRecurringRevenue(12000, rolling, '2026-09-15', TODAY), 12000)
 
     const inTerm = deriveContractState({ end_date: '2027-04-30' }, 'Active', TODAY)
     assert.equal(committedRecurringRevenue(10000, inTerm, '2027-04-30', TODAY), 70000)
