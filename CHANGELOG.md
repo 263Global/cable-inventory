@@ -2,6 +2,12 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.11.2] - 2026-10-29
+
+### Added — Supplier Codes in Sales
+- **Sales List** — Search also matches the SR / previous SR / Service ID / JOC of the circuits an order occupies; the codes are shown under the Internal Ref (OB) of each order
+- **Sales Detail** — Each allocated circuit in Line Items shows SR (with previous SR), Service ID and JOC, read live from the circuit (not stored on the order); missing values show "—"
+
 ## [2.11.1] - 2026-10-29
 
 ### Added — Contract vs Delivered Capacity

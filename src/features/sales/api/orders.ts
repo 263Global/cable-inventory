@@ -2,7 +2,7 @@ import { todayDateOnly } from '@/lib/contract-utils'
 import { addDays } from '@/lib/contract-state'
 import { supabase } from '@/lib/supabase'
 import { assertNoError } from '@/lib/supabase-utils'
-import type { SalesOrder, SalesStatus } from '@/types'
+import type { SalesOrder, SalesOrderCircuitCode, SalesStatus } from '@/types'
 import { recalcForOrder, recalcInventoryCapacity } from './capacity'
 import { deallocateCircuits, syncCircuitStatuses } from './circuits'
 
@@ -129,7 +129,24 @@ export async function fetchSalesOrders(): Promise<SalesOrder[]> {
 
     assertNoError(error, 'Failed to load sales orders')
     const rows = (data ?? []) as SalesOrderQueryRow[]
-    return rows.map(mapSalesOrderRow)
+    const orders = rows.map(mapSalesOrderRow)
+
+    // 占用端口的 SR / JOC（circuit_code_lookup，migration 029），供列表展示和按编号搜索
+    const { data: codeRows, error: codeError } = await supabase
+        .from('circuit_code_lookup')
+        .select('sales_order_id, circuit_number, supplier_sr, supplier_sr_old, supplier_service_id, juno_circuit_id')
+        .not('sales_order_id', 'is', null)
+        .order('circuit_number')
+    assertNoError(codeError, 'Failed to load circuit codes for sales orders')
+
+    const codesByOrder = new Map<string, SalesOrderCircuitCode[]>()
+    for (const row of (codeRows ?? []) as Array<SalesOrderCircuitCode & { sales_order_id: string }>) {
+        const { sales_order_id, ...code } = row
+        const list = codesByOrder.get(sales_order_id) ?? []
+        list.push(code)
+        codesByOrder.set(sales_order_id, list)
+    }
+    return orders.map((order) => ({ ...order, circuit_codes: codesByOrder.get(order.id) ?? [] }))
 }
 
 export async function fetchSalesOrderById(id: string): Promise<SalesOrder | null> {

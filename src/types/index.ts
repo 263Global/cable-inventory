@@ -228,6 +228,8 @@ export interface SalesOrder {
     total_otc?: number | null
     total_nrc?: number | null
     total_annual_om?: number | null
+    /** 占用端口的 SR / JOC（仅列表页加载） */
+    circuit_codes?: SalesOrderCircuitCode[]
     created_at: string
     updated_at: string
 }
@@ -278,4 +280,18 @@ export interface SalesItemCircuit {
     capacity?: number
     interface_type_name?: string
     status?: string
+    // Supplier codes from inventory_circuits (migration 029)
+    supplier_sr?: string | null
+    supplier_sr_old?: string | null
+    supplier_service_id?: string | null
+    juno_circuit_id?: string | null
+}
+
+/** 订单占用端口的供应商编号（列表页展示与搜索用，来自 circuit_code_lookup） */
+export interface SalesOrderCircuitCode {
+    circuit_number: number
+    supplier_sr: string | null
+    supplier_sr_old: string | null
+    supplier_service_id: string | null
+    juno_circuit_id: string | null
 }

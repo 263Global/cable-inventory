@@ -13,6 +13,10 @@ interface SalesItemCircuitRow {
         capacity: number
         status: string
         current_type: MaybeRelation<{ name: string }>
+        supplier_sr: string | null
+        supplier_sr_old: string | null
+        supplier_service_id: string | null
+        juno_circuit_id: string | null
     }>
 }
 
@@ -33,6 +37,10 @@ function mapSalesItemCircuitRow(row: SalesItemCircuitRow): SalesItemCircuit {
         capacity: circuit?.capacity,
         interface_type_name: currentType?.name ?? undefined,
         status: circuit?.status,
+        supplier_sr: circuit?.supplier_sr ?? null,
+        supplier_sr_old: circuit?.supplier_sr_old ?? null,
+        supplier_service_id: circuit?.supplier_service_id ?? null,
+        juno_circuit_id: circuit?.juno_circuit_id ?? null,
     }
 }
 
@@ -44,7 +52,7 @@ export async function fetchAllocatedCircuitsMap(
 
     const { data, error } = await supabase
         .from('sales_item_circuits')
-        .select('id, sales_order_item_id, inventory_circuit_id, inventory_circuits(circuit_number, capacity, status, current_interface_type_id, current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name))')
+        .select('id, sales_order_item_id, inventory_circuit_id, inventory_circuits(circuit_number, capacity, status, current_interface_type_id, supplier_sr, supplier_sr_old, supplier_service_id, juno_circuit_id, current_type:interface_types!inventory_circuits_current_interface_type_id_fkey(name))')
         .in('sales_order_item_id', salesOrderItemIds)
 
     assertNoError(error, 'Failed to load allocated circuits')

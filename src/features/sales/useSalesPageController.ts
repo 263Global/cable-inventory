@@ -74,7 +74,12 @@ export function useSalesPageController() {
                 order.order_id.toLowerCase().includes(query) ||
                 (order.internal_ref ?? '').toLowerCase().includes(query) ||
                 (order.customer_name ?? '').toLowerCase().includes(query) ||
-                (order.notes ?? '').toLowerCase().includes(query)
+                (order.notes ?? '').toLowerCase().includes(query) ||
+                // 占用端口的 SR / 旧 SR / Service ID / JOC
+                (order.circuit_codes ?? []).some((code) =>
+                    [code.supplier_sr, code.supplier_sr_old, code.supplier_service_id, code.juno_circuit_id]
+                        .some((value) => (value ?? '').toLowerCase().includes(query)),
+                )
 
             const matchesStatus = statusFilter.length === 0 || statusFilter.includes(order.status)
             return matchesSearch && matchesStatus

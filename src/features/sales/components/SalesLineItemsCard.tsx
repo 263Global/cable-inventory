@@ -150,11 +150,23 @@ export function SalesLineItemsCard({
                                 {item.allocated_circuits && item.allocated_circuits.length > 0 && (
                                     <div className="mt-3 pt-3 border-t border-border-subtle">
                                         <span className="text-xs text-text-dim">Allocated Circuits</span>
-                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                        <div className="flex flex-col gap-1.5 mt-1.5">
                                             {item.allocated_circuits.map((circuit) => (
-                                                <span key={circuit.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
-                                                    #{circuit.circuit_number} {circuit.capacity}G {circuit.interface_type_name || ''}
-                                                </span>
+                                                <div key={circuit.id} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                                                        #{circuit.circuit_number} {circuit.capacity}G {circuit.interface_type_name || ''}
+                                                    </span>
+                                                    <span className="text-xs font-mono text-text-muted">
+                                                        <span className="text-text-dim">SR</span> {circuit.supplier_sr || '—'}
+                                                        {circuit.supplier_sr_old && <span className="text-text-dim">（旧 {circuit.supplier_sr_old}）</span>}
+                                                    </span>
+                                                    <span className="text-xs font-mono text-text-muted">
+                                                        <span className="text-text-dim">Service ID</span> {circuit.supplier_service_id || '—'}
+                                                    </span>
+                                                    <span className="text-xs font-mono text-text-muted">
+                                                        <span className="text-text-dim">JOC</span> {circuit.juno_circuit_id || '—'}
+                                                    </span>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>

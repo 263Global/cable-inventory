@@ -33,7 +33,26 @@ export const salesAllColumns: SalesColumnDef[] = [
         label: 'Internal Ref',
         group: 'Basic',
         defaultVisible: true,
-        render: (item) => <span className="text-text-muted">{item.internal_ref || '—'}</span>,
+        render: (item) => {
+            // 占用端口的 SR / JOC 显示在 OB 号下面一行（不另开列：已保存列偏好的用户也能直接看到）
+            const codes = (item.circuit_codes ?? []).filter((code) => code.supplier_sr || code.juno_circuit_id)
+            return (
+                <div>
+                    <span className="text-text-muted">{item.internal_ref || '—'}</span>
+                    {codes.length > 0 && (
+                        <div className="mt-0.5 space-y-0.5 text-[11px] font-mono text-text-dim">
+                            {codes.map((code) => (
+                                <div key={code.circuit_number}>
+                                    {[code.supplier_sr && `SR ${code.supplier_sr}`, code.juno_circuit_id && `JOC ${code.juno_circuit_id}`]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )
+        },
     },
     {
         key: 'customer',

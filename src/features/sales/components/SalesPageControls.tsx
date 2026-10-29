@@ -46,7 +46,7 @@ export function SalesPageControls({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
                 <input
                     type="text"
-                    placeholder="Search orders..."
+                    placeholder="Search orders, OB, SR, JOC, Service ID..."
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
                     className="w-full pl-9 pr-4 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-text placeholder:text-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
