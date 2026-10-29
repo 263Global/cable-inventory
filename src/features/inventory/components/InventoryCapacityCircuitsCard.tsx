@@ -4,7 +4,7 @@ import { InventoryCapacitySummary } from '@/features/inventory/components/Invent
 import { InventoryCircuitAddForm } from '@/features/inventory/components/InventoryCircuitAddForm'
 import { InventoryCircuitList } from '@/features/inventory/components/InventoryCircuitList'
 import type { InventoryCircuit } from '@/types'
-import { formatCapacity, hasSupplierCode, isPendingDelivery, isSellableCircuit } from '@/lib/circuit-codes'
+import { deliverySegments, formatCapacity, hasSupplierCode, isPendingDelivery, isSellableCircuit, summarizeDelivery } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type {
     BatchRecord,
@@ -94,6 +94,18 @@ export function InventoryCapacityCircuitsCard({
         }
     }, [circuits, circuitSales, provisionedCap])
 
+    // 容量条六段拆分：与看板同一口径（硬/软占用按订单行合同状态，交付按端口编号）
+    const breakdown = useMemo(() => {
+        const delivery = summarizeDelivery(totalCap, circuits.map((circuit) => ({ ...circuit, has_order: circuitSales.has(circuit.id) })))
+        let hard = 0
+        let soft = 0
+        for (const sale of linkedSales) {
+            if (sale.contract.occupancy === 'hard') hard += Number(sale.capacity) || 0
+            else if (sale.contract.occupancy === 'soft') soft += Number(sale.capacity) || 0
+        }
+        return { delivery, segments: deliverySegments(hard, soft, delivery) }
+    }, [totalCap, circuits, circuitSales, linkedSales])
+
     const interfaceTypeOptions = useMemo(
         () => interfaceTypes.map((type) => ({ value: type.id, label: type.name })),
         [interfaceTypes],
@@ -148,6 +160,8 @@ export function InventoryCapacityCircuitsCard({
                 pctPlanned={pctPlanned}
                 provisionedCap={provisionedCap}
                 circuitCount={circuits.length}
+                delivery={breakdown.delivery}
+                segments={breakdown.segments}
             />
 
             <div className={isBatchMode ? '' : 'mt-6 pt-4 border-t border-border-subtle'}>

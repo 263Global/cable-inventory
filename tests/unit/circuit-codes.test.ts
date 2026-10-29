@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
     buildCodeSearchFilter,
     circuitCodeLabels,
+    deliverySegments,
     formatCapacity,
     isSellableCircuit,
     looksLikeCode,
@@ -37,6 +38,13 @@ test('summarizeDelivery: allocated port without code still counts as delivered',
     const s = summarizeDelivery(200, [port({ juno_circuit_id: 'JOC1', status: 'Allocated', has_order: true }), port({ status: 'Allocated', has_order: true })])
     assert.equal(s.delivered, 200)
     assert.equal(s.pending, 0)
+})
+
+test('deliverySegments: RES-10010-like split adds up to contract capacity', () => {
+    const delivery = { tracked: true, contract: 10000, lit: 6000, delivered: 2700, sellable: 800, pending: 3300, unlit: 4000 }
+    const seg = deliverySegments(900, 900, delivery)
+    assert.deepEqual(seg, { hard: 900, soft: 900, other: 100, sellable: 800, pending: 3300, unlit: 4000 })
+    assert.equal(seg.hard + seg.soft + seg.other + seg.sellable + seg.pending + seg.unlit, 10000)
 })
 
 test('formatCapacity uses T for round hundreds over 1000G', () => {

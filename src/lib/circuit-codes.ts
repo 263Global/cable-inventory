@@ -71,6 +71,28 @@ export function summarizeDelivery(contractCapacity: number, circuits: DeliveryCi
     }
 }
 
+export interface DeliverySegments {
+    hard: number
+    soft: number
+    /** 已交付但既不是订单占用也不可售（如无订单的 Reserved 端口） */
+    other: number
+    sellable: number
+    pending: number
+    unlit: number
+}
+
+/** 看板 / 资源详情共用的容量六段拆分（合同容量 = 六段之和或更大） */
+export function deliverySegments(hard: number, soft: number, delivery: DeliverySummary): DeliverySegments {
+    return {
+        hard,
+        soft,
+        other: Math.max(delivery.delivered - delivery.sellable - hard - soft, 0),
+        sellable: delivery.sellable,
+        pending: delivery.pending,
+        unlit: delivery.unlit,
+    }
+}
+
 /** 容量显示：≥1000G 且整百时用 T，如 2700 → 2.7T */
 export function formatCapacity(gbps: number): string {
     if (gbps >= 1000 && gbps % 100 === 0) return `${gbps / 1000}T`

@@ -2,6 +2,12 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.11.3] - 2026-10-29
+
+### Changed — Capacity Breakdown on Resource Detail
+- **Delivery-Based Breakdown** — For resources that track supplier codes, the Capacity Breakdown bar uses the same split as the dashboard (hard / soft / other occupied / sellable / in delivery / unlit) with contract, lit and delivered totals, instead of "Available" lit capacity; resources without supplier codes keep the previous breakdown
+- **Shared Split** — `deliverySegments()` is used by both the dashboard and the resource detail so the numbers match
+
 ## [2.11.2] - 2026-10-29
 
 ### Added — Supplier Codes in Sales

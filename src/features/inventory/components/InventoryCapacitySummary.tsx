@@ -1,4 +1,9 @@
+import { formatCapacity, type DeliverySegments, type DeliverySummary } from '@/lib/circuit-codes'
+
 interface InventoryCapacitySummaryProps {
+    /** 按交付编号判定的资源（有端口录了 SR / JOC）用六段拆分，其余保持原样 */
+    delivery?: DeliverySummary
+    segments?: DeliverySegments
     isBatchMode: boolean
     totalCap: number
     usedCap: number
@@ -26,7 +31,44 @@ export function InventoryCapacitySummary({
     pctPlanned,
     provisionedCap,
     circuitCount,
+    delivery,
+    segments,
 }: InventoryCapacitySummaryProps) {
+    if (delivery?.tracked && segments) {
+        const share = (v: number) => (totalCap > 0 ? Math.min((v / totalCap) * 100, 100) : 0)
+        const parts = [
+            { key: 'hard', label: '硬占用', value: segments.hard, bar: 'bg-status-partial', dot: 'bg-status-partial' },
+            { key: 'soft', label: '软占用·滚动', value: segments.soft, bar: 'bg-sky-500', dot: 'bg-sky-500' },
+            { key: 'other', label: '其他占用', value: segments.other, bar: 'bg-text-dim/50', dot: 'bg-text-dim/50' },
+            { key: 'sellable', label: '可售', value: segments.sellable, bar: 'bg-status-available', dot: 'bg-status-available' },
+            { key: 'pending', label: '交付中（不可售）', value: segments.pending, bar: 'bg-pending-stripes', dot: 'bg-pending-stripes border border-amber-500/50' },
+        ]
+        return (
+            <div className="mb-4">
+                <div className="flex justify-between text-sm mb-2">
+                    <span className="font-medium">Capacity Breakdown</span>
+                    <span className="text-text-muted">
+                        合同 {formatCapacity(delivery.contract)} · 已点亮 {formatCapacity(delivery.lit)} · 已交付 {formatCapacity(delivery.delivered)}
+                    </span>
+                </div>
+                <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden flex">
+                    {parts.map((part) => part.value > 0 && (
+                        <div key={part.key} className={`h-full transition-all ${part.bar}`} style={{ width: `${share(part.value)}%` }} title={`${part.label}: ${part.value}G`} />
+                    ))}
+                </div>
+                <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs mt-3">
+                    {[...parts, { key: 'unlit', label: '未点亮', value: segments.unlit, bar: '', dot: 'bg-surface-hover border border-border' }].map((part) => (
+                        <div key={part.key} className="flex items-center gap-1.5">
+                            <span className={`inline-block w-2.5 h-2.5 rounded-full ${part.dot}`} />
+                            <span className="text-text-muted">{part.label}:</span>
+                            <span className={`font-medium ${part.key === 'sellable' ? 'text-status-available' : ''}`}>{formatCapacity(part.value)}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     if (isBatchMode) {
         return (
             <div className="mb-4">

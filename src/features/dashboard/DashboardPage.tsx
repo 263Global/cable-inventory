@@ -5,7 +5,7 @@ import {
     TrendingUp, Clock, ExternalLink, Loader2, Repeat, DollarSign, PackageCheck,
 } from 'lucide-react'
 import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
-import { formatCapacity } from '@/lib/circuit-codes'
+import { deliverySegments, formatCapacity } from '@/lib/circuit-codes'
 import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass, resourceTypeTextClass } from '@/lib/status-styles'
 import { useDashboardData } from '@/features/dashboard/useDashboardData'
@@ -144,8 +144,7 @@ export function DashboardPage() {
                                     const softPct = r.total_capacity > 0 ? Math.min((r.soft_capacity / r.total_capacity) * 100, 100 - hardPct) : 0
                                     const d = r.delivery
                                     const share = (v: number) => (r.total_capacity > 0 ? (v / r.total_capacity) * 100 : 0)
-                                    // 已交付但既不是订单占用也不可售（如无订单的 Reserved 端口）
-                                    const otherOccupied = Math.max(d.delivered - d.sellable - r.hard_capacity - r.soft_capacity, 0)
+                                    const otherOccupied = deliverySegments(r.hard_capacity, r.soft_capacity, d).other
                                     return (
                                         <button
                                             key={r.resource_id}
