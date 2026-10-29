@@ -1,6 +1,7 @@
 import { Package, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { CircuitCodeSearchResults } from '@/features/inventory/components/CircuitCodeSearchResults'
 import { InventoryPageControls } from '@/features/inventory/components/InventoryPageControls'
 import { InventoryPageTable } from '@/features/inventory/components/InventoryPageTable'
 import { inventoryTypeTabs } from '@/features/inventory/inventory-page-config'
@@ -89,6 +90,11 @@ export function InventoryPage() {
                 onClearFilters={clearFilters}
                 onToggleColumn={toggleKey}
                 onResetColumns={reset}
+            />
+
+            <CircuitCodeSearchResults
+                search={search}
+                onOpenDetail={(resourceId) => navigate(`/inventory/${resourceId}`)}
             />
 
             <InventoryPageTable

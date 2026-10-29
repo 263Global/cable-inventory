@@ -1,6 +1,7 @@
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
+import { circuitCodeLabels, isSellableCircuit } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type { InventoryCircuit } from '@/types'
 import type {
@@ -55,9 +56,17 @@ export function InventoryCircuitList({
                     : null
                 const batchInfo = circuit.batch_id ? batchMap.get(circuit.batch_id) : null
                 const sale = circuitSales?.get(circuit.id)
+                const sellable = isSellableCircuit(circuit, Boolean(sale))
+                const codes = circuitCodeLabels(circuit)
 
                 return (
-                    <div key={circuit.id} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border-subtle">
+                    <div
+                        key={circuit.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border ${sellable
+                            ? 'bg-status-available/10 border-status-available/40'
+                            : 'bg-background border-border-subtle'
+                            }`}
+                    >
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface text-xs font-bold text-text-muted">
                             #{circuit.circuit_number}
                         </div>
@@ -65,6 +74,9 @@ export function InventoryCircuitList({
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">{circuit.capacity}G</span>
                                 <span className={`text-xs font-medium ${circuitStatusColors[circuit.status] ?? 'text-text-dim'}`}>● {circuit.status}</span>
+                                {sellable && (
+                                    <span className="px-1.5 py-0.5 rounded bg-status-available text-[10px] font-semibold text-white">可售</span>
+                                )}
                                 {batchInfo && (
                                     <span className="px-1.5 py-0.5 rounded bg-surface-hover text-[10px] font-medium text-text-dim">B{batchInfo.batch_number}</span>
                                 )}
@@ -84,6 +96,15 @@ export function InventoryCircuitList({
                                     </>
                                 )}
                             </div>
+                            {codes.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs font-mono text-text-muted" title={circuit.xc_desc ?? undefined}>
+                                    {codes.map((code) => (
+                                        <span key={code.label}>
+                                            <span className="text-text-dim">{code.label}</span> {code.value}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             {(hLocA || hLocZ) && (
                                 <div className="text-xs text-text-dim mt-0.5">
                                     🏢 {hLocA?.name ?? '(default)'} → {hLocZ?.name ?? '(default)'}

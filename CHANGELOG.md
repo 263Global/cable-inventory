@@ -2,6 +2,17 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.11.0] - 2026-10-29
+
+### Added — Supplier Codes & Sellable Circuits
+- **Circuit Supplier Codes** — Circuits carry the supplier's identifiers: current / previous SR, Service ID, Juno circuit ID (JOC), XC order and XC description, plus the linked cost order reference; shown on each circuit row in Resource Detail
+- **Sellable Circuits** — A delivered circuit (has SR or JOC) with no order is highlighted green with a "可售" badge; the Circuits header shows the sellable count and capacity
+- **Code Search** — Typing a code (SR / JOC / Service ID / XC / OB / SO / cost order) in the Inventory search lists the matching circuits with resource, codes and the order occupying them
+
+### Changed — Supabase Schema
+- **Migration `029_circuit_supplier_codes.sql`** — Additive only: nullable `supplier_sr`, `supplier_sr_old`, `supplier_service_id`, `juno_circuit_id`, `xc_sr`, `xc_desc`, `cost_order_ref` on `inventory_circuits`, two indexes, and view `circuit_code_lookup` (`security_invoker`)
+- **Rollback** — `supabase/rollbacks/029_circuit_supplier_codes_down.sql` drops only the new view, indexes and columns
+
 ## [2.10.0] - 2026-10-19
 
 ### Added — Rolling Contracts & Soft Occupancy

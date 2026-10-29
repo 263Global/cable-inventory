@@ -14,6 +14,7 @@
     "tests/unit/**/*.test.ts",
     "src/features/reference-data/search.ts",
     "src/features/inventory/batchField.ts",
-    "src/features/sales/sales-form-state.ts"
+    "src/features/sales/sales-form-state.ts",
+    "src/lib/circuit-codes.ts"
   ]
 }

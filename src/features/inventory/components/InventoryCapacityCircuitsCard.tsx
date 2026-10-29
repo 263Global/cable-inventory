@@ -4,6 +4,7 @@ import { InventoryCapacitySummary } from '@/features/inventory/components/Invent
 import { InventoryCircuitAddForm } from '@/features/inventory/components/InventoryCircuitAddForm'
 import { InventoryCircuitList } from '@/features/inventory/components/InventoryCircuitList'
 import type { InventoryCircuit } from '@/types'
+import { isSellableCircuit } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type {
     BatchRecord,
@@ -70,6 +71,16 @@ export function InventoryCapacityCircuitsCard({
         [circuits],
     )
 
+    const circuitSales = useMemo(
+        () => new Map(linkedSales.flatMap((sale) => sale.circuit_ids.map((cid) => [cid, sale] as const))),
+        [linkedSales],
+    )
+
+    const sellableSummary = useMemo(() => {
+        const sellable = circuits.filter((circuit) => isSellableCircuit(circuit, circuitSales.has(circuit.id)))
+        return { count: sellable.length, capacity: sellable.reduce((sum, circuit) => sum + circuit.capacity, 0) }
+    }, [circuits, circuitSales])
+
     const interfaceTypeOptions = useMemo(
         () => interfaceTypes.map((type) => ({ value: type.id, label: type.name })),
         [interfaceTypes],
@@ -128,7 +139,14 @@ export function InventoryCapacityCircuitsCard({
 
             <div className={isBatchMode ? '' : 'mt-6 pt-4 border-t border-border-subtle'}>
                 <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold">Circuits</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold">Circuits</h3>
+                        {sellableSummary.count > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-status-available/10 border border-status-available/40 text-xs font-medium text-status-available">
+                                可售 {sellableSummary.count} 口 · {sellableSummary.capacity}G
+                            </span>
+                        )}
+                    </div>
                     <button
                         onClick={onToggleShowAddCircuit}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-medium transition-colors cursor-pointer"
@@ -153,7 +171,7 @@ export function InventoryCapacityCircuitsCard({
 
                 <InventoryCircuitList
                     circuits={circuits}
-                    circuitSales={new Map(linkedSales.flatMap((sale) => sale.circuit_ids.map((cid) => [cid, sale] as const)))}
+                    circuitSales={circuitSales}
                     interfaceTypeOptions={interfaceTypeOptions}
                     handoverLocationMap={handoverLocationMap}
                     batchMap={batchMap}

@@ -143,6 +143,14 @@ export interface InventoryCircuit {
     batch_id: string | null
     status: 'Available' | 'Allocated' | 'Reserved' | 'Planned'
     notes: string | null
+    // Supplier codes (migration 029)
+    supplier_sr?: string | null
+    supplier_sr_old?: string | null
+    supplier_service_id?: string | null
+    juno_circuit_id?: string | null
+    xc_sr?: string | null
+    xc_desc?: string | null
+    cost_order_ref?: string | null
     created_at: string
     updated_at: string
 }
