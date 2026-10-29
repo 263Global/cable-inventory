@@ -4,7 +4,7 @@ import { InventoryCapacitySummary } from '@/features/inventory/components/Invent
 import { InventoryCircuitAddForm } from '@/features/inventory/components/InventoryCircuitAddForm'
 import { InventoryCircuitList } from '@/features/inventory/components/InventoryCircuitList'
 import type { InventoryCircuit } from '@/types'
-import { isSellableCircuit } from '@/lib/circuit-codes'
+import { formatCapacity, hasSupplierCode, isPendingDelivery, isSellableCircuit } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type {
     BatchRecord,
@@ -81,6 +81,19 @@ export function InventoryCapacityCircuitsCard({
         return { count: sellable.length, capacity: sellable.reduce((sum, circuit) => sum + circuit.capacity, 0) }
     }, [circuits, circuitSales])
 
+    const deliverySummary = useMemo(() => {
+        const tracked = circuits.some(hasSupplierCode)
+        const pending = circuits.filter((circuit) => isPendingDelivery({ ...circuit, has_order: circuitSales.has(circuit.id) }, tracked))
+        const pendingCap = pending.reduce((sum, circuit) => sum + circuit.capacity, 0)
+        return {
+            tracked,
+            deliveredCount: circuits.length - pending.length,
+            deliveredCap: provisionedCap - pendingCap,
+            pendingCount: pending.length,
+            pendingCap,
+        }
+    }, [circuits, circuitSales, provisionedCap])
+
     const interfaceTypeOptions = useMemo(
         () => interfaceTypes.map((type) => ({ value: type.id, label: type.name })),
         [interfaceTypes],
@@ -141,9 +154,19 @@ export function InventoryCapacityCircuitsCard({
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                         <h3 className="text-sm font-semibold">Circuits</h3>
+                        {deliverySummary.tracked && (
+                            <span className="text-xs text-text-muted">
+                                已交付 {deliverySummary.deliveredCount} 口 · {formatCapacity(deliverySummary.deliveredCap)}
+                            </span>
+                        )}
                         {sellableSummary.count > 0 && (
                             <span className="px-2 py-0.5 rounded bg-status-available/10 border border-status-available/40 text-xs font-medium text-status-available">
                                 可售 {sellableSummary.count} 口 · {sellableSummary.capacity}G
+                            </span>
+                        )}
+                        {deliverySummary.pendingCount > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/40 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                交付中 {deliverySummary.pendingCount} 口 · {formatCapacity(deliverySummary.pendingCap)}（不可售）
                             </span>
                         )}
                     </div>

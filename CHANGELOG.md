@@ -2,6 +2,13 @@
 
 All notable changes to CableTrack will be documented in this file.
 
+## [2.11.1] - 2026-10-29
+
+### Added — Contract vs Delivered Capacity
+- **Delivery Rule** — For resources that track supplier codes, a circuit counts as delivered when it has an SR / JOC or an order; lit but uncoded free circuits are "交付中" (in delivery) and never sellable. Resources without any supplier codes keep the previous view
+- **Dashboard** — New "可售 · 已交付" KPI (sellable capacity, with in-delivery capacity); tracked resources show a split bar (hard / soft / other occupied / sellable / in delivery / unlit) and a line with contract, lit, delivered, sellable, in delivery and unlit capacity; sorting uses sellable capacity
+- **Resource Detail** — Uncoded free circuits show "● 交付中"; Circuits header shows delivered and in-delivery counts next to sellable
+
 ## [2.11.0] - 2026-10-29
 
 ### Added — Supplier Codes & Sellable Circuits

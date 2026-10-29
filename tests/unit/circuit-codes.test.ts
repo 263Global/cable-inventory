@@ -3,9 +3,48 @@ import assert from 'node:assert/strict'
 import {
     buildCodeSearchFilter,
     circuitCodeLabels,
+    formatCapacity,
     isSellableCircuit,
     looksLikeCode,
+    summarizeDelivery,
+    type DeliveryCircuit,
 } from '../../src/lib/circuit-codes.js'
+
+const port = (over: Partial<DeliveryCircuit>): DeliveryCircuit => ({ status: 'Available', capacity: 100, has_order: false, ...over })
+
+test('summarizeDelivery: PCCW-like resource splits delivered / sellable / pending / unlit', () => {
+    const circuits = [
+        port({ supplier_sr: 'SR1', status: 'Allocated', has_order: true }), // 已交付·占用
+        port({ supplier_sr: 'SR2', status: 'Reserved' }),                   // 已交付·其他占用（无订单）
+        port({ supplier_sr: 'SR3', juno_circuit_id: 'JOC1' }),               // 已交付·可售
+        port({}),                                                            // 交付中
+        port({ capacity: 400 }),                                             // 交付中
+    ]
+    assert.deepEqual(summarizeDelivery(1000, circuits), {
+        tracked: true, contract: 1000, lit: 800, delivered: 300, sellable: 100, pending: 500, unlit: 200,
+    })
+})
+
+test('summarizeDelivery: resource without any codes keeps legacy view (no pending)', () => {
+    const s = summarizeDelivery(100, [port({})])
+    assert.equal(s.tracked, false)
+    assert.equal(s.pending, 0)
+    assert.equal(s.delivered, 100)
+    assert.equal(s.sellable, 0)
+})
+
+test('summarizeDelivery: allocated port without code still counts as delivered', () => {
+    const s = summarizeDelivery(200, [port({ juno_circuit_id: 'JOC1', status: 'Allocated', has_order: true }), port({ status: 'Allocated', has_order: true })])
+    assert.equal(s.delivered, 200)
+    assert.equal(s.pending, 0)
+})
+
+test('formatCapacity uses T for round hundreds over 1000G', () => {
+    assert.equal(formatCapacity(2700), '2.7T')
+    assert.equal(formatCapacity(10000), '10T')
+    assert.equal(formatCapacity(800), '800G')
+    assert.equal(formatCapacity(1250), '1250G')
+})
 
 test('isSellableCircuit: delivered and unallocated port is sellable', () => {
     assert.equal(isSellableCircuit({ status: 'Available', supplier_sr: 'SR252837' }, false), true)

@@ -2,9 +2,10 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard, Database, HardDrive, FileText, AlertTriangle,
-    TrendingUp, Clock, ExternalLink, Loader2, Repeat, DollarSign,
+    TrendingUp, Clock, ExternalLink, Loader2, Repeat, DollarSign, PackageCheck,
 } from 'lucide-react'
 import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
+import { formatCapacity } from '@/lib/circuit-codes'
 import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass, resourceTypeTextClass } from '@/lib/status-styles'
 import { useDashboardData } from '@/features/dashboard/useDashboardData'
@@ -35,7 +36,7 @@ export function DashboardPage() {
             </div>
 
             {/* Row 1: KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
                 <KPICard
                     icon={<Database className="h-5 w-5" />}
                     label="Total Resources"
@@ -48,6 +49,13 @@ export function DashboardPage() {
                     value={`${kpi.totalCapacity}G`}
                     sub={`${utilizationPct}% 占用 · 硬 ${hardPctAll}% / 软 ${softPctAll}%`}
                     color="text-info"
+                />
+                <KPICard
+                    icon={<PackageCheck className="h-5 w-5" />}
+                    label="可售 · 已交付"
+                    value={formatCapacity(kpi.sellableCapacity)}
+                    sub={`交付中 ${formatCapacity(kpi.pendingCapacity)}（未交付不可售）`}
+                    color={kpi.sellableCapacity > 0 ? 'text-status-available' : 'text-text-dim'}
                 />
                 <KPICard
                     icon={<FileText className="h-5 w-5" />}
@@ -104,6 +112,8 @@ export function DashboardPage() {
                         <span className="ml-auto flex items-center gap-3 text-xs text-text-dim">
                             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-partial" />硬占用</span>
                             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-500" />软占用·滚动</span>
+                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-available" />可售</span>
+                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-pending-stripes border border-amber-500/50" />交付中</span>
                         </span>
                     </div>
                     {resources.length === 0 ? (
@@ -111,11 +121,15 @@ export function DashboardPage() {
                     ) : (() => {
                         const active = resources.filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
                         const occupied = (r: typeof active[number]) => r.hard_capacity + r.soft_capacity
-                        const isFull = (r: typeof active[number]) => r.total_capacity > 0 && occupied(r) >= r.total_capacity
+                        // 按交付编号判定的资源：可售只算已交付的空闲端口；交付中 / 未点亮不算空闲
+                        const free = (r: typeof active[number]) => r.delivery.tracked ? r.delivery.sellable : r.total_capacity - occupied(r)
+                        const isFull = (r: typeof active[number]) => r.delivery.tracked
+                            ? r.delivery.sellable === 0 && r.delivery.pending === 0 && r.delivery.unlit === 0
+                            : r.total_capacity > 0 && occupied(r) >= r.total_capacity
                         // Sellable first: most free capacity on top; fully used ones are collapsed below
                         const open = active
                             .filter(r => !isFull(r))
-                            .sort((a, b) => (b.total_capacity - occupied(b)) - (a.total_capacity - occupied(a)))
+                            .sort((a, b) => free(b) - free(a))
                         const full = active.filter(isFull)
                         const shown = [...open.slice(0, 10), ...(showFull ? full : [])]
                         return (
@@ -128,6 +142,10 @@ export function DashboardPage() {
                                     const pct = r.total_capacity > 0 ? Math.round((used / r.total_capacity) * 100) : 0
                                     const hardPct = r.total_capacity > 0 ? Math.min((r.hard_capacity / r.total_capacity) * 100, 100) : 0
                                     const softPct = r.total_capacity > 0 ? Math.min((r.soft_capacity / r.total_capacity) * 100, 100 - hardPct) : 0
+                                    const d = r.delivery
+                                    const share = (v: number) => (r.total_capacity > 0 ? (v / r.total_capacity) * 100 : 0)
+                                    // 已交付但既不是订单占用也不可售（如无订单的 Reserved 端口）
+                                    const otherOccupied = Math.max(d.delivered - d.sellable - r.hard_capacity - r.soft_capacity, 0)
                                     return (
                                         <button
                                             key={r.resource_id}
@@ -155,7 +173,24 @@ export function DashboardPage() {
                                                     style={{ width: `${hardPct}%` }}
                                                 />
                                                 <div className="h-full bg-sky-500 transition-all" style={{ width: `${softPct}%` }} />
+                                                {d.tracked && (
+                                                    <>
+                                                        <div className="h-full bg-text-dim/50" style={{ width: `${share(otherOccupied)}%` }} title={`其他占用 ${otherOccupied}G`} />
+                                                        <div className="h-full bg-status-available" style={{ width: `${share(d.sellable)}%` }} title={`可售 ${d.sellable}G`} />
+                                                        <div className="h-full bg-pending-stripes" style={{ width: `${share(d.pending)}%` }} title={`交付中 ${d.pending}G`} />
+                                                    </>
+                                                )}
                                             </div>
+                                            {d.tracked && (
+                                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-text-dim">
+                                                    <span>合同 {formatCapacity(d.contract)}</span>
+                                                    <span>已点亮 {formatCapacity(d.lit)}</span>
+                                                    <span className="text-text-muted">已交付 {formatCapacity(d.delivered)}</span>
+                                                    <span className="font-semibold text-status-available">可售 {formatCapacity(d.sellable)}</span>
+                                                    {d.pending > 0 && <span className="text-amber-600 dark:text-amber-400">交付中 {formatCapacity(d.pending)}</span>}
+                                                    {d.unlit > 0 && <span>未点亮 {formatCapacity(d.unlit)}</span>}
+                                                </div>
+                                            )}
                                         </button>
                                     )
                                 })}

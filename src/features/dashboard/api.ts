@@ -1,4 +1,5 @@
 import { formatDateOnly } from '@/lib/contract-utils'
+import { summarizeDelivery, type DeliveryCircuit } from '@/lib/circuit-codes'
 import {
     committedRecurringRevenue,
     deriveContractState,
@@ -102,6 +103,25 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     rolling.sort((a, b) => (a.contract.earliestExitDate ?? '').localeCompare(b.contract.earliestExitDate ?? '')
         || a.order_id.localeCompare(b.order_id))
 
+    // 端口交付状态（migration 029）：有 SR / JOC 或已有订单 = 已交付；已点亮空闲无编号 = 交付中
+    const { data: circuitsRaw, error: circuitsError } = await supabase
+        .from('circuit_code_lookup')
+        .select('inventory_resource_id, capacity, status, supplier_sr, juno_circuit_id, order_id')
+    assertNoError(circuitsError, 'Failed to load circuit delivery status')
+    const circuitsByResource = new Map<string, DeliveryCircuit[]>()
+    for (const row of (circuitsRaw ?? []) as Array<Record<string, unknown>>) {
+        const key = row.inventory_resource_id as string
+        const list = circuitsByResource.get(key) ?? []
+        list.push({
+            capacity: Number(row.capacity) || 0,
+            status: row.status as string,
+            supplier_sr: row.supplier_sr as string | null,
+            juno_circuit_id: row.juno_circuit_id as string | null,
+            has_order: Boolean(row.order_id),
+        })
+        circuitsByResource.set(key, list)
+    }
+
     const resources: ResourceRow[] = (resourcesRaw ?? []).map((resource: Record<string, unknown>) => ({
         resource_id: resource.resource_id as string,
         type: resource.type as string,
@@ -111,7 +131,11 @@ export async function fetchDashboardData(): Promise<DashboardData> {
         hard_capacity: hardByResource.get(resource.id as string) ?? 0,
         soft_capacity: softByResource.get(resource.id as string) ?? 0,
         status: resource.status as string,
+        delivery: summarizeDelivery(Number(resource.total_capacity ?? 0), circuitsByResource.get(resource.id as string) ?? []),
     }))
+    const liveResources = resources.filter((resource) => resource.status !== 'Terminated' && resource.status !== 'Expired')
+    const sellableCapacity = liveResources.reduce((sum, resource) => sum + resource.delivery.sellable, 0)
+    const pendingCapacity = liveResources.reduce((sum, resource) => sum + resource.delivery.pending, 0)
 
     const totalCapacity = resources.reduce((sum, resource) => sum + resource.total_capacity, 0)
     const usedCapacity = resources.reduce((sum, resource) => sum + resource.used_capacity, 0)
@@ -191,6 +215,8 @@ export async function fetchDashboardData(): Promise<DashboardData> {
             hardCapacity,
             softCapacity,
             rollingCount: rolling.length,
+            sellableCapacity,
+            pendingCapacity,
         },
         resources,
         pipeline,

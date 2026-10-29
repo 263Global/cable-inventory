@@ -130,3 +130,7 @@ body {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+/* 交付中（已点亮、尚未交付给我们）：琥珀色斜纹，和"可售"实心绿区分 */
+@utility bg-pending-stripes {
+  background-image: repeating-linear-gradient(135deg, rgb(245 158 11 / 0.55) 0 4px, rgb(245 158 11 / 0.15) 4px 8px);
+}

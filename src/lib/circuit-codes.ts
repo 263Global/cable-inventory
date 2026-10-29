@@ -20,6 +20,63 @@ export function isSellableCircuit(circuit: CircuitCodeFields, hasSale: boolean):
     return circuit.status === 'Available' && !hasSale && hasSupplierCode(circuit)
 }
 
+export interface DeliveryCircuit extends CircuitCodeFields {
+    capacity: number
+    /** 是否有订单行占用（sales_item_circuits） */
+    has_order: boolean
+}
+
+export interface DeliverySummary {
+    /** 是否按交付编号判定：资源下至少一个端口录了 SR / JOC */
+    tracked: boolean
+    /** 合同容量 */
+    contract: number
+    /** 已点亮 = 已建端口容量合计 */
+    lit: number
+    /** 已交付给我们：有编号或已有订单的端口（未按编号判定的资源 = 全部已点亮） */
+    delivered: number
+    /** 可售：已交付且空闲 */
+    sellable: number
+    /** 交付中：已点亮、空闲、还没有交付编号 */
+    pending: number
+    /** 未点亮 = 合同 − 已点亮 */
+    unlit: number
+}
+
+/** 2026-10-29 王永威口径：合同容量 ≠ 实际交付；没交付给我们的端口不可售，算"交付中" */
+export function isPendingDelivery(circuit: DeliveryCircuit, tracked: boolean): boolean {
+    return tracked && !circuit.has_order && circuit.status === 'Available' && !hasSupplierCode(circuit)
+}
+
+export function summarizeDelivery(contractCapacity: number, circuits: DeliveryCircuit[]): DeliverySummary {
+    const tracked = circuits.some(hasSupplierCode)
+    let lit = 0
+    let pending = 0
+    let sellable = 0
+    for (const circuit of circuits) {
+        const capacity = Number(circuit.capacity) || 0
+        lit += capacity
+        if (isPendingDelivery(circuit, tracked)) pending += capacity
+        else if (isSellableCircuit(circuit, circuit.has_order)) sellable += capacity
+    }
+    lit = Math.min(lit, contractCapacity > 0 ? contractCapacity : lit)
+    return {
+        tracked,
+        contract: contractCapacity,
+        lit,
+        delivered: Math.max(lit - pending, 0),
+        sellable,
+        pending,
+        unlit: Math.max(contractCapacity - lit, 0),
+    }
+}
+
+/** 容量显示：≥1000G 且整百时用 T，如 2700 → 2.7T */
+export function formatCapacity(gbps: number): string {
+    if (gbps >= 1000 && gbps % 100 === 0) return `${gbps / 1000}T`
+    return `${gbps}G`
+}
+
 /** 端口行上展示的编号标签，按 SR → 旧 SR → Service ID → JOC → XC 顺序 */
 export function circuitCodeLabels(circuit: CircuitCodeFields): Array<{ label: string; value: string }> {
     const labels: Array<{ label: string; value: string }> = []

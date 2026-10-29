@@ -1,7 +1,7 @@
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
-import { circuitCodeLabels, isSellableCircuit } from '@/lib/circuit-codes'
+import { circuitCodeLabels, hasSupplierCode, isPendingDelivery, isSellableCircuit } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type { InventoryCircuit } from '@/types'
 import type {
@@ -40,6 +40,9 @@ export function InventoryCircuitList({
         return <p className="text-sm text-text-dim text-center py-4">No circuits defined yet.</p>
     }
 
+    // 资源下有端口录了交付编号，才按"有编号 = 已交付"判定其余空闲端口为交付中
+    const tracked = circuits.some(hasSupplierCode)
+
     return (
         <div className="space-y-2">
             {circuits.map((circuit) => {
@@ -57,6 +60,7 @@ export function InventoryCircuitList({
                 const batchInfo = circuit.batch_id ? batchMap.get(circuit.batch_id) : null
                 const sale = circuitSales?.get(circuit.id)
                 const sellable = isSellableCircuit(circuit, Boolean(sale))
+                const pending = isPendingDelivery({ ...circuit, has_order: Boolean(sale) }, tracked)
                 const codes = circuitCodeLabels(circuit)
 
                 return (
@@ -73,7 +77,11 @@ export function InventoryCircuitList({
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">{circuit.capacity}G</span>
-                                <span className={`text-xs font-medium ${circuitStatusColors[circuit.status] ?? 'text-text-dim'}`}>● {circuit.status}</span>
+                                {pending ? (
+                                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400" title="已点亮，供应商尚未交付（无 SR / JOC），不可售">● 交付中</span>
+                                ) : (
+                                    <span className={`text-xs font-medium ${circuitStatusColors[circuit.status] ?? 'text-text-dim'}`}>● {circuit.status}</span>
+                                )}
                                 {sellable && (
                                     <span className="px-1.5 py-0.5 rounded bg-status-available text-[10px] font-semibold text-white">可售</span>
                                 )}
