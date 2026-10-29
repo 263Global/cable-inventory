@@ -4,7 +4,7 @@ import { InventoryCapacitySummary } from '@/features/inventory/components/Invent
 import { InventoryCircuitAddForm } from '@/features/inventory/components/InventoryCircuitAddForm'
 import { InventoryCircuitList } from '@/features/inventory/components/InventoryCircuitList'
 import type { InventoryCircuit } from '@/types'
-import { deliverySegments, formatCapacity, hasSupplierCode, isPendingDelivery, isSellableCircuit, summarizeDelivery } from '@/lib/circuit-codes'
+import { deliverySegments, formatCapacity, hasSupplierCode, isPendingDelivery, isSellableCircuit, occupancyBucket, summarizeDelivery } from '@/lib/circuit-codes'
 import type { LinkedSalesItem } from '@/features/inventory/api'
 import type {
     BatchRecord,
@@ -97,13 +97,12 @@ export function InventoryCapacityCircuitsCard({
     // 容量条六段拆分：与看板同一口径（硬/软占用按订单行合同状态，交付按端口编号）
     const breakdown = useMemo(() => {
         const delivery = summarizeDelivery(totalCap, circuits.map((circuit) => ({ ...circuit, has_order: circuitSales.has(circuit.id) })))
-        let hard = 0
-        let soft = 0
+        const b = { hard: 0, soft: 0, selfUse: 0 }
         for (const sale of linkedSales) {
-            if (sale.contract.occupancy === 'hard') hard += Number(sale.capacity) || 0
-            else if (sale.contract.occupancy === 'soft') soft += Number(sale.capacity) || 0
+            const bucket = occupancyBucket(sale.disposal_type, sale.contract.occupancy)
+            if (bucket) b[bucket] += Number(sale.capacity) || 0
         }
-        return { delivery, segments: deliverySegments(hard, soft, delivery) }
+        return { delivery, segments: deliverySegments(b.hard, b.soft, delivery, b.selfUse) }
     }, [totalCap, circuits, circuitSales, linkedSales])
 
     const interfaceTypeOptions = useMemo(

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import type { InventoryResource } from '@/types'
+import { CapacitySegmentsBar, CapacitySummaryLine } from '@/components/capacity/CapacitySegmentsBar'
+import { capacityUsageLabel } from '@/components/capacity/capacity-styles'
 import {
     resourceStatusBadgeClass,
     resourceStatusLabel,
@@ -74,7 +76,21 @@ export const inventoryAllColumns: ColumnDef[] = [
     },
     {
         key: 'capacity', label: 'Capacity Usage', group: 'Basic', defaultVisible: true, minWidth: '200px',
-        render: (item) => renderCapacityBar({ used: Number(item.used_capacity ?? 0), total: Number(item.total_capacity ?? 0) }),
+        render: (item) => {
+            const total = Number(item.total_capacity ?? 0)
+            if (!item.occupancy || !total) return renderCapacityBar({ used: Number(item.used_capacity ?? 0), total })
+            return (
+                <div className="min-w-[200px]">
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-[80px]">
+                            <CapacitySegmentsBar total={total} segments={item.occupancy.segments} delivery={item.occupancy.delivery} />
+                        </div>
+                        <span className="text-xs text-text-muted whitespace-nowrap">{capacityUsageLabel(total, item.occupancy.segments)}</span>
+                    </div>
+                    <CapacitySummaryLine segments={item.occupancy.segments} delivery={item.occupancy.delivery} />
+                </div>
+            )
+        },
     },
     {
         key: 'supplier', label: 'Supplier', group: 'Basic', defaultVisible: false,

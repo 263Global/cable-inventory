@@ -5,7 +5,9 @@ import {
     TrendingUp, Clock, ExternalLink, Loader2, Repeat, DollarSign, PackageCheck,
 } from 'lucide-react'
 import { ContractStateBadge } from '@/components/contract/ContractStateBadge'
-import { deliverySegments, formatCapacity } from '@/lib/circuit-codes'
+import { formatCapacity } from '@/lib/circuit-codes'
+import { CapacitySegmentsBar } from '@/components/capacity/CapacitySegmentsBar'
+import { capacitySegmentStyles, capacityUsageLabel } from '@/components/capacity/capacity-styles'
 import { formatCurrency } from '@/lib/utils'
 import { salesStatusBadgeClass, resourceTypeTextClass } from '@/lib/status-styles'
 import { useDashboardData } from '@/features/dashboard/useDashboardData'
@@ -23,7 +25,7 @@ export function DashboardPage() {
         )
     }
 
-    const utilizationPct = kpi.totalCapacity > 0 ? Math.round(((kpi.hardCapacity + kpi.softCapacity) / kpi.totalCapacity) * 100) : 0
+    const utilizationPct = kpi.totalCapacity > 0 ? Math.round(((kpi.hardCapacity + kpi.softCapacity + kpi.selfUseCapacity) / kpi.totalCapacity) * 100) : 0
     const hardPctAll = kpi.totalCapacity > 0 ? Math.round((kpi.hardCapacity / kpi.totalCapacity) * 100) : 0
     const softPctAll = kpi.totalCapacity > 0 ? Math.round((kpi.softCapacity / kpi.totalCapacity) * 100) : 0
 
@@ -110,22 +112,18 @@ export function DashboardPage() {
                         <TrendingUp className="h-4 w-4 text-primary" />
                         <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Capacity by Resource</h2>
                         <span className="ml-auto flex items-center gap-3 text-xs text-text-dim">
-                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-partial" />硬占用</span>
-                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-500" />软占用·滚动</span>
-                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-available" />可售</span>
-                            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-pending-stripes border border-amber-500/50" />交付中</span>
+                            {capacitySegmentStyles.map((style) => (
+                                <span key={style.key} className="flex items-center gap-1"><span className={`inline-block w-2 h-2 rounded-full ${style.dot}`} />{style.label}</span>
+                            ))}
                         </span>
                     </div>
                     {resources.length === 0 ? (
                         <p className="text-sm text-text-dim text-center py-6">No resources yet</p>
                     ) : (() => {
                         const active = resources.filter(r => r.status !== 'Terminated' && r.status !== 'Expired')
-                        const occupied = (r: typeof active[number]) => r.hard_capacity + r.soft_capacity
-                        // 按交付编号判定的资源：可售只算已交付的空闲端口；交付中 / 未点亮不算空闲
-                        const free = (r: typeof active[number]) => r.delivery.tracked ? r.delivery.sellable : r.total_capacity - occupied(r)
-                        const isFull = (r: typeof active[number]) => r.delivery.tracked
-                            ? r.delivery.sellable === 0 && r.delivery.pending === 0 && r.delivery.unlit === 0
-                            : r.total_capacity > 0 && occupied(r) >= r.total_capacity
+                        // 与 Inventory 列表 / 资源详情同一套拆分：可售只算已交付空闲（老资源 = 合同 − 占用）
+                        const free = (r: typeof active[number]) => r.segments.sellable
+                        const isFull = (r: typeof active[number]) => r.segments.sellable === 0 && r.segments.pending === 0 && r.segments.unlit === 0
                         // Sellable first: most free capacity on top; fully used ones are collapsed below
                         const open = active
                             .filter(r => !isFull(r))
@@ -137,62 +135,23 @@ export function DashboardPage() {
                                 {open.length === 0 && !showFull && (
                                     <p className="text-sm text-text-dim text-center py-2">No available capacity</p>
                                 )}
-                                {shown.map((r) => {
-                                    const used = occupied(r)
-                                    const pct = r.total_capacity > 0 ? Math.round((used / r.total_capacity) * 100) : 0
-                                    const hardPct = r.total_capacity > 0 ? Math.min((r.hard_capacity / r.total_capacity) * 100, 100) : 0
-                                    const softPct = r.total_capacity > 0 ? Math.min((r.soft_capacity / r.total_capacity) * 100, 100 - hardPct) : 0
-                                    const d = r.delivery
-                                    const share = (v: number) => (r.total_capacity > 0 ? (v / r.total_capacity) * 100 : 0)
-                                    const otherOccupied = deliverySegments(r.hard_capacity, r.soft_capacity, d).other
-                                    return (
-                                        <button
-                                            key={r.resource_id}
-                                            type="button"
-                                            onClick={() => navigate('/inventory')}
-                                            className="group w-full text-left cursor-pointer"
-                                        >
-                                            <div className="flex items-center justify-between text-sm mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`font-mono font-medium ${resourceTypeTextClass[r.type as keyof typeof resourceTypeTextClass] ?? 'text-text'}`}>{r.resource_id}</span>
-                                                    <span className="text-text-dim text-xs">{r.cable_system_name || r.type}</span>
-                                                </div>
-                                                <span className="text-text-muted text-xs">
-                                                    {r.soft_capacity > 0
-                                                        ? <>{r.hard_capacity}G 硬 + <span className="text-sky-600 dark:text-sky-400">{r.soft_capacity}G 软</span></>
-                                                        : `${used}G`} / {r.total_capacity}G ({pct}%)
-                                                </span>
+                                {shown.map((r) => (
+                                    <button
+                                        key={r.resource_id}
+                                        type="button"
+                                        onClick={() => navigate(`/inventory/${r.id}`)}
+                                        className="group w-full text-left cursor-pointer"
+                                    >
+                                        <div className="flex items-center justify-between text-sm mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-mono font-medium ${resourceTypeTextClass[r.type as keyof typeof resourceTypeTextClass] ?? 'text-text'}`}>{r.resource_id}</span>
+                                                <span className="text-text-dim text-xs">{r.cable_system_name || r.type}</span>
                                             </div>
-                                            <div
-                                                className="w-full h-2 bg-surface-hover rounded-full overflow-hidden flex"
-                                                aria-label={`${r.resource_id} utilization ${pct}% (hard ${r.hard_capacity}G, soft ${r.soft_capacity}G)`}
-                                            >
-                                                <div
-                                                    className={`h-full transition-all ${pct >= 100 && r.soft_capacity === 0 ? 'bg-status-full' : 'bg-status-partial'}`}
-                                                    style={{ width: `${hardPct}%` }}
-                                                />
-                                                <div className="h-full bg-sky-500 transition-all" style={{ width: `${softPct}%` }} />
-                                                {d.tracked && (
-                                                    <>
-                                                        <div className="h-full bg-text-dim/50" style={{ width: `${share(otherOccupied)}%` }} title={`其他占用 ${otherOccupied}G`} />
-                                                        <div className="h-full bg-status-available" style={{ width: `${share(d.sellable)}%` }} title={`可售 ${d.sellable}G`} />
-                                                        <div className="h-full bg-pending-stripes" style={{ width: `${share(d.pending)}%` }} title={`交付中 ${d.pending}G`} />
-                                                    </>
-                                                )}
-                                            </div>
-                                            {d.tracked && (
-                                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-text-dim">
-                                                    <span>合同 {formatCapacity(d.contract)}</span>
-                                                    <span>已点亮 {formatCapacity(d.lit)}</span>
-                                                    <span className="text-text-muted">已交付 {formatCapacity(d.delivered)}</span>
-                                                    <span className="font-semibold text-status-available">可售 {formatCapacity(d.sellable)}</span>
-                                                    {d.pending > 0 && <span className="text-amber-600 dark:text-amber-400">交付中 {formatCapacity(d.pending)}</span>}
-                                                    {d.unlit > 0 && <span>未点亮 {formatCapacity(d.unlit)}</span>}
-                                                </div>
-                                            )}
-                                        </button>
-                                    )
-                                })}
+                                            <span className="text-text-muted text-xs">{capacityUsageLabel(r.total_capacity, r.segments)}</span>
+                                        </div>
+                                        <CapacitySegmentsBar total={r.total_capacity} segments={r.segments} delivery={r.delivery} showSummary />
+                                    </button>
+                                ))}
                                 {full.length > 0 && (
                                     <button
                                         type="button"

@@ -1,6 +1,6 @@
 import type { DerivedContractState } from '@/lib/contract-state'
 import type { SalesStatus } from '@/types'
-import type { DeliverySummary } from '@/lib/circuit-codes'
+import type { DeliverySegments, DeliverySummary } from '@/lib/circuit-codes'
 
 export interface KPI {
     totalResources: number
@@ -12,6 +12,8 @@ export interface KPI {
     hardCapacity: number
     /** 滚动续期 / 已通知占用（软占用） */
     softCapacity: number
+    /** 复用（自用）+ 其他占用（无订单的保留端口） */
+    selfUseCapacity: number
     rollingCount: number
     /** 已交付且空闲（按交付编号判定的资源） */
     sellableCapacity: number
@@ -20,6 +22,7 @@ export interface KPI {
 }
 
 export interface ResourceRow {
+    id: string
     resource_id: string
     type: string
     cable_system_name: string | null
@@ -30,6 +33,7 @@ export interface ResourceRow {
     status: string
     /** 合同 / 点亮 / 交付 / 可售 / 交付中 拆分（migration 029 交付编号） */
     delivery: DeliverySummary
+    segments: DeliverySegments
 }
 
 export interface RollingContract {
@@ -104,6 +108,7 @@ export const EMPTY_DASHBOARD_DATA: DashboardData = {
         expiringSoon: 0,
         hardCapacity: 0,
         softCapacity: 0,
+        selfUseCapacity: 0,
         rollingCount: 0,
         sellableCapacity: 0,
         pendingCapacity: 0,

@@ -74,23 +74,43 @@ export function summarizeDelivery(contractCapacity: number, circuits: DeliveryCi
 export interface DeliverySegments {
     hard: number
     soft: number
+    /** 复用（自用）：处置类型 Self Use 的订单行（2026-10-29 王永威：Excel 成本属性「复用」= 自用，不可售） */
+    selfUse: number
     /** 已交付但既不是订单占用也不可售（如无订单的 Reserved 端口） */
     other: number
+    /** 可售：按交付编号判定的资源 = 已交付空闲端口；其余资源 = 合同 − 占用（原"可用"口径） */
     sellable: number
     pending: number
     unlit: number
 }
 
-/** 看板 / 资源详情共用的容量六段拆分（合同容量 = 六段之和或更大） */
-export function deliverySegments(hard: number, soft: number, delivery: DeliverySummary): DeliverySegments {
+/** 订单行归到哪一段：复用（自用）优先，其余按合同状态分硬 / 软占用 */
+export function occupancyBucket(disposalType: string | null | undefined, occupancy: string): 'selfUse' | 'hard' | 'soft' | null {
+    if (occupancy === 'none') return null
+    if (disposalType === 'Self Use') return 'selfUse'
+    return occupancy === 'hard' ? 'hard' : occupancy === 'soft' ? 'soft' : null
+}
+
+/** Inventory 列表 / 看板 / 资源详情共用的容量拆分，三处同一套数字 */
+export function deliverySegments(hard: number, soft: number, delivery: DeliverySummary, selfUse = 0): DeliverySegments {
+    if (!delivery.tracked) {
+        const occupied = hard + soft + selfUse
+        return { hard, soft, selfUse, other: 0, sellable: Math.max(delivery.contract - occupied, 0), pending: 0, unlit: 0 }
+    }
     return {
         hard,
         soft,
-        other: Math.max(delivery.delivered - delivery.sellable - hard - soft, 0),
+        selfUse,
+        other: Math.max(delivery.delivered - delivery.sellable - hard - soft - selfUse, 0),
         sellable: delivery.sellable,
         pending: delivery.pending,
         unlit: delivery.unlit,
     }
+}
+
+/** 占用合计（硬 + 软 + 复用 + 其他） */
+export function occupiedOf(seg: DeliverySegments): number {
+    return seg.hard + seg.soft + seg.selfUse + seg.other
 }
 
 /** 容量显示：≥1000G 且整百时用 T，如 2700 → 2.7T */

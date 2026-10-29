@@ -1,5 +1,5 @@
 import { formatDateOnly } from '@/lib/contract-utils'
-import { summarizeDelivery, type DeliveryCircuit } from '@/lib/circuit-codes'
+import { fetchResourceOccupancy } from '@/features/inventory/api/occupancy'
 import {
     committedRecurringRevenue,
     deriveContractState,
@@ -65,8 +65,6 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     assertNoError(itemsError, 'Failed to load contract states')
 
     const contractToday = localToday()
-    const hardByResource = new Map<string, number>()
-    const softByResource = new Map<string, number>()
     const rolling: RollingContract[] = []
     const revenue: RevenueSummary = { inTermMrc: 0, rollingMrc: 0, committed12m: 0, naive12m: 0 }
 
@@ -75,10 +73,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
         const derived = deriveContractState(item, order?.status, contractToday)
         const capacity = Number(item.capacity) || 0
         const mrc = Number(item.sell_mrc) || 0
-        if (item.inventory_resource_id && derived.occupancy !== 'none') {
-            const target = derived.occupancy === 'hard' ? hardByResource : softByResource
-            target.set(item.inventory_resource_id, (target.get(item.inventory_resource_id) ?? 0) + capacity)
-        }
+        // 各资源的硬 / 软 / 复用占用由 fetchResourceOccupancy 统一算，这里只算收入与滚动合同清单
         if (derived.occupancy === 'none') continue
         revenue.committed12m += committedRecurringRevenue(mrc, derived, item.end_date, contractToday)
         if (derived.occupancy === 'hard') {
@@ -103,44 +98,38 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     rolling.sort((a, b) => (a.contract.earliestExitDate ?? '').localeCompare(b.contract.earliestExitDate ?? '')
         || a.order_id.localeCompare(b.order_id))
 
-    // 端口交付状态（migration 029）：有 SR / JOC 或已有订单 = 已交付；已点亮空闲无编号 = 交付中
-    const { data: circuitsRaw, error: circuitsError } = await supabase
-        .from('circuit_code_lookup')
-        .select('inventory_resource_id, capacity, status, supplier_sr, juno_circuit_id, order_id')
-    assertNoError(circuitsError, 'Failed to load circuit delivery status')
-    const circuitsByResource = new Map<string, DeliveryCircuit[]>()
-    for (const row of (circuitsRaw ?? []) as Array<Record<string, unknown>>) {
-        const key = row.inventory_resource_id as string
-        const list = circuitsByResource.get(key) ?? []
-        list.push({
-            capacity: Number(row.capacity) || 0,
-            status: row.status as string,
-            supplier_sr: row.supplier_sr as string | null,
-            juno_circuit_id: row.juno_circuit_id as string | null,
-            has_order: Boolean(row.order_id),
-        })
-        circuitsByResource.set(key, list)
-    }
-
-    const resources: ResourceRow[] = (resourcesRaw ?? []).map((resource: Record<string, unknown>) => ({
-        resource_id: resource.resource_id as string,
-        type: resource.type as string,
-        cable_system_name: (resource.cable_system as { name: string } | null)?.name ?? null,
+    // 容量拆分：与 Inventory 列表 / 资源详情同一套算法（硬 / 软 / 复用 / 其他 / 可售 / 交付中 / 未点亮）
+    const resourceList = (resourcesRaw ?? []) as Array<Record<string, unknown>>
+    const occupancy = await fetchResourceOccupancy(resourceList.map((resource) => ({
+        id: resource.id as string,
         total_capacity: Number(resource.total_capacity ?? 0),
-        used_capacity: Number(resource.used_capacity ?? 0),
-        hard_capacity: hardByResource.get(resource.id as string) ?? 0,
-        soft_capacity: softByResource.get(resource.id as string) ?? 0,
-        status: resource.status as string,
-        delivery: summarizeDelivery(Number(resource.total_capacity ?? 0), circuitsByResource.get(resource.id as string) ?? []),
-    }))
+    })))
+
+    const resources: ResourceRow[] = resourceList.map((resource) => {
+        const occ = occupancy.get(resource.id as string)!
+        return {
+            id: resource.id as string,
+            resource_id: resource.resource_id as string,
+            type: resource.type as string,
+            cable_system_name: (resource.cable_system as { name: string } | null)?.name ?? null,
+            total_capacity: Number(resource.total_capacity ?? 0),
+            used_capacity: Number(resource.used_capacity ?? 0),
+            hard_capacity: occ.segments.hard,
+            soft_capacity: occ.segments.soft,
+            status: resource.status as string,
+            delivery: occ.delivery,
+            segments: occ.segments,
+        }
+    })
     const liveResources = resources.filter((resource) => resource.status !== 'Terminated' && resource.status !== 'Expired')
-    const sellableCapacity = liveResources.reduce((sum, resource) => sum + resource.delivery.sellable, 0)
-    const pendingCapacity = liveResources.reduce((sum, resource) => sum + resource.delivery.pending, 0)
+    const sellableCapacity = liveResources.reduce((sum, resource) => sum + resource.segments.sellable, 0)
+    const pendingCapacity = liveResources.reduce((sum, resource) => sum + resource.segments.pending, 0)
 
     const totalCapacity = resources.reduce((sum, resource) => sum + resource.total_capacity, 0)
     const usedCapacity = resources.reduce((sum, resource) => sum + resource.used_capacity, 0)
     const hardCapacity = resources.reduce((sum, resource) => sum + resource.hard_capacity, 0)
     const softCapacity = resources.reduce((sum, resource) => sum + resource.soft_capacity, 0)
+    const selfUseCapacity = resources.reduce((sum, resource) => sum + resource.segments.selfUse + resource.segments.other, 0)
 
     const { data: ordersRaw, error: ordersError } = await supabase
         .from('sales_orders')
@@ -214,6 +203,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
             expiringSoon: expiring.length,
             hardCapacity,
             softCapacity,
+            selfUseCapacity,
             rollingCount: rolling.length,
             sellableCapacity,
             pendingCapacity,

@@ -16,6 +16,7 @@ import {
     type InventoryPageFilters,
 } from '@/features/inventory/inventory-page-config'
 import { usePersistentColumnVisibility } from '@/hooks/usePersistentColumnVisibility'
+import { fetchResourceOccupancy } from '@/features/inventory/api/occupancy'
 import type { InventoryResource } from '@/types'
 
 export function useInventoryPageController() {
@@ -67,7 +68,9 @@ export function useInventoryPageController() {
             setLoading(true)
             const filter = activeTab === 'All' ? undefined : activeTab
             const result = await fetchInventoryResources(filter)
-            setData(result)
+            // 容量拆分与看板 / 资源详情同一套算法（硬 / 软 / 复用 / 可售 / 交付中 / 未点亮）
+            const occupancy = await fetchResourceOccupancy(result)
+            setData(result.map((item) => ({ ...item, occupancy: occupancy.get(item.id) })))
         } catch (error) {
             console.error('Failed to load inventory:', error)
             toast.error('Failed to load inventory')

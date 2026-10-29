@@ -7,6 +7,7 @@ import {
     formatCapacity,
     isSellableCircuit,
     looksLikeCode,
+    occupancyBucket,
     summarizeDelivery,
     type DeliveryCircuit,
 } from '../../src/lib/circuit-codes.js'
@@ -43,8 +44,22 @@ test('summarizeDelivery: allocated port without code still counts as delivered',
 test('deliverySegments: RES-10010-like split adds up to contract capacity', () => {
     const delivery = { tracked: true, contract: 10000, lit: 6000, delivered: 2700, sellable: 800, pending: 3300, unlit: 4000 }
     const seg = deliverySegments(900, 900, delivery)
-    assert.deepEqual(seg, { hard: 900, soft: 900, other: 100, sellable: 800, pending: 3300, unlit: 4000 })
+    assert.deepEqual(seg, { hard: 900, soft: 900, selfUse: 0, other: 100, sellable: 800, pending: 3300, unlit: 4000 })
     assert.equal(seg.hard + seg.soft + seg.other + seg.sellable + seg.pending + seg.unlit, 10000)
+})
+
+test('deliverySegments: untracked resource keeps contract − occupied as sellable; self use is not sellable', () => {
+    const untracked = { tracked: false, contract: 100, lit: 100, delivered: 100, sellable: 0, pending: 0, unlit: 0 }
+    assert.deepEqual(deliverySegments(0, 0, untracked, 100), { hard: 0, soft: 0, selfUse: 100, other: 0, sellable: 0, pending: 0, unlit: 0 })
+    assert.equal(deliverySegments(0, 100, untracked).sellable, 0)
+    assert.equal(deliverySegments(0, 0, untracked).sellable, 100)
+})
+
+test('occupancyBucket: Self Use wins over hard/soft; none stays out', () => {
+    assert.equal(occupancyBucket('Self Use', 'hard'), 'selfUse')
+    assert.equal(occupancyBucket('Lease Out', 'soft'), 'soft')
+    assert.equal(occupancyBucket('IRU Out', 'hard'), 'hard')
+    assert.equal(occupancyBucket('Self Use', 'none'), null)
 })
 
 test('formatCapacity uses T for round hundreds over 1000G', () => {

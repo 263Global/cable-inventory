@@ -88,7 +88,13 @@ export function InventoryCircuitList({
                                 {batchInfo && (
                                     <span className="px-1.5 py-0.5 rounded bg-surface-hover text-[10px] font-medium text-text-dim">B{batchInfo.batch_number}</span>
                                 )}
-                                {sale && (
+                                {sale && sale.disposal_type === 'Self Use' && (
+                                    <>
+                                        <span className="px-1.5 py-0.5 rounded bg-violet-500 text-[10px] font-semibold text-white">复用（自用）</span>
+                                        <span className="text-xs text-text-muted truncate">{sale.order_id}</span>
+                                    </>
+                                )}
+                                {sale && sale.disposal_type !== 'Self Use' && (
                                     <>
                                         <span className="text-xs text-text-muted truncate">{sale.order_id} · {sale.customer_name ?? '—'}</span>
                                         <ContractStateBadge derived={sale.contract} compact />

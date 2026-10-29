@@ -1,4 +1,6 @@
-import { formatCapacity, type DeliverySegments, type DeliverySummary } from '@/lib/circuit-codes'
+import { formatCapacity, occupiedOf, type DeliverySegments, type DeliverySummary } from '@/lib/circuit-codes'
+import { CapacitySegmentsBar, CapacitySummaryLine } from '@/components/capacity/CapacitySegmentsBar'
+import { capacitySegmentStyles } from '@/components/capacity/capacity-styles'
 
 interface InventoryCapacitySummaryProps {
     /** 按交付编号判定的资源（有端口录了 SR / JOC）用六段拆分，其余保持原样 */
@@ -36,13 +38,7 @@ export function InventoryCapacitySummary({
 }: InventoryCapacitySummaryProps) {
     if (delivery?.tracked && segments) {
         const share = (v: number) => (totalCap > 0 ? Math.min((v / totalCap) * 100, 100) : 0)
-        const parts = [
-            { key: 'hard', label: '硬占用', value: segments.hard, bar: 'bg-status-partial', dot: 'bg-status-partial' },
-            { key: 'soft', label: '软占用·滚动', value: segments.soft, bar: 'bg-sky-500', dot: 'bg-sky-500' },
-            { key: 'other', label: '其他占用', value: segments.other, bar: 'bg-text-dim/50', dot: 'bg-text-dim/50' },
-            { key: 'sellable', label: '可售', value: segments.sellable, bar: 'bg-status-available', dot: 'bg-status-available' },
-            { key: 'pending', label: '交付中（不可售）', value: segments.pending, bar: 'bg-pending-stripes', dot: 'bg-pending-stripes border border-amber-500/50' },
-        ]
+        const parts = capacitySegmentStyles.map((style) => ({ ...style, value: segments[style.key] }))
         return (
             <div className="mb-4">
                 <div className="flex justify-between text-sm mb-2">
@@ -116,30 +112,37 @@ export function InventoryCapacitySummary({
         )
     }
 
+    // 未录交付编号的资源保持原版式，但占用数与列表 / 看板同一套（含滚动软占用、复用（自用））
+    const occupied = segments ? occupiedOf(segments) : usedCap
     return (
         <div className="mb-3">
             <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium">{usedCap}G / {totalCap}G Allocated</span>
-                <span className="text-text-muted">{totalCap > 0 ? Math.round((usedCap / totalCap) * 100) : 0}%</span>
+                <span className="font-medium">{occupied}G / {totalCap}G Allocated</span>
+                <span className="text-text-muted">{totalCap > 0 ? Math.round((occupied / totalCap) * 100) : 0}%</span>
             </div>
-            <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
-                <div
-                    className={`h-full rounded-full transition-all ${usedCap >= totalCap ? 'bg-status-full' : 'bg-status-partial'}`}
-                    style={{ width: `${totalCap > 0 ? Math.min((usedCap / totalCap) * 100, 100) : 0}%` }}
-                />
-            </div>
+            {segments && delivery ? (
+                <CapacitySegmentsBar total={totalCap} segments={segments} delivery={delivery} height="h-3" />
+            ) : (
+                <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
+                    <div
+                        className={`h-full rounded-full transition-all ${occupied >= totalCap ? 'bg-status-full' : 'bg-status-partial'}`}
+                        style={{ width: `${totalCap > 0 ? Math.min((occupied / totalCap) * 100, 100) : 0}%` }}
+                    />
+                </div>
+            )}
             <div className="flex gap-6 text-sm mt-2">
                 <div>
                     <span className="inline-block w-2 h-2 rounded-full bg-status-available mr-2" />
                     <span className="text-text-muted">Remaining: </span>
-                    <span className="font-medium">{totalCap - usedCap}G</span>
+                    <span className="font-medium">{totalCap - occupied}G</span>
                 </div>
                 <div>
                     <span className="inline-block w-2 h-2 rounded-full bg-status-partial mr-2" />
                     <span className="text-text-muted">Allocated: </span>
-                    <span className="font-medium">{usedCap}G</span>
+                    <span className="font-medium">{occupied}G</span>
                 </div>
             </div>
+            {segments && delivery && <CapacitySummaryLine segments={segments} delivery={delivery} />}
         </div>
     )
 }

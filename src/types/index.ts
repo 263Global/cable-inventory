@@ -1,3 +1,4 @@
+import type { DeliverySegments, DeliverySummary } from '@/lib/circuit-codes'
 import type { ContractState, NoticeBy } from '@/lib/contract-state'
 // ============================================
 // Reference Data Types
@@ -125,6 +126,8 @@ export interface InventoryResource {
 
     created_at: string
     updated_at: string
+    /** 容量拆分（列表页加载，与看板 / 资源详情同一套算法） */
+    occupancy?: { delivery: DeliverySummary; segments: DeliverySegments }
 }
 
 export interface InventoryCircuit {
