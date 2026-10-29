@@ -113,6 +113,22 @@ export function occupiedOf(seg: DeliverySegments): number {
     return seg.hard + seg.soft + seg.selfUse + seg.other
 }
 
+/** 资源详情页：由端口 + 关联订单行算拆分（与 fetchResourceOccupancy 同一组规则） */
+export function resourceSegmentsFromDetail(
+    total: number,
+    circuits: Array<CircuitCodeFields & { id: string; capacity: number }>,
+    sales: Array<{ capacity: number | null; disposal_type: string | null; contract: { occupancy: string }; circuit_ids: string[] }>,
+): { delivery: DeliverySummary; segments: DeliverySegments } {
+    const linkedCircuits = new Set(sales.flatMap((sale) => sale.circuit_ids))
+    const delivery = summarizeDelivery(total, circuits.map((circuit) => ({ ...circuit, has_order: linkedCircuits.has(circuit.id) })))
+    const b = { hard: 0, soft: 0, selfUse: 0 }
+    for (const sale of sales) {
+        const bucket = occupancyBucket(sale.disposal_type, sale.contract.occupancy)
+        if (bucket) b[bucket] += Number(sale.capacity) || 0
+    }
+    return { delivery, segments: deliverySegments(b.hard, b.soft, delivery, b.selfUse) }
+}
+
 /** 资源使用状态（与容量条同一口径） */
 export function usageStatusOf(total: number, seg: DeliverySegments): 'Available' | 'Partially Used' | 'Fully Used' {
     const occupied = occupiedOf(seg)

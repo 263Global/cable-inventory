@@ -1,3 +1,4 @@
+import { occupancyBucket } from '@/lib/circuit-codes'
 import { Link } from 'react-router-dom'
 import {
     AlertTriangle,
@@ -99,24 +100,27 @@ export function LinkedSalesCard({
             </div>
 
             {totalCapacity && (() => {
-                const hardUsed = linkedSales
-                    .filter((s) => s.contract.occupancy === 'hard')
-                    .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
-                const softUsed = linkedSales
-                    .filter((s) => s.contract.occupancy === 'soft')
-                    .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
+                // 与容量条同一归类：复用（自用）单列，不算硬占用
+                const sum = (bucket: 'hard' | 'soft' | 'selfUse') => linkedSales
+                    .filter((s) => occupancyBucket(s.disposal_type, s.contract.occupancy) === bucket)
+                    .reduce((total, s) => total + (s.capacity ?? 0), 0)
+                const hardUsed = sum('hard')
+                const softUsed = sum('soft')
+                const selfUsed = sum('selfUse')
                 const draftUsed = linkedSales
                     .filter((s) => s.order_status === 'Draft')
                     .reduce((sum, s) => sum + (s.capacity ?? 0), 0)
                 const hardPct = Math.min((hardUsed / totalCapacity) * 100, 100)
                 const softPct = Math.min((softUsed / totalCapacity) * 100, 100 - hardPct)
-                const draftPct = Math.min((draftUsed / totalCapacity) * 100, 100 - hardPct - softPct)
+                const selfPct = Math.min((selfUsed / totalCapacity) * 100, 100 - hardPct - softPct)
+                const draftPct = Math.min((draftUsed / totalCapacity) * 100, 100 - hardPct - softPct - selfPct)
                 return (
                     <div className="mb-4">
                         <div className="flex flex-wrap justify-between gap-2 text-xs text-text-dim mb-1">
                             <span className="flex flex-wrap items-center gap-3">
                                 <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-status-partial" />硬占用 {hardUsed}G</span>
                                 <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-500" />软占用·滚动 {softUsed}G</span>
+                                {selfUsed > 0 && <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-violet-500" />复用（自用） {selfUsed}G</span>}
                                 <span>/ {totalCapacity}G</span>
                             </span>
                             {draftUsed > 0 && <span className="text-gray-500">+ {draftUsed}G draft</span>}
@@ -125,6 +129,7 @@ export function LinkedSalesCard({
                             <div className="h-full flex">
                                 <div className="bg-status-partial h-full" style={{ width: `${hardPct}%` }} />
                                 <div className="bg-sky-500 h-full" style={{ width: `${softPct}%` }} />
+                                <div className="bg-violet-500 h-full" style={{ width: `${selfPct}%` }} />
                                 <div className="bg-gray-600 h-full" style={{ width: `${draftPct}%` }} />
                             </div>
                         </div>

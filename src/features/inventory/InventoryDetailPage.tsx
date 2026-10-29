@@ -1,3 +1,4 @@
+import { resourceSegmentsFromDetail, usageStatusOf } from '@/lib/circuit-codes'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Ban, Loader2, Pencil, RefreshCw } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -114,6 +115,10 @@ export function InventoryDetailPage() {
     const isBatchMode = Boolean(isBatchModeFlag)
     const isIRU = Boolean(isIRUFlag)
     const isLease = Boolean(isLeaseFlag)
+    // 状态徽标与容量条 / 列表同一口径（含滚动软占用、复用（自用））；Expired / Terminated 等不动
+    const displayStatus = ['Available', 'Partially Used', 'Fully Used'].includes(resource.status)
+        ? usageStatusOf(Number(resource.total_capacity ?? 0), resourceSegmentsFromDetail(Number(resource.total_capacity ?? 0), circuits, linkedSales).segments)
+        : resource.status
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -126,7 +131,7 @@ export function InventoryDetailPage() {
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{resource.resource_id}</h1>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${resourceTypeBadgeClass[resource.type]}`}>{resource.type}</span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${resourceStatusBadgeClass[resource.status]}`}>{resourceStatusLabel[resource.status] || resource.status}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${resourceStatusBadgeClass[displayStatus]}`}>{resourceStatusLabel[displayStatus] || displayStatus}</span>
                             {isBatchMode && <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 text-info">Base+Batch</span>}
                         </div>
                         {resource.internal_ref && <p className="text-sm text-text-dim mt-1">{resource.internal_ref}</p>}

@@ -6,11 +6,11 @@ All notable changes to CableTrack will be documented in this file.
 
 ### Fixed — One Capacity Split Everywhere
 - **Inventory List** — Capacity Usage no longer reads `used_capacity` alone (which ignores rolling and self-use lines, e.g. PCCW-JUNO showed 900/10000G 9%); it now uses the same split as the dashboard and resource detail, with contract / lit / delivered / sellable / in-delivery / unlit for tracked resources
-- **List Status** — Resource status badge in the Inventory list follows the same occupied numbers (rolling and self-use count), so ASE shows Fully Used instead of Available; Planned / Unlit / Terminated stay as stored
+- **List & Detail Status** — Resource status badge in the Inventory list and on Resource Detail follows the same occupied numbers (rolling and self-use count), so ASE shows Fully Used instead of Available; Planned / Unlit / Terminated stay as stored
 - **Shared Occupancy** — `fetchResourceOccupancy()` computes hard / soft / self-use per resource for both the Inventory list and the dashboard; the resource detail uses the same pure functions; one bar component and one color set
 
 ### Added — 复用（自用）
-- **Self Use Lines** — Order lines with disposal type `Self Use` are shown as "复用（自用）" (violet) in bars, legends and circuit rows, counted as occupied and never sellable
+- **Self Use Lines** — Order lines with disposal type `Self Use` are shown as "复用（自用）" (violet) in bars, legends, Linked Sales and circuit rows, counted as occupied and never sellable
 
 ## [2.11.3] - 2026-10-29
 
