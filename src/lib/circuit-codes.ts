@@ -113,6 +113,13 @@ export function occupiedOf(seg: DeliverySegments): number {
     return seg.hard + seg.soft + seg.selfUse + seg.other
 }
 
+/** 资源使用状态（与容量条同一口径） */
+export function usageStatusOf(total: number, seg: DeliverySegments): 'Available' | 'Partially Used' | 'Fully Used' {
+    const occupied = occupiedOf(seg)
+    if (total > 0 && occupied >= total) return 'Fully Used'
+    return occupied > 0 ? 'Partially Used' : 'Available'
+}
+
 /** 容量显示：≥1000G 且整百时用 T，如 2700 → 2.7T */
 export function formatCapacity(gbps: number): string {
     if (gbps >= 1000 && gbps % 100 === 0) return `${gbps / 1000}T`

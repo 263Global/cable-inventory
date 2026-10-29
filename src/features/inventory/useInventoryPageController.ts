@@ -17,6 +17,7 @@ import {
 } from '@/features/inventory/inventory-page-config'
 import { usePersistentColumnVisibility } from '@/hooks/usePersistentColumnVisibility'
 import { fetchResourceOccupancy } from '@/features/inventory/api/occupancy'
+import { usageStatusOf } from '@/lib/circuit-codes'
 import type { InventoryResource } from '@/types'
 
 export function useInventoryPageController() {
@@ -70,7 +71,14 @@ export function useInventoryPageController() {
             const result = await fetchInventoryResources(filter)
             // 容量拆分与看板 / 资源详情同一套算法（硬 / 软 / 复用 / 可售 / 交付中 / 未点亮）
             const occupancy = await fetchResourceOccupancy(result)
-            setData(result.map((item) => ({ ...item, occupancy: occupancy.get(item.id) })))
+            setData(result.map((item) => {
+                const occ = occupancy.get(item.id)
+                // 列表状态与容量条同一口径（含滚动软占用、复用（自用））；Planned / Unlit 等特殊状态不动
+                const status = occ && ['Available', 'Partially Used', 'Fully Used'].includes(item.status)
+                    ? usageStatusOf(Number(item.total_capacity ?? 0), occ.segments)
+                    : item.status
+                return { ...item, occupancy: occ, status }
+            }))
         } catch (error) {
             console.error('Failed to load inventory:', error)
             toast.error('Failed to load inventory')
